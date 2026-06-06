@@ -1,6 +1,8 @@
-import { SUIT_GLYPH, SIGIL_TARGET, FORGE_SIGILS, isMonster, isWeapon, isPotion, rankLabel } from '../constants'
+import { SUIT_GLYPH, SIGIL_TARGET, DEFAULT_MODE, getMode, isMonster, isWeapon, isPotion, rankLabel } from '../constants'
 import { getTheme, pickThemeId, resolveThemeChildren } from '../themes'
-import { BOONS, pickBoonOffers } from '../boons'
+import { BOONS, pickBoonOffers, STARTER_BOON_IDS, UNLOCKABLE_BOON_IDS } from '../boons'
+import { getAscensionEffectsForState } from '../ascensions'
+import { isEnabled as isFlagEnabled } from '../flags'
 import {
   appendLog,
   themesFor, themeFlagAny, getRoomSize,
@@ -22,7 +24,24 @@ export function createRun(rng = Math.random, options = {}) {
   // When `tutorial` is requested, the player walks a curated
   // descent first. Tutorial completion: no sigil, no boon, then The
   // Quiet starts as normal.
-  const { tutorial = false } = options
+  //
+  // The `mode` option locks the run into an alternate ruleset (Hardcore,
+  // Quiet Run, etc). Default is the full game. Mode is fixed for the run
+  // once chosen and read at sanctuary-visit and theme-pick edges.
+  //
+  // `unlockedBoons` is the player's Boon library: the set of Boons that can
+  // appear in offers this run. Defaults to the starter set for first-time
+  // players. The caller (root) loads/saves the library to localStorage so
+  // unlocks persist across runs.
+  //
+  // `ascension` is the difficulty level (0 = base). Read at sanctuary,
+  // descent, and combat edges via getAscensionEffectsForState.
+  const {
+    tutorial = false,
+    mode = DEFAULT_MODE,
+    unlockedBoons = STARTER_BOON_IDS,
+    ascension = 0,
+  } = options
   const nextTheme = tutorial ? 'tutorial' : 'the_quiet'
 
   return {
@@ -30,6 +49,9 @@ export function createRun(rng = Math.random, options = {}) {
     sigilsEarned: 0,
     sigilTarget: SIGIL_TARGET,
     tutorial,
+    mode,
+    ascension,
+    unlockedBoons: unlockedBoons.slice(),
     // Set of tutorial lessons the player has completed. Used by the
     // UI to decide when to stop recommending actions and showing
     // hover tips. Possible values: 'equip', 'fight', 'potion',
@@ -39,6 +61,7 @@ export function createRun(rng = Math.random, options = {}) {
     strikes: [],
     transmutes: {},
     hefts: {},
+    inscribed: [],
     carriedWeapon: null,
     carriedSpareWeapon: null,
     rng,
@@ -75,13 +98,42 @@ export function createRun(rng = Math.random, options = {}) {
     twinSoulsUsed: false,
     cowardsRewardCharge: 0,
     numbRemaining: 0,
+    strengthBonus: 0,
+    mapPeek: null,
+    // Rolling tail of the player's last 3 monster-kill ranks. Read by the
+    // Devourer boss's dynamic rank (3 + sum). Resets per descent so the
+    // sanctuary visit doesn't carry stale data into the next descent.
+    lastKilledMonsterRanks: [],
 
     log: ['You wake in the great hall. The rune-chains hum.'],
   }
 }
 
-export function startNewRun(rng = Math.random) {
-  return createRun(rng)
+export function startNewRun(rng = Math.random, options = {}) {
+  return createRun(rng, options)
+}
+
+// Change the run's mode. Only valid before the first descent (sigilsEarned 0,
+// still in the opening sanctuary visit). Outside that window the mode is
+// considered locked, and the call is a no-op.
+export function setRunMode(state, modeId) {
+  if (state.phase !== 'sanctuary') return state
+  if (state.sigilsEarned !== 0) return state
+  if (state.tutorial) return state
+  if (!getMode(modeId)) return state
+  if (state.mode === modeId) return state
+  return { ...state, mode: modeId }
+}
+
+// Change the run's ascension level. Same rules as setRunMode: pre-descent
+// only. Clamping to the player's actual ceiling is the caller's job.
+export function setRunAscension(state, level) {
+  if (state.phase !== 'sanctuary') return state
+  if (state.sigilsEarned !== 0) return state
+  if (state.tutorial) return state
+  const clamped = Math.max(0, Math.floor(level || 0))
+  if (state.ascension === clamped) return state
+  return { ...state, ascension: clamped }
 }
 
 // -- Descend ------------------------------------------------------------
@@ -120,6 +172,12 @@ export function descend(state) {
   const muteState = mutedBoon ? { ...state, mutedBoon } : state
   const maxHp = computeMaxHp(muteState, themeId, themeChildren)
 
+  // Ascension hooks for descent start: A1 caps the starting HP below max so
+  // the sanctuary stops being a free top-up; other levels' effects flow
+  // through computeMaxHp / damage / picker code paths instead of here.
+  const asc = getAscensionEffectsForState(state)
+  const startHp = Math.max(1, Math.floor(maxHp * asc.sanctuaryHealMultiplier))
+
   // Carried weapons arrive rested (lastSlain cleared). DESIGN.md §2.
   const weapon = state.carriedWeapon
     ? { rank: state.carriedWeapon.rank, originalRank: state.carriedWeapon.originalRank, lastSlain: null }
@@ -140,7 +198,7 @@ export function descend(state) {
   let descentState = {
     ...state,
     phase: 'descent',
-    hp: maxHp,
+    hp: startHp,
     maxHp,
     deck,
     room,
@@ -163,6 +221,11 @@ export function descend(state) {
     twinSoulsUsed: false,
     cowardsRewardCharge: 0,
     numbRemaining: 0,
+    woundsAddedThisDescent: 0,
+    pendingCursedHeal: 0,
+    strengthBonus: 0,
+    mapPeek: null,
+    lastKilledMonsterRanks: [],
     log: [baseLine, ...themeLog],
   }
 
@@ -230,63 +293,108 @@ export function endDescentVictory(state) {
 
   const newSigils = state.sigilsEarned + 1
 
-  if (newSigils >= state.sigilTarget) {
-    return appendLog(
-      {
-        ...state,
-        sigilsEarned: newSigils,
-        phase: 'victory',
-        carriedWeapon,
-        carriedSpareWeapon,
-      },
-      'The seventh sigil is set in the threshold. The high gate opens.'
-    )
+  const rng = state.rng
+  // Discovery: each sigil earned permanently unlocks one random Boon from
+  // the locked pool, if any are still locked. The unlock applies even in
+  // Hardcore (no offers seen this run, but the library grows for next time)
+  // and on the winning sigil (sigil 7), so a clean run delivers 7 unlocks.
+  const currentLibrary = state.unlockedBoons || STARTER_BOON_IDS
+  const unlockedSet = new Set(currentLibrary)
+  const stillLocked = UNLOCKABLE_BOON_IDS.filter(id => !unlockedSet.has(id))
+  let nextLibrary = currentLibrary
+  let discoveredBoonId = null
+  if (stillLocked.length > 0) {
+    discoveredBoonId = stillLocked[Math.floor(rng() * stillLocked.length)]
+    nextLibrary = currentLibrary.concat(discoveredBoonId)
   }
 
-  const rng = state.rng
-  const nextTheme = pickThemeId(rng, newSigils)
-  const nextThemeChildren = resolveThemeChildren(nextTheme, rng)
-  const boonOffers = pickBoonOffers(state.boons, 3, rng)
-  const forgeOpen = FORGE_SIGILS.has(newSigils)
-
-  return appendLog(
-    {
+  if (newSigils >= state.sigilTarget) {
+    let won = {
       ...state,
       sigilsEarned: newSigils,
-      phase: 'sanctuary',
+      phase: 'victory',
       carriedWeapon,
       carriedSpareWeapon,
-      nextTheme,
-      nextThemeChildren,
-      boonOffers,
-      forgeOpen,
-      forgeUsed: false,
-      boonChosen: false,
-      forgeView: null,
+      unlockedBoons: nextLibrary,
+    }
+    won = appendLog(won, 'The seventh sigil is set in the threshold. The high gate opens.')
+    if (discoveredBoonId) {
+      const boon = BOONS[discoveredBoonId]
+      won = appendLog(won, `Discovered a new Boon: ${boon?.name || discoveredBoonId}.`)
+    }
+    return won
+  }
 
-      // Wipe descent-only state
-      deck: [],
-      room: [],
-      theme: null,
-      themeChildren: null,
-      themeDeckChanges: [],
-      weapon: null,
-      spareWeapon: null,
-      discard: [],
-      potionsUsedThisRoom: 0,
-      monstersFoughtThisRoom: 0,
-      lastMonsterSuit: null,
-      roomsEntered: 0,
-      mutedBoon: null,
-      riposteCharge: 0,
-      secondWindUsed: false,
-      cloakUsed: false,
-      twinSoulsUsed: false,
-      cowardsRewardCharge: 0,
-      numbRemaining: 0,
-    },
+  const mode = isFlagEnabled('modes') ? getMode(state.mode) : getMode(DEFAULT_MODE)
+  const asc = getAscensionEffectsForState(state)
+  const forgeSigilSet = new Set(asc.forgeSigils)
+
+  // Ascension hooks: themeTierOffset advances the escalation by N sigils so
+  // harder themes show up sooner; boonOfferCount caps the offer roll;
+  // forgeSigils swaps the 2/4/6 cadence for the level's set.
+  //
+  // Mode hooks: lockTheme overrides the rolled theme; noBoons skips the
+  // offer roll; noForge keeps the forge closed regardless of sigil count.
+  const nextTheme = mode.lockTheme || pickThemeId(rng, newSigils + asc.themeTierOffset)
+  const nextThemeChildren = resolveThemeChildren(nextTheme, rng)
+  // Library flag off: every Boon is available, the per-player unlocked set
+  // is ignored. Discoveries still get appended to state (cheap, and the
+  // library stays warm in case the flag flips back on later).
+  const offerPool = isFlagEnabled('library') ? nextLibrary : UNLOCKABLE_BOON_IDS
+  const boonOffers = mode.noBoons ? [] : pickBoonOffers(state.boons, asc.boonOfferCount, rng, offerPool)
+  const boonChosen = mode.noBoons // no boon to pick in modes that skip offers
+  const forgeOpen = !mode.noForge && forgeSigilSet.has(newSigils)
+
+  let returned = {
+    ...state,
+    sigilsEarned: newSigils,
+    phase: 'sanctuary',
+    carriedWeapon,
+    carriedSpareWeapon,
+    nextTheme,
+    nextThemeChildren,
+    boonOffers,
+    forgeOpen,
+    forgeUsed: false,
+    boonChosen,
+    forgeView: null,
+    unlockedBoons: nextLibrary,
+
+    // Wipe descent-only state
+    deck: [],
+    room: [],
+    theme: null,
+    themeChildren: null,
+    themeDeckChanges: [],
+    weapon: null,
+    spareWeapon: null,
+    discard: [],
+    potionsUsedThisRoom: 0,
+    monstersFoughtThisRoom: 0,
+    lastMonsterSuit: null,
+    roomsEntered: 0,
+    mutedBoon: null,
+    riposteCharge: 0,
+    secondWindUsed: false,
+    cloakUsed: false,
+    twinSoulsUsed: false,
+    cowardsRewardCharge: 0,
+    numbRemaining: 0,
+    woundsAddedThisDescent: 0,
+    pendingCursedHeal: 0,
+    strengthBonus: 0,
+    mapPeek: null,
+    lastKilledMonsterRanks: [],
+  }
+  returned = appendLog(
+    returned,
     `You return to the hall. Sigil ${newSigils} of ${state.sigilTarget} is set.`
   )
+  if (discoveredBoonId) {
+    const boon = BOONS[discoveredBoonId]
+    returned = appendLog(returned, `Discovered a new Boon: ${boon?.name || discoveredBoonId}.`)
+  }
+  return returned
 }
 
 // -- Flee --------------------------------------------------------------

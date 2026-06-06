@@ -1,4 +1,6 @@
 import { HEART, DIAMOND, CLUB, SPADE } from '../constants'
+import { isEnabled as isFlagEnabled } from '../flags'
+import { rollBossForDescent } from '../bosses'
 import { themesFor } from './helpers'
 
 // -- Base deck ---------------------------------------------------------
@@ -25,8 +27,8 @@ export function shuffle(arr, rng = Math.random) {
 }
 
 // The "persistent deck": base 44 minus strikes, with transmutes and hefts
-// applied. IDs are stable across these edits. Used by the Forge UI and as
-// the starting point for buildDescentDeck.
+// applied, plus any inscribed cards. IDs are stable across these edits.
+// Used by the Forge UI and as the starting point for buildDescentDeck.
 export function computeCurrentDeck(state) {
   let deck = buildBaseDeck()
   const strikeSet = new Set(state.strikes)
@@ -53,6 +55,10 @@ export function computeCurrentDeck(state) {
     }
     return result
   })
+  const inscribed = state.inscribed || []
+  if (inscribed.length > 0) {
+    deck = deck.concat(inscribed)
+  }
   return deck
 }
 
@@ -79,6 +85,12 @@ export function buildDescentDeck(state, themeId, themeChildren, rng) {
         changes.push({ themeId: theme.id, themeName: theme.name, additions, removals })
       }
     }
+  }
+  // Boss injection: appended pre-shuffle so it lands somewhere random in
+  // the resulting deck like any other card. Gated by the 'bosses' flag.
+  if (isFlagEnabled('bosses')) {
+    const boss = rollBossForDescent(rng)
+    if (boss) deck = deck.concat(boss)
   }
   return { deck: shuffle(deck, rng), log: extraLog, changes }
 }

@@ -1,5 +1,10 @@
-import { SUIT_GLYPH, BASE_MAX_HP, isMonster, isWeapon, isPotion, rankLabel, suitColor } from '../constants'
+import {
+  SUIT_GLYPH, BASE_MAX_HP, isMonster, isWeapon, isPotion, rankLabel, suitColor,
+  INSCRIBED_FRAMES, INSCRIBED_FRAME_IDS, makeInscribedCard,
+} from '../constants'
 import { BOONS } from '../boons'
+import { getAscensionEffectsForState } from '../ascensions'
+import { BOSSES } from '../bosses'
 import {
   appendLog,
   activeThemes, themeFlagAny,
@@ -127,6 +132,48 @@ export function applyHeft(state, cardId) {
   )
 }
 
+// Inscribe: add a player-authored card to state.inscribed. The card joins
+// the deck on the next descent and persists for the rest of the run.
+// Frames with `oncePerRun: true` (e.g. Skeleton Key) are blocked when one
+// is already in the inscribed list. Rank is clamped to the frame's range.
+export function applyInscribe(state, frameId, rank) {
+  if (state.phase !== 'sanctuary' || !state.forgeOpen || state.forgeUsed) return state
+  const frame = INSCRIBED_FRAMES[frameId]
+  if (!frame) return state
+  const inscribed = state.inscribed || []
+  if (frame.oncePerRun && inscribed.some(c => c.inscribed === frameId)) return state
+  const card = makeInscribedCard(frameId, rank)
+  if (!card) return state
+
+  return appendLog(
+    {
+      ...state,
+      inscribed: inscribed.concat(card),
+      forgeUsed: true,
+      forgeView: null,
+    },
+    `Inscribed ${frame.name}${card.rank > 0 ? ` (${rankLabel(card.rank)})` : ''} into the deck.`
+  )
+}
+
+// Clear the Map peek snapshot. Called when the player closes the modal
+// the Map opens. Idempotent: a no-op when mapPeek is already null.
+export function dismissMapPeek(state) {
+  if (!state.mapPeek) return state
+  return { ...state, mapPeek: null }
+}
+
+// What frames can the player inscribe right now? Removes any frame that's
+// already at its per-run cap (Skeleton Key).
+export function getInscribeOptions(state) {
+  if (state.phase !== 'sanctuary' || !state.forgeOpen) return []
+  const inscribed = state.inscribed || []
+  return INSCRIBED_FRAME_IDS.map(id => INSCRIBED_FRAMES[id]).filter(frame => {
+    if (frame.oncePerRun && inscribed.some(c => c.inscribed === frame.id)) return false
+    return true
+  })
+}
+
 // -- Convenience inspection (used by UI) -------------------------------
 
 export function getStrikeOptions(state) {
@@ -167,6 +214,19 @@ export function previewMonsterDamage(state, card) {
   }
   if (card.faceDown) {
     return { weapon: null, bare: null, faceDown: true }
+  }
+  // Cursed Idol bypasses combat entirely: no weapon swing, no theme bonus,
+  // no Vanguard/Riposte. The card always inflicts its rank straight.
+  if (card.inscribed === 'cursed_idol') {
+    return {
+      weapon: null,
+      bare: {
+        value: card.rank,
+        parts: [{ label: 'cursed idol', value: card.rank, op: '+' }],
+        clamped: false,
+      },
+      faceDown: false,
+    }
   }
   const bare = describeDamage(state, card, null)
   const chosen = pickBestWeaponFor(state, card)
@@ -227,13 +287,24 @@ export function describeWeaponStrength(state, weapon = state.weapon) {
   if (hasBoon(state, 'berserker') && (state.monstersFoughtThisRoom || 0) > 0) {
     parts.push({ label: 'Berserker', value: state.monstersFoughtThisRoom, op: '+' })
   }
+  if ((state.strengthBonus || 0) > 0) {
+    parts.push({ label: 'Strength', value: state.strengthBonus, op: '+' })
+  }
   return { value: Math.max(0, sumParts(parts)), parts }
 }
 
 // `weaponUsed` is the actual weapon object (or null for bare-handed).
 export function describeDamage(state, card, weaponUsed) {
   const parts = []
-  parts.push({ label: 'monster', value: card.rank, op: '+' })
+  // Devourer's printed rank is 3, but the live rank is 3 + last 3 kills.
+  // Sum the components into a single line so the breakdown is honest.
+  if (card.boss === 'devourer') {
+    const kills = state.lastKilledMonsterRanks || []
+    const live = 3 + kills.reduce((s, r) => s + r, 0)
+    parts.push({ label: 'Devourer (3 + last kills)', value: live, op: '+' })
+  } else {
+    parts.push({ label: 'monster', value: card.rank, op: '+' })
+  }
 
   const themes = activeThemes(state)
   for (const t of themes) {
@@ -243,9 +314,36 @@ export function describeDamage(state, card, weaponUsed) {
     if (suitBonus) parts.push({ label: t.name, value: Math.abs(suitBonus), op: suitBonus < 0 ? '-' : '+' })
   }
 
+  // Ascension face-card bonus (A6): J/Q/K/A monsters hit at +N effective rank.
+  const ascEffects = getAscensionEffectsForState(state)
+  const liveBase = card.boss === 'devourer'
+    ? 3 + (state.lastKilledMonsterRanks || []).reduce((s, r) => s + r, 0)
+    : card.rank
+  if (ascEffects.faceCardRankBonus && liveBase >= 11) {
+    parts.push({
+      label: `Asc ${ascEffects.level}`,
+      value: ascEffects.faceCardRankBonus,
+      op: '+',
+    })
+  }
+
+  // Room-aura bosses (The Warden, etc.) add a flat bonus to every other
+  // monster in their room. Surface them by name so the breakdown reads true.
+  for (const c of state.room || []) {
+    if (!c || c.id === card.id || !c.boss) continue
+    const bonus = BOSSES[c.boss]?.roomMonsterRankBonus || 0
+    if (bonus) parts.push({ label: BOSSES[c.boss].name, value: bonus, op: '+' })
+  }
+
   if (weaponUsed) {
     const ws = describeWeaponStrength(state, weaponUsed)
-    if (ws) parts.push({ label: 'weapon', value: ws.value, op: '-' })
+    if (ws) {
+      // The Hollow One only lets half a weapon's swing land. Show the
+      // halved value so the player sees what they actually subtract.
+      const value = card.boss === 'hollow_one' ? Math.floor(ws.value / 2) : ws.value
+      const label = card.boss === 'hollow_one' ? 'weapon (halved)' : 'weapon'
+      parts.push({ label, value, op: '-' })
+    }
   } else {
     for (const id of activeBoons(state)) {
       const reduction = BOONS[id]?.brawlerReduction || 0
@@ -292,11 +390,23 @@ export function describeDamage(state, card, weaponUsed) {
 }
 
 // Describe what playing this potion now would do. Returns one of:
-//   { mode: 'heal',   value, parts }
-//   { mode: 'damage', value, parts }   // Apothecary sour draught
-//   { mode: 'skip',   note }            // Stoic refusal or wasted overflow
+//   { mode: 'heal',     value, parts }
+//   { mode: 'damage',   value, parts }   // Apothecary sour draught
+//   { mode: 'strength', value, parts }   // Potion of Strength (inscribed)
+//   { mode: 'skip',     note }            // Stoic refusal or wasted overflow
 export function describePotion(state, card) {
   if (!card || !isPotion(card)) return null
+
+  // Potion of Strength: never heals, never counts as a potion, so it
+  // bypasses Stoic / Apothecary / Bitter Brew entirely. Preview is the
+  // strength bump it'll add to the descent's weapon-strength bonus.
+  if (card.inscribed === 'potion_of_strength') {
+    return {
+      mode: 'strength',
+      value: card.rank,
+      parts: [{ label: 'strength', value: card.rank, op: '+' }],
+    }
+  }
 
   if (hasBoon(state, 'stoic')) {
     return { mode: 'skip', note: 'Stoic, set aside' }

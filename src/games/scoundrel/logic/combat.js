@@ -1,5 +1,11 @@
-import { SUIT_GLYPH, isMonster, isWeapon, isPotion, rankLabel } from '../constants'
+import {
+  SUIT_GLYPH, isMonster, isWeapon, isPotion, isWound, isSkeletonKey, isMap, isWhetstone, rankLabel,
+  WOUND_DAMAGE_THRESHOLD, WOUND_CAP_PER_DESCENT, makeWoundCard,
+  MAP_PEEK_COUNT,
+} from '../constants'
 import { BOONS } from '../boons'
+import { isEnabled as isFlagEnabled } from '../flags'
+import { isBoss, makeBroodSpawn, getBoss, BOSSES } from '../bosses'
 import {
   appendLog, fmt,
   activeThemes, themesFor, themeFieldSum, themeFlagAny, getRoomSize,
@@ -27,6 +33,27 @@ export function applyHpLoss(state, amount) {
     )
   }
   next = { ...next, hp: next.hp - amount }
+
+  // Wound card: a heavy hit (post-mitigation) bleeds a Wound into the deck.
+  // Capped per descent so a bad streak does not choke the entire late game.
+  // Skipped under the 'wounds' flag being off, during the tutorial (curated
+  // flow), and on the killing blow that goes into gameover; Twin Souls
+  // saves still get the wound since the player remains in the descent.
+  if (
+    isFlagEnabled('wounds') &&
+    !state.tutorial &&
+    amount >= WOUND_DAMAGE_THRESHOLD &&
+    (next.hp > 0 || hasBoon(next, 'twin_souls'))
+  ) {
+    const woundsAdded = state.woundsAddedThisDescent || 0
+    if (woundsAdded < WOUND_CAP_PER_DESCENT) {
+      const wound = makeWoundCard()
+      next = appendLog(
+        { ...next, deck: [...next.deck, wound], woundsAddedThisDescent: woundsAdded + 1 },
+        'A wound bleeds into the deck.'
+      )
+    }
+  }
 
   if (next.hp <= 0 && hasBoon(next, 'twin_souls') && !next.twinSoulsUsed) {
     next = appendLog({ ...next, hp: 1, twinSoulsUsed: true },
@@ -79,8 +106,9 @@ export function isWeaponUsable(state, monsterCard) {
 // -- Room entry effects -------------------------------------------------
 
 // Apply Tithe (HP loss), Oath (face-down first new card), Echo (extra
-// duplicate slot), and increment roomsEntered. Called once per time a new
-// room is presented to the player: initial descend, refill, or a flee.
+// duplicate slot), Mimic (copyRoomOnEnter bosses re-stamp the room), and
+// increment roomsEntered. Called once per time a new room is presented to
+// the player: initial descend, refill, or a flee.
 export function applyRoomEntryEffects(state, room, firstNewIdx) {
   const themes = activeThemes(state)
   const roomsEntered = (state.roomsEntered || 0) + 1
@@ -113,6 +141,24 @@ export function applyRoomEntryEffects(state, room, firstNewIdx) {
       `Echo: ${monsters.map(fmt).join(', ')} ${monsters.length === 1 ? 'echoes' : 'echo'} to the bottom of the deck.`)
   }
 
+  // The Mimic (or any boss with copyRoomOnEnter): replace every other slot
+  // with a plain monster of the boss's suit/rank. Face-down stays sticky so
+  // Oath's marker survives. Runs after Echo so the echoed copies are the
+  // pre-mimic originals, not a deck flood of identical clones.
+  const mimic = nextRoom.find(c => c && c.boss && BOSSES[c.boss]?.copyRoomOnEnter)
+  if (mimic) {
+    nextRoom = nextRoom.map(c => {
+      if (!c || c.id === mimic.id) return c
+      return {
+        suit: mimic.suit,
+        rank: mimic.rank,
+        id: `${c.id}_mimic_${mimic.id}`,
+        ...(c.faceDown ? { faceDown: true } : null),
+      }
+    })
+    next = appendLog(next, `${getBoss(mimic.boss).name} shifts. The room takes its shape.`)
+  }
+
   // Tithe: lose HP per room entered. Can kill (honors Twin Souls / Second Wind).
   const titheLoss = themeFieldSum(themes, 'tithe')
   if (titheLoss > 0) {
@@ -134,7 +180,10 @@ function getMonsterDamage(state, monsterCard, weaponUsed) {
 
   let dmg
   if (weaponUsed) {
-    const weapRank = effectiveWeaponRank(state, weaponUsed)
+    let weapRank = effectiveWeaponRank(state, weaponUsed)
+    // The Hollow One halves whatever rank your weapon would have brought
+    // to the fight. Bare hands hit at full effective rank.
+    if (monsterCard.boss === 'hollow_one') weapRank = Math.floor(weapRank / 2)
     dmg = Math.max(0, effRank - weapRank)
   } else {
     dmg = effRank
@@ -165,12 +214,19 @@ function applyMonsterFight(state, monsterCard, index, useWeapon) {
 
   const themes = activeThemes(state)
 
+  // Track the effective rank of the last three kills (Devourer feeds on
+  // this). Use effective rank, not card.rank, so themes / face-card asc.
+  // bonuses also count toward the chain.
+  const killedRank = effectiveMonsterRank(state, monsterCard)
+  const newLastKills = [...(state.lastKilledMonsterRanks || []), killedRank].slice(-3)
+
   let next = {
     ...state,
     room,
     discard: state.discard.concat(monsterCard),
     monstersFoughtThisRoom: state.monstersFoughtThisRoom + 1,
     lastMonsterSuit: monsterCard.suit,
+    lastKilledMonsterRanks: newLastKills,
     riposteCharge: 0,
     // Coward's Reward charge is spent on the first fight of a room, weapon
     // or no. You only get one "opening" per room.
@@ -225,11 +281,30 @@ function applyMonsterFight(state, monsterCard, index, useWeapon) {
     next = appendLog(next, `Carrion: ${fmt(monsterCard)} stirs again in the deck as ${fmt(revenant)}.`)
   }
 
+  // The Brood: each kill spawns the next-step child into the deck at a
+  // random position, so the player keeps drawing it back. Chain bottoms
+  // out at rank 2 and stops spawning.
+  if (monsterCard.boss === 'the_brood') {
+    const spawn = makeBroodSpawn(monsterCard.id, monsterCard.broodStep || 0)
+    if (spawn) {
+      const deck = next.deck.slice()
+      const insertAt = deck.length === 0 ? 0 : Math.floor(state.rng() * (deck.length + 1))
+      deck.splice(insertAt, 0, spawn)
+      next = { ...next, deck }
+      next = appendLog(next, `The Brood splits. A smaller form (${rankLabel(spawn.rank)}${SUIT_GLYPH[spawn.suit]}) slips back into the deck.`)
+    } else {
+      next = appendLog(next, 'The Brood is silent. No more split.')
+    }
+  }
+
   const glyph = SUIT_GLYPH[monsterCard.suit]
   const how = weaponUsed
     ? `with the ${rankLabel(weaponUsed.rank)}♦`
     : 'bare-handed'
-  next = appendLog(next, `Fought ${rankLabel(monsterCard.rank)}${glyph} ${how}, took ${damage}.`)
+  // Use effective rank in the log so the Devourer reads at its scaled
+  // value, not the base 3. Plain monsters land on their printed rank.
+  const logRank = effectiveMonsterRank(state, monsterCard)
+  next = appendLog(next, `Fought ${rankLabel(logRank)}${glyph} ${how}, took ${damage}.`)
 
   if (consumedCowardsCharge > 0 && weaponUsed) {
     next = appendLog(next, `Coward's Reward: the opening swing landed +${consumedCowardsCharge}.`)
@@ -252,6 +327,20 @@ function applyMonsterFight(state, monsterCard, index, useWeapon) {
   if (dmgResult.dead) return dmgResult.state
   next = dmgResult.state
 
+  // Cursed Idol gift: a prior idol play left a pending heal that applies
+  // on the next real monster kill. Drains and clears here, capped at maxHp.
+  if ((next.pendingCursedHeal || 0) > 0) {
+    const heal = Math.min(next.maxHp - next.hp, next.pendingCursedHeal)
+    if (heal > 0) {
+      next = appendLog(
+        { ...next, hp: next.hp + heal, pendingCursedHeal: 0 },
+        `Cursed Idol's gift: heal ${heal} HP.`
+      )
+    } else {
+      next = { ...next, pendingCursedHeal: 0 }
+    }
+  }
+
   if (weaponUsed) {
     next = markTutorialLesson(next, 'fight')
   } else {
@@ -262,6 +351,23 @@ function applyMonsterFight(state, monsterCard, index, useWeapon) {
     next = markTutorialLesson(next, hasBareLesson ? 'barehands_choice' : 'barehands')
   }
 
+  return checkRefillAndComplete(next)
+}
+
+// Cursed Idol: an inscribed spade that bypasses the weapon-vs-monster dance.
+// Always inflicts its rank in damage (Numb still soaks, since applyHpLoss is
+// the death gate), then arms pendingCursedHeal so the next real monster kill
+// heals the same amount back.
+function playCursedIdol(state, index, card) {
+  const room = state.room.slice()
+  room[index] = null
+  let next = appendLog(
+    { ...state, room, discard: state.discard.concat(card) },
+    `Cursed Idol bites for ${card.rank}. Its bargain waits.`
+  )
+  const result = applyHpLoss(next, card.rank)
+  if (result.dead) return result.state
+  next = { ...result.state, pendingCursedHeal: card.rank }
   return checkRefillAndComplete(next)
 }
 
@@ -327,6 +433,19 @@ function playPotion(state, index, card) {
     }
   }
 
+  // Lucky Coin: after the heal, refill the slot the coin just left with a
+  // fresh draw from the deck. Effectively a free extra card for the room.
+  if (card.inscribed === 'lucky_coin' && next.deck.length > 0) {
+    const drawn = next.deck[0]
+    const newDeck = next.deck.slice(1)
+    const newRoom = next.room.slice()
+    newRoom[index] = drawn
+    next = appendLog(
+      { ...next, deck: newDeck, room: newRoom },
+      `Lucky Coin draws ${fmt(drawn)} into the empty slot.`
+    )
+  }
+
   return checkRefillAndComplete(next)
 }
 
@@ -385,10 +504,138 @@ export function playCard(state, index) {
   if (state.phase !== 'descent') return state
   const card = state.room[index]
   if (!card) return state
+  // Inscribed cards with custom handlers intercept before their natural
+  // suit's handler. Lucky Coin still flows through playPotion (heart) and
+  // is special-cased inside it; Cursed Idol and Potion of Strength divert
+  // away from their natural-suit handlers entirely.
+  if (card.inscribed === 'cursed_idol') return playCursedIdol(state, index, card)
+  if (card.inscribed === 'potion_of_strength') return playPotionOfStrength(state, index, card)
+  if (isSkeletonKey(card)) return playSkeletonKey(state, index, card)
+  if (isMap(card)) return playMap(state, index, card)
+  if (isWhetstone(card)) return playWhetstone(state, index, card)
   if (isPotion(card)) return playPotion(state, index, card)
   if (isWeapon(card)) return playWeapon(state, index, card)
   if (isMonster(card)) return playMonster(state, index, card)
+  if (isWound(card)) return playWound(state, index, card)
   return state
+}
+
+// Skeleton Key: discards every other card in the room (back to the bottom
+// of the deck so they aren't lost from the run), clears the slot, then lets
+// checkRefillAndComplete pull a fresh room. The descent shape stays the
+// same; the player just skips this room's threats. Consumed from
+// state.inscribed on play so it cannot reappear in future descents.
+function playSkeletonKey(state, index, card) {
+  const otherCards = state.room
+    .map((c, i) => (i !== index && c) ? c : null)
+    .filter(Boolean)
+    .map(c => {
+      // Strip the Oath face-down flag so cards don't return permanently hidden.
+      if (!c.faceDown) return c
+      const { faceDown, ...rest } = c
+      return rest
+    })
+  const newRoom = state.room.map(() => null)
+  const newDeck = state.deck.concat(otherCards)
+  const inscribed = (state.inscribed || []).filter(c => c.id !== card.id)
+  let next = appendLog(
+    {
+      ...state,
+      deck: newDeck,
+      room: newRoom,
+      discard: state.discard.concat(card),
+      inscribed,
+      potionsUsedThisRoom: 0,
+      monstersFoughtThisRoom: 0,
+    },
+    `Skeleton Key turns. The room scatters back into the dark.`
+  )
+  return checkRefillAndComplete(next)
+}
+
+// Map: snapshots the top N cards of the deck onto state.mapPeek so the UI
+// can show them in a modal. The map itself goes to the discard and the
+// slot empties; the snapshot persists until the player dismisses the
+// modal (dismissMapPeek in sanctuary.js). If the deck is empty the map
+// still resolves cleanly (mapPeek = []), so the player isn't stuck.
+function playMap(state, index, card) {
+  const room = state.room.slice()
+  room[index] = null
+  const peek = state.deck.slice(0, MAP_PEEK_COUNT)
+  const next = appendLog(
+    {
+      ...state,
+      room,
+      discard: state.discard.concat(card),
+      mapPeek: peek,
+    },
+    peek.length > 0
+      ? `The Map unfolds. Top ${peek.length} card${peek.length === 1 ? '' : 's'} revealed.`
+      : 'The Map unfolds, but the deck is bare.'
+  )
+  return checkRefillAndComplete(next)
+}
+
+// Whetstone: a single-use tool that clears lastSlain on both the primary
+// and spare weapon. The binding is gone, so a worn 5♦ can swing at K's
+// again until its next kill. Resolves cleanly even if you have no weapon
+// equipped (just discards), so the play is never blocked.
+function playWhetstone(state, index, card) {
+  const room = state.room.slice()
+  room[index] = null
+  const hone = (w) => (w && w.lastSlain ? { ...w, lastSlain: null } : w)
+  const honedPrimary = hone(state.weapon)
+  const honedSpare = hone(state.spareWeapon)
+  const honed = honedPrimary !== state.weapon || honedSpare !== state.spareWeapon
+  const next = appendLog(
+    {
+      ...state,
+      room,
+      discard: state.discard.concat(card),
+      weapon: honedPrimary,
+      spareWeapon: honedSpare,
+    },
+    honed
+      ? 'The whetstone bites. The binding rests; any blade swings fresh again.'
+      : 'The whetstone slides over nothing. No edge to hone.'
+  )
+  return checkRefillAndComplete(next)
+}
+
+// Potion of Strength: a heart that doesn't heal and doesn't count as a
+// potion. Banks its rank as a persistent weapon-strength bonus for the
+// rest of the descent (state.strengthBonus, read by effectiveWeaponRank).
+// The bonus rides whichever weapon you equip later if you don't have one
+// yet, so the play is never wasted.
+function playPotionOfStrength(state, index, card) {
+  const room = state.room.slice()
+  room[index] = null
+  const next = appendLog(
+    {
+      ...state,
+      room,
+      discard: state.discard.concat(card),
+      strengthBonus: (state.strengthBonus || 0) + card.rank,
+    },
+    `Potion of Strength: weapon strikes harder by ${card.rank}.`
+  )
+  return checkRefillAndComplete(next)
+}
+
+// Clicking a Wound just clears it from the room. No HP cost, no weapon
+// binding, no monster fight side-effects. The slot empties and the room
+// refills like any other card play.
+function playWound(state, index, card) {
+  let next = { ...state }
+  const newRoom = next.room.slice()
+  newRoom[index] = null
+  next = {
+    ...next,
+    room: newRoom,
+    discard: [...next.discard, card],
+  }
+  next = appendLog(next, 'You bind the wound and move on.')
+  return checkRefillAndComplete(next)
 }
 
 export function playCardBare(state, index) {
@@ -424,8 +671,7 @@ export function checkRefillAndComplete(state) {
     const newRoom = new Array(targetSize).fill(null)
     newRoom[slot] = leftover
 
-    let next = state
-    const deck = next.deck.slice()
+    const deck = state.deck.slice()
     let firstNewIdx = null
     for (let i = 0; i < newRoom.length; i++) {
       if (newRoom[i] === null && deck.length > 0) {
@@ -434,8 +680,8 @@ export function checkRefillAndComplete(state) {
       }
     }
 
-    next = {
-      ...next,
+    const next = {
+      ...state,
       deck,
       room: newRoom,
       potionsUsedThisRoom: 0,
@@ -450,3 +696,4 @@ export function checkRefillAndComplete(state) {
 
   return state
 }
+

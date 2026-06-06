@@ -7,6 +7,8 @@ import {
 } from '../constants'
 import { getActiveThemes } from '../themes'
 import { BOONS } from '../boons'
+import { getAscensionEffectsForState } from '../ascensions'
+import { devourerEffectiveRank, roomBossAuraBonus } from '../bosses'
 
 // -- Log ---------------------------------------------------------------
 
@@ -53,7 +55,21 @@ export function effectiveMonsterRank(state, card) {
     bonus += t.monsterRankBonus || 0
     bonus += t.monsterRankBonusBySuit?.[card.suit] || 0
   }
-  return card.rank + bonus
+  // The Devourer overrides its baseline rank with `3 + sum of last 3
+  // killed monster ranks`. Theme bonuses still stack on top.
+  const baseRank = card.boss === 'devourer'
+    ? devourerEffectiveRank(state)
+    : card.rank
+  // Ascension A6: face-card monsters hit at +N effective rank. Driven by
+  // the effective base, so a Devourer scaled above 11 also picks it up.
+  const asc = getAscensionEffectsForState(state)
+  if (asc.faceCardRankBonus && baseRank >= 11) {
+    bonus += asc.faceCardRankBonus
+  }
+  // The Warden (and any future room-aura boss) adds a flat bonus to every
+  // other monster sharing its room.
+  bonus += roomBossAuraBonus(state, card)
+  return baseRank + bonus
 }
 
 // -- Boon helpers ------------------------------------------------------
@@ -91,7 +107,11 @@ export function computeMaxHp(state, themeId = state.theme, themeChildren = state
   const boons = activeBoons(state)
   const override = minMaxHpOverride(boons)
   const base = override != null ? override : BASE_MAX_HP
-  return base + sumBoonField(boons, 'maxHpBonus') + themeFieldSum(themes, 'maxHpBonus')
+  const asc = getAscensionEffectsForState(state)
+  return Math.max(
+    1,
+    base + sumBoonField(boons, 'maxHpBonus') + themeFieldSum(themes, 'maxHpBonus') + asc.maxHpBonus
+  )
 }
 
 export function computePotionsPerRoomLimit(boons) {
@@ -104,6 +124,7 @@ export function effectiveWeaponRank(state, weapon) {
   let bonus = sumBoonField(boons, 'weaponRankBonus')
   if (hasBoon(state, 'wounded_lion') && state.hp < 10) bonus += 2
   if (hasBoon(state, 'berserker')) bonus += (state.monstersFoughtThisRoom || 0)
+  bonus += state.strengthBonus || 0
   return Math.max(0, weapon.rank + bonus)
 }
 
