@@ -4,7 +4,7 @@ export const BOONS = {
   // ---- Combat ----------------------------------------------------------
   whetstone: {
     id: 'whetstone',
-    name: 'Whetstone',
+    name: 'Keen Edge',
     description: 'Equipped weapons swing at +1 effective rank.',
     example: 'Your 5♦ strikes as a 6.',
     tag: 'combat',
@@ -225,16 +225,39 @@ export const BOONS = {
 
 const ALL_BOON_IDS = Object.keys(BOONS)
 
+// Boons unlocked for every new player from their very first run. Picked
+// for being legible at first glance, covering combat/survival/economy, and
+// not introducing build-defining twists (no Glass Cannon, no Stoic) until
+// the player has met the basics. Everything else has to be discovered
+// through play, one unlock per sigil earned (see endDescentVictory).
+export const STARTER_BOON_IDS = [
+  'whetstone',
+  'vanguard',
+  'iron_will',
+  'numb',
+  'sip_of_lethe',
+  'alchemist',
+]
+
+// All Boons the player could *eventually* unlock. Excludes anything flagged
+// `disabled` so the discovery pool stays in sync with the offer pool.
+export const UNLOCKABLE_BOON_IDS = ALL_BOON_IDS.filter(id => !BOONS[id]?.disabled)
+
 export function getBoon(id) {
   return id ? BOONS[id] : null
 }
 
-// Pick `count` Boons not already taken. Bias toward tags the player has the
-// least of so a run can't degenerate into "six Combat Boons in a row" (per
-// DESIGN.md §4). Boons flagged `disabled: true` are skipped entirely.
-export function pickBoonOffers(currentBoons, count, rng) {
+// Pick `count` Boons not already taken, drawn from the player's unlocked set.
+// Bias toward tags the player has the least of so a run can't degenerate into
+// "six Combat Boons in a row" (per DESIGN.md §4). Boons flagged `disabled` are
+// skipped entirely. `unlocked` defaults to the starter set when not provided
+// (covers older saves that pre-date the library).
+export function pickBoonOffers(currentBoons, count, rng, unlocked = STARTER_BOON_IDS) {
   const taken = new Set(currentBoons)
-  const available = ALL_BOON_IDS.filter(id => !taken.has(id) && !BOONS[id]?.disabled)
+  const unlockedSet = new Set(unlocked)
+  const available = ALL_BOON_IDS.filter(
+    id => !taken.has(id) && !BOONS[id]?.disabled && unlockedSet.has(id)
+  )
   if (available.length <= count) return available
 
   const tagCounts = currentBoons.reduce((acc, id) => {

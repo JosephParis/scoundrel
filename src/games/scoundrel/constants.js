@@ -2,8 +2,21 @@ export const HEART = 'H'
 export const DIAMOND = 'D'
 export const CLUB = 'C'
 export const SPADE = 'S'
+// Wounds aren't a real playing-card suit, but reusing the suit slot keeps
+// every card carrying the same shape. Nothing in the codebase treats 'W' as
+// a monster, weapon, or potion; isWound() is the explicit gate.
+export const WOUND = 'W'
+// Skeleton Key: inscribed-only card with no natural suit fit. Same shape
+// trick as wounds. isSkeletonKey() is the explicit gate.
+export const KEY = 'K'
+// Map: another inscribed-only tool card. Same trick as KEY: a synthetic
+// suit so the deck fan can group it separately from the other tools.
+export const MAP = 'M'
+// Whetstone: same tool-suit pattern. A separate synthetic suit so the
+// deck fan keeps it out of the real-weapon (DIAMOND) row.
+export const STONE = 'O'
 
-export const SUIT_GLYPH = { H: '♥', D: '♦', C: '♣', S: '♠' }
+export const SUIT_GLYPH = { H: '♥', D: '♦', C: '♣', S: '♠', W: '✕', K: '⚷', M: '⌖', O: '◈' }
 export const RANK_LABEL = { 11: 'J', 12: 'Q', 13: 'K', 14: 'A' }
 
 export const BASE_MAX_HP = 20
@@ -11,10 +24,154 @@ export const SIGIL_TARGET = 7
 export const FORGE_SIGILS = new Set([2, 4, 6])
 export const ROOM_SIZE = 4
 
+// Run modes. Each mode is a small bundle of flags applied at the run loop's
+// edges (sanctuary visit, theme pick). Default leaves the game unchanged.
+// Hardcore strips boon offers and the forge for a pure deck-only run.
+// Quiet Run locks every descent to The Quiet, flattening all dungeon shifts.
+export const MODES = {
+  default: {
+    id: 'default',
+    name: 'Default',
+    description: 'The full game. Boons, Forge, escalating themes.',
+    noBoons: false,
+    noForge: false,
+    lockTheme: null,
+  },
+  hardcore: {
+    id: 'hardcore',
+    name: 'Hardcore',
+    description: 'No Boons, no Forge. Just the deck and your hands.',
+    noBoons: true,
+    noForge: true,
+    lockTheme: null,
+  },
+  quiet: {
+    id: 'quiet',
+    name: 'Quiet Run',
+    description: 'Every descent is The Quiet. The dungeon stays asleep.',
+    noBoons: false,
+    noForge: false,
+    lockTheme: 'the_quiet',
+  },
+}
+
+export const DEFAULT_MODE = 'default'
+
+export function getMode(id) {
+  return MODES[id] || MODES[DEFAULT_MODE]
+}
+
 export function isMonster(c) { return !!c && (c.suit === CLUB || c.suit === SPADE) }
 export function isWeapon(c) { return !!c && c.suit === DIAMOND }
 export function isPotion(c) { return !!c && c.suit === HEART }
+export function isWound(c) { return !!c && c.suit === WOUND }
+export function isSkeletonKey(c) { return !!c && c.suit === KEY }
+export function isMap(c) { return !!c && c.suit === MAP }
+export function isWhetstone(c) { return !!c && c.suit === STONE }
 export function rankLabel(r) { return RANK_LABEL[r] ?? String(r) }
 export function suitColor(suit) {
+  if (suit === WOUND) return 'wound'
+  if (suit === KEY) return 'key'
+  if (suit === MAP) return 'map'
+  if (suit === STONE) return 'stone'
   return (suit === HEART || suit === DIAMOND) ? 'red' : 'black'
+}
+
+// How many cards a Map reveals from the top of the deck.
+export const MAP_PEEK_COUNT = 4
+
+// Heavy hits leave a Wound: a dead card that clogs the deck and rooms for
+// the rest of the descent. Threshold is the actual HP loss after Numb /
+// Riposte; cap stops late-game spirals where one bad room hands you five
+// wounds in a row.
+export const WOUND_DAMAGE_THRESHOLD = 5
+export const WOUND_CAP_PER_DESCENT = 3
+
+let woundCounter = 0
+export function makeWoundCard() {
+  woundCounter += 1
+  return {
+    suit: WOUND,
+    rank: 0,
+    id: `wound_${woundCounter}_${Date.now().toString(36)}`,
+    kind: 'wound',
+  }
+}
+
+// Inscribed cards: player-authored additions to the deck (the Forge's
+// Inscribe action). Each frame is one template; the player picks a rank
+// within the frame's range, and the card is stored on state.inscribed and
+// added to the deck each descent. `playEffect` is read by combat handlers.
+export const INSCRIBED_FRAMES = {
+  lucky_coin: {
+    id: 'lucky_coin',
+    name: 'Lucky Coin',
+    description: 'A heart that heals its rank, then refills the room with one extra card.',
+    suit: HEART,
+    rankMin: 3,
+    rankMax: 6,
+    playEffect: 'extraRefill',
+  },
+  cursed_idol: {
+    id: 'cursed_idol',
+    name: 'Cursed Idol',
+    description: 'A spade that hits you for its rank. The next monster you kill heals you for the idol\'s rank.',
+    suit: SPADE,
+    rankMin: 2,
+    rankMax: 5,
+    playEffect: 'pendingHeal',
+  },
+  skeleton_key: {
+    id: 'skeleton_key',
+    name: 'Skeleton Key',
+    description: 'When drawn, discards every other card in the room and refills. One per run.',
+    suit: KEY,
+    rankMin: 0,
+    rankMax: 0,
+    playEffect: 'roomSkip',
+    oncePerRun: true,
+  },
+  map: {
+    id: 'map',
+    name: 'Map',
+    description: `When drawn, reveals the next ${MAP_PEEK_COUNT} cards of the deck, then discards.`,
+    suit: MAP,
+    rankMin: 0,
+    rankMax: 0,
+    playEffect: 'peek',
+  },
+  potion_of_strength: {
+    id: 'potion_of_strength',
+    name: 'Potion of Strength',
+    description: 'A heart that does not heal. Adds its rank to your weapon strength for the rest of the descent.',
+    suit: HEART,
+    rankMin: 2,
+    rankMax: 4,
+    playEffect: 'strength',
+  },
+  whetstone: {
+    id: 'whetstone',
+    name: 'Whetstone',
+    description: 'When drawn, clears the binding on your weapon and your spare. Any monster is fair game again.',
+    suit: STONE,
+    rankMin: 0,
+    rankMax: 0,
+    playEffect: 'sharpen',
+  },
+}
+
+export const INSCRIBED_FRAME_IDS = Object.keys(INSCRIBED_FRAMES)
+
+let inscribedCounter = 0
+export function makeInscribedCard(frameId, rank) {
+  const frame = INSCRIBED_FRAMES[frameId]
+  if (!frame) return null
+  inscribedCounter += 1
+  const r = Math.max(frame.rankMin, Math.min(frame.rankMax, rank | 0))
+  return {
+    suit: frame.suit,
+    rank: r,
+    id: `inscribed_${frameId}_${inscribedCounter}_${Date.now().toString(36)}`,
+    inscribed: frameId,
+  }
 }
