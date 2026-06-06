@@ -1,8 +1,8 @@
 import {
   HEART, DIAMOND, SUIT_GLYPH, rankLabel,
-  isMonster, isWeapon, isPotion,
+  isMonster, isWeapon, isPotion, isWound, isSkeletonKey, isMap, isWhetstone, isBoss,
   describeMaxHp, describeWeaponStrength,
-  getTheme, BOONS,
+  getTheme, BOONS, INSCRIBED_FRAMES, BOSSES,
 } from '../logic'
 import { Formula, formatFormula } from './atoms'
 import { SuitIcon, cardBorderTone, suitIconTone } from './SuitIcon'
@@ -86,6 +86,31 @@ export function ConditionsPanel({ game, theme }) {
         </div>
       )}
 
+      {(game.strengthBonus || 0) > 0 && (
+        <div>
+          <div className="text-slate-500 text-[10px] uppercase tracking-wider mb-0.5">Strength</div>
+          <div className="text-rune font-mono">+{game.strengthBonus} to weapon strikes</div>
+        </div>
+      )}
+
+      {(() => {
+        const kills = game.lastKilledMonsterRanks || []
+        if (kills.length === 0) return null
+        const devourerInPlay =
+          game.deck.some(c => c?.boss === 'devourer') ||
+          game.room.some(c => c?.boss === 'devourer')
+        if (!devourerInPlay) return null
+        return (
+          <div>
+            <div className="text-slate-500 text-[10px] uppercase tracking-wider mb-0.5">Devourer feeds on</div>
+            <div className="text-parchment font-mono text-[12px]">
+              {kills.map(rankLabel).join(' · ')}
+              <span className="text-slate-500"> (last 3 kills)</span>
+            </div>
+          </div>
+        )
+      })()}
+
       {charges.length > 0 && (
         <div>
           <div className="text-slate-500 text-[10px] uppercase tracking-wider mb-1">Once-per-descent</div>
@@ -126,7 +151,7 @@ export function ConditionsPanel({ game, theme }) {
 
 // -- Card slot ---------------------------------------------------------
 
-export function CardSlot({ card, onClick, onBareHands, weaponDamage, bareDamage, potionPreview, reveal, recommended, tutorialTip, blocked, bareBlocked, bareRecommended }) {
+export function CardSlot({ card, onClick, onBareHands, weaponDamage, bareDamage, potionPreview, reveal, recommended, tutorialTip, blocked, bareBlocked, bareRecommended, displayRank }) {
   if (!card) {
     return (
       <div className="aspect-[2/3] w-full max-w-[240px] rounded-lg border border-dashed border-stone-800 bg-stone-900/30" />
@@ -136,13 +161,40 @@ export function CardSlot({ card, onClick, onBareHands, weaponDamage, bareDamage,
     return <FaceDownCardSlot onClick={blocked ? undefined : onClick} blocked={blocked} />
   }
   const red = card.suit === HEART || card.suit === DIAMOND
-  const kind = isMonster(card) ? 'Monster' : isWeapon(card) ? 'Weapon' : isPotion(card) ? 'Potion' : ''
+  const wound = isWound(card)
+  const key = isSkeletonKey(card)
+  const map = isMap(card)
+  const stone = isWhetstone(card)
+  const inscribed = !!card.inscribed
+  const boss = isBoss(card)
+  const bossDef = boss ? BOSSES[card.boss] : null
+  const frame = card.inscribed ? INSCRIBED_FRAMES[card.inscribed] : null
+  const kind = bossDef
+    ? bossDef.name
+    : frame
+      ? frame.name
+      : isMonster(card)
+        ? 'Monster'
+        : isWeapon(card)
+          ? 'Weapon'
+          : isPotion(card)
+            ? 'Potion'
+            : wound
+              ? 'Wound'
+              : key
+                ? 'Skeleton Key'
+                : ''
+  // Devourer's printed rank is 3 but its live rank scales; DescentView
+  // hands us the resolved value when needed. Anything else falls back to
+  // the card's rank.
+  const shownRank = displayRank != null ? displayRank : card.rank
   const monster = isMonster(card)
   const willUseWeapon = monster && weaponDamage !== null
   const monsterPreview = !monster ? null : willUseWeapon ? weaponDamage : bareDamage
   const monsterIcon = willUseWeapon ? '⚔' : '✊'
   const potionHeal = potionPreview && potionPreview.mode === 'heal' ? potionPreview : null
   const potionSour = potionPreview && potionPreview.mode === 'damage' ? potionPreview : null
+  const potionStrength = potionPreview && potionPreview.mode === 'strength' ? potionPreview : null
   const potionSkip = potionPreview && potionPreview.mode === 'skip' ? potionPreview : null
 
   // When the lesson points at the bare-hands button AND the card-click
@@ -172,11 +224,23 @@ export function CardSlot({ card, onClick, onBareHands, weaponDamage, bareDamage,
         disabled={cardDisabled}
         className={`aspect-[2/3] rounded-lg border-2 ${cardBorderTone(card)} bg-gradient-to-b from-parchment to-[#e8d5b3] text-stone-900 p-3 flex flex-col text-left transition-all shadow-md ${cardInteractive} ${(recommended && !bareRecommended) ? 'tutorial-recommended' : ''}`}
       >
-        <div className={`text-2xl font-bold leading-none ${red ? 'text-blood' : 'text-stone-900'}`}>
-          {rankLabel(card.rank)}{SUIT_GLYPH[card.suit]}
+        <div className={`text-2xl font-bold leading-none ${
+          red ? 'text-blood' : wound ? 'text-red-900' : key ? 'text-amber-700' : map ? 'text-sky-800' : stone ? 'text-slate-700' : 'text-stone-900'
+        }`}>
+          {(wound || key || map || stone) ? SUIT_GLYPH[card.suit] : `${rankLabel(shownRank)}${SUIT_GLYPH[card.suit]}`}
         </div>
+        {inscribed && (
+          <div className="absolute top-1.5 right-1.5 text-[9px] uppercase tracking-widest text-amber-700/80 font-semibold">
+            inscribed
+          </div>
+        )}
+        {boss && (
+          <div className="absolute top-1.5 right-1.5 text-[9px] uppercase tracking-widest text-rune font-semibold drop-shadow-[0_0_4px_rgba(251,191,36,0.7)]">
+            boss
+          </div>
+        )}
         <div className="flex-1 min-h-0 flex items-center justify-center py-1">
-          <SuitIcon suit={card.suit} className={`w-[62%] h-auto ${suitIconTone(card)}`} />
+          <SuitIcon suit={card.suit} inscribed={card.inscribed} boss={card.boss} className={`w-[62%] h-auto ${suitIconTone(card)}`} />
         </div>
         <div className="text-center flex flex-col items-center gap-0.5 min-h-[34px] justify-center">
           {monsterPreview ? (
@@ -212,8 +276,20 @@ export function CardSlot({ card, onClick, onBareHands, weaponDamage, bareDamage,
                 </span>
               )}
             </>
+          ) : potionStrength ? (
+            <span className="text-[12px] tracking-normal text-stone-800 font-medium">
+              ⚒ strikes +{potionStrength.value}
+            </span>
           ) : potionSkip ? (
             <span className="text-[10px] uppercase tracking-[0.2em] text-stone-500">{potionSkip.note}</span>
+          ) : wound ? (
+            <span className="text-[11px] tracking-normal text-stone-700 font-medium">Bind to clear</span>
+          ) : key ? (
+            <span className="text-[11px] tracking-normal text-amber-800 font-medium">Skip the room</span>
+          ) : map ? (
+            <span className="text-[11px] tracking-normal text-sky-800 font-medium">Read the map</span>
+          ) : stone ? (
+            <span className="text-[11px] tracking-normal text-slate-700 font-medium">Hone the blade</span>
           ) : (
             <span className="text-[10px] uppercase tracking-[0.2em] text-stone-500">{kind}</span>
           )}

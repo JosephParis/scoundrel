@@ -1,15 +1,19 @@
 import { useEffect, useState } from 'react'
 import {
-  descend, pickBoon,
+  descend, pickBoon, setRunMode, setRunAscension,
   openForgeAction, closeForgeView, skipForge,
-  applyStrike, applyTransmute, applyHeft,
+  applyStrike, applyTransmute, applyHeft, applyInscribe,
+  isEnabled,
 } from '../logic'
 import { PhaseRail, LogPanel, DescendAction } from './atoms'
 import { BoonOfferPanel, RunStatePanel, DeckPeekButton, DeckModal, LoadoutPanel } from './boons'
-import { ForgePromptPanel, StrikeView, TransmuteView, HeftView } from './forge'
+import { ForgePromptPanel, StrikeView, TransmuteView, HeftView, InscribeView } from './forge'
 import { RulesInlinePanel, TutorialIntroPanel } from './rules'
+import { ModePickerPanel, ModeBadge } from './modes'
+import { LibraryPanel } from './library'
+import { AscensionPickerPanel, AscensionBadge } from './ascensions'
 
-export function SanctuaryView({ game, setGame, onSkipTutorial }) {
+export function SanctuaryView({ game, setGame, onSkipTutorial, ascensionUnlocked = 0 }) {
   const isOpeningVisit = game.sigilsEarned === 0
   const needsBoon = !isOpeningVisit && !game.boonChosen && game.boonOffers.length > 0
   const forgePending = game.forgeOpen && !game.forgeUsed
@@ -38,7 +42,26 @@ export function SanctuaryView({ game, setGame, onSkipTutorial }) {
       </>
     )
   } else if (isOpeningVisit) {
-    actionSlot = <RulesInlinePanel />
+    // Ascension picker takes the rules' slot once the player has unlocked
+    // the ladder. The "how to play" panel is for new players; once they've
+    // beaten a run, they don't need it staring back at them.
+    const showAscensionPicker = ascensionUnlocked > 0 && isEnabled('ascensions')
+    actionSlot = (
+      <>
+        <ModePickerPanel
+          currentMode={game.mode}
+          onSelect={(id) => setGame(g => setRunMode(g, id))}
+        />
+        {showAscensionPicker && (
+          <AscensionPickerPanel
+            currentLevel={game.ascension || 0}
+            ceiling={ascensionUnlocked}
+            onSelect={(level) => setGame(g => setRunAscension(g, level))}
+          />
+        )}
+        {!showAscensionPicker && <RulesInlinePanel />}
+      </>
+    )
   } else if (needsBoon) {
     actionSlot = (
       <BoonOfferPanel
@@ -71,12 +94,21 @@ export function SanctuaryView({ game, setGame, onSkipTutorial }) {
         onCancel={() => setGame(g => closeForgeView(g))}
       />
     )
+  } else if (game.forgeView === 'inscribe') {
+    actionSlot = (
+      <InscribeView
+        game={game}
+        onConfirm={(frameId, rank) => setGame(g => applyInscribe(g, frameId, rank))}
+        onCancel={() => setGame(g => closeForgeView(g))}
+      />
+    )
   } else if (showForgePrompt) {
     actionSlot = (
       <ForgePromptPanel
         onStrike={() => setGame(g => openForgeAction(g, 'strike'))}
         onTransmute={() => setGame(g => openForgeAction(g, 'transmute'))}
         onHeft={() => setGame(g => openForgeAction(g, 'heft'))}
+        onInscribe={() => setGame(g => openForgeAction(g, 'inscribe'))}
         onSkip={() => setGame(g => skipForge(g))}
       />
     )
@@ -101,7 +133,10 @@ export function SanctuaryView({ game, setGame, onSkipTutorial }) {
             <span className="ml-2 text-[10px] uppercase tracking-widest text-rune/70">Rested</span>
           </div>
         </div>
+        <AscensionBadge level={game.ascension} />
+        <ModeBadge modeId={game.mode} />
         <RunStatePanel game={game} />
+        <LibraryPanel unlockedBoons={game.unlockedBoons} />
         <DeckPeekButton game={game} onClick={() => setDeckOpen(true)} />
         <LogPanel lines={game.log} collapsible />
       </PhaseRail>

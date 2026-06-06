@@ -1,5 +1,8 @@
 import { useEffect, useMemo, useState } from 'react'
-import { THEMES, BOONS, FORGE_SIGILS, getTheme } from '../logic'
+import {
+  THEMES, BOONS, FORGE_SIGILS, getTheme,
+  FLAG_IDS, FLAG_META, getFlags, setFlag, resetAllFlags,
+} from '../logic'
 
 // -- Credits modal -----------------------------------------------------
 
@@ -213,6 +216,64 @@ export function DevModal({ open, onClose, game, setGame }) {
         >
           Apply overrides
         </button>
+
+        <FlagsPanel />
+      </div>
+    </div>
+  )
+}
+
+// Local feature flags. Toggling reloads the page so logic + UI re-read the
+// flag state cleanly; in-place toggling would leave half the run thinking
+// the flag is one value and half thinking the other.
+function FlagsPanel() {
+  const [flags, setFlagsState] = useState(() => getFlags())
+
+  const onToggle = (flagId) => {
+    setFlag(flagId, !flags[flagId])
+    setFlagsState(getFlags())
+  }
+  const onReset = () => {
+    resetAllFlags()
+    setFlagsState(getFlags())
+  }
+
+  return (
+    <div className="pt-3 border-t border-stone-800">
+      <div className="flex items-baseline justify-between mb-2">
+        <div className="text-[10px] uppercase tracking-wider text-slate-500">Feature flags</div>
+        <button
+          onClick={onReset}
+          className="text-[10px] uppercase tracking-wider text-slate-500 hover:text-amber-200 transition"
+          title="Restore all flags to their defaults"
+        >
+          Reset
+        </button>
+      </div>
+      <p className="text-[10px] text-slate-600 leading-snug mb-2">
+        Affects future state reads. Reload the page after toggling for changes
+        already baked into the current run to clear.
+      </p>
+      <div className="space-y-1.5">
+        {FLAG_IDS.map(id => {
+          const meta = FLAG_META[id] || {}
+          return (
+            <label key={id} className="flex items-start gap-2 text-[11px] cursor-pointer group">
+              <input
+                type="checkbox"
+                checked={!!flags[id]}
+                onChange={() => onToggle(id)}
+                className="accent-amber-500 mt-0.5 shrink-0"
+              />
+              <span className="flex-1 min-w-0">
+                <span className="text-parchment group-hover:text-amber-100">{meta.name || id}</span>
+                {meta.description && (
+                  <span className="block text-slate-500 leading-snug">{meta.description}</span>
+                )}
+              </span>
+            </label>
+          )
+        })}
       </div>
     </div>
   )

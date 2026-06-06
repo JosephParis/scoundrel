@@ -1,16 +1,17 @@
 import { useMemo, useState } from 'react'
 import {
   STRIKE_OFFERING_RANGE, HEFT_BONUS,
-  getStrikeOptions, getTransmuteOptions, getHeftOptions,
+  getStrikeOptions, getTransmuteOptions, getHeftOptions, getInscribeOptions,
   suitColor, rankLabel,
-  SUIT_GLYPH, HEART, DIAMOND, CLUB, SPADE,
+  SUIT_GLYPH, HEART, DIAMOND, CLUB, SPADE, WOUND, KEY, MAP, STONE, isWound, isSkeletonKey, isMap, isWhetstone,
+  isEnabled,
 } from '../logic'
 import { ConfirmButton } from './atoms'
 import { cardBorderTone } from './SuitIcon'
 
 // -- Forge prompt ------------------------------------------------------
 
-export function ForgePromptPanel({ onStrike, onTransmute, onHeft, onSkip }) {
+export function ForgePromptPanel({ onStrike, onTransmute, onHeft, onInscribe, onSkip }) {
   const [selected, setSelected] = useState(null)
   const options = [
     {
@@ -31,7 +32,13 @@ export function ForgePromptPanel({ onStrike, onTransmute, onHeft, onSkip }) {
       description: `Raise a weapon or potion's rank by ${HEFT_BONUS}. Capped at rank 10.`,
       open: onHeft,
     },
-  ]
+    isEnabled('customCards') && {
+      id: 'inscribe',
+      name: 'Inscribe',
+      description: 'Add a player-authored card to the deck: Lucky Coin, Cursed Idol, or Skeleton Key. Persists for the rest of the run.',
+      open: onInscribe,
+    },
+  ].filter(Boolean)
   const selectedOption = options.find(o => o.id === selected)
   return (
     <section className="panel panel-warm p-6">
@@ -42,7 +49,7 @@ export function ForgePromptPanel({ onStrike, onTransmute, onHeft, onSkip }) {
           Pick one. The edit is permanent for the rest of the run.
         </p>
       </div>
-      <div className="grid grid-cols-1 sm:grid-cols-3 gap-4 justify-items-center">
+      <div className={`grid grid-cols-1 sm:grid-cols-2 ${options.length >= 4 ? 'lg:grid-cols-4' : 'lg:grid-cols-3'} gap-4 justify-items-center`}>
         {options.map(o => (
           <ForgeOptionCard
             key={o.id}
@@ -298,6 +305,107 @@ function suitName(suit) {
   return 'spade monster'
 }
 
+// -- Inscribe view -----------------------------------------------------
+
+export function InscribeView({ game, onConfirm, onCancel }) {
+  const frames = useMemo(() => getInscribeOptions(game), [game])
+  const [pickedFrameId, setPickedFrameId] = useState(null)
+  const pickedFrame = pickedFrameId ? frames.find(f => f.id === pickedFrameId) : null
+  // Default each frame's rank to its minimum until the player picks
+  // a different one. Stored per-frame so switching frames doesn't lose
+  // your prior rank choice.
+  const [rankByFrame, setRankByFrame] = useState({})
+
+  const currentRank = pickedFrame
+    ? (rankByFrame[pickedFrame.id] ?? pickedFrame.rankMin)
+    : null
+  const setCurrentRank = (rank) => {
+    if (!pickedFrame) return
+    setRankByFrame(prev => ({ ...prev, [pickedFrame.id]: rank }))
+  }
+
+  const hasRankPick = pickedFrame && pickedFrame.rankMax > pickedFrame.rankMin
+  const canConfirm = !!pickedFrame
+  const confirmLabel = pickedFrame
+    ? `Inscribe ${pickedFrame.name}${hasRankPick ? ` (${rankLabel(currentRank)})` : ''}`
+    : 'Pick a frame'
+
+  return (
+    <ForgeViewShell
+      kindLabel="Inscribe"
+      title="Set a new name in the deck"
+      blurb="Pick a frame. Inscribed cards persist for the rest of the run."
+      onCancel={onCancel}
+      cancelLabel="Step away"
+      onConfirm={() => onConfirm(pickedFrame.id, currentRank)}
+      canConfirm={canConfirm}
+      confirmLabel={confirmLabel}
+    >
+      <div className="space-y-3">
+        {frames.length === 0 ? (
+          <div className="text-[12px] text-slate-500 italic">
+            No frames available right now. All one-per-run frames are already inscribed.
+          </div>
+        ) : (
+          frames.map(frame => (
+            <button
+              key={frame.id}
+              onClick={() => setPickedFrameId(frame.id)}
+              className={`w-full text-left rounded-md border p-3 transition ${
+                pickedFrameId === frame.id
+                  ? 'border-rune bg-stone-800/60 shadow-[0_0_18px_-8px_rgba(251,191,36,0.6)]'
+                  : 'border-stone-700 bg-stone-900/40 hover:border-rune/60 hover:bg-stone-800/50'
+              }`}
+            >
+              <div className="flex items-baseline justify-between">
+                <span className={`font-display text-base ${
+                  pickedFrameId === frame.id ? 'text-rune' : 'text-parchment'
+                }`}>
+                  {frame.name}
+                </span>
+                {frame.rankMax > frame.rankMin && (
+                  <span className="text-[10px] uppercase tracking-widest text-slate-500">
+                    Rank {frame.rankMin}-{frame.rankMax}
+                  </span>
+                )}
+              </div>
+              <div className="text-[12px] text-slate-400 leading-snug mt-1">
+                {frame.description}
+              </div>
+            </button>
+          ))
+        )}
+
+        {hasRankPick && (
+          <div className="border border-stone-700 rounded-md p-3 bg-stone-900/40">
+            <div className="text-[10px] uppercase tracking-widest text-slate-500 mb-2">
+              Pick the rank
+            </div>
+            <div className="flex flex-wrap gap-2">
+              {Array.from(
+                { length: pickedFrame.rankMax - pickedFrame.rankMin + 1 },
+                (_, i) => pickedFrame.rankMin + i
+              ).map(r => (
+                <button
+                  key={r}
+                  onClick={() => setCurrentRank(r)}
+                  className={`w-10 h-10 rounded-md border font-mono text-sm transition ${
+                    currentRank === r
+                      ? 'border-rune bg-stone-700 text-rune'
+                      : 'border-stone-700 bg-stone-900 text-parchment hover:border-rune/60'
+                  }`}
+                >
+                  {rankLabel(r)}
+                </button>
+              ))}
+            </div>
+          </div>
+        )}
+      </div>
+    </ForgeViewShell>
+  )
+}
+
 // -- Card suit fan -----------------------------------------------------
 
 // Compact picker: cards group into one row per suit, sorted by rank,
@@ -306,10 +414,10 @@ function suitName(suit) {
 // card above its neighbors. Pass `readOnly` to render the fan for
 // display only (no click handler, no selected state) — hover-lift
 // still works so the player can peek at any card.
-const SUIT_FAN_ORDER = [HEART, DIAMOND, CLUB, SPADE]
+const SUIT_FAN_ORDER = [HEART, DIAMOND, CLUB, SPADE, WOUND, KEY, MAP, STONE]
 
 export function CardSuitFan({ cards, selected, onPick, readOnly = false }) {
-  const bySuit = { [HEART]: [], [DIAMOND]: [], [CLUB]: [], [SPADE]: [] }
+  const bySuit = { [HEART]: [], [DIAMOND]: [], [CLUB]: [], [SPADE]: [], [WOUND]: [], [KEY]: [], [MAP]: [], [STONE]: [] }
   for (const c of cards) {
     if (bySuit[c.suit]) bySuit[c.suit].push(c)
   }
@@ -337,14 +445,44 @@ export function CardSuitFan({ cards, selected, onPick, readOnly = false }) {
 
 function CardSuitFanRow({ suit, cards, selected, onPick, readOnly = false }) {
   const isRed = suit === HEART || suit === DIAMOND
+  const isWoundRow = suit === WOUND
+  const isKeyRow = suit === KEY
+  const isMapRow = suit === MAP
+  const isStoneRow = suit === STONE
+  const suitColorClass = isRed
+    ? 'text-blood'
+    : isWoundRow
+      ? 'text-red-700'
+      : isKeyRow
+        ? 'text-amber-300'
+        : isMapRow
+          ? 'text-sky-300'
+          : isStoneRow
+            ? 'text-slate-300'
+            : 'text-parchment'
   return (
     <div className="flex items-start">
-      <div className={`w-6 shrink-0 pt-3 text-center text-base leading-none ${isRed ? 'text-blood' : 'text-parchment'}`}>
+      <div className={`w-6 shrink-0 pt-3 text-center text-base leading-none ${suitColorClass}`}>
         {SUIT_GLYPH[suit]}
       </div>
       <div className="flex flex-1 pl-2 pt-2 pb-3 overflow-x-auto">
         {cards.map((c, i) => {
           const isSelected = !readOnly && selected === c.id
+          const cardIsWound = isWound(c)
+          const cardIsKey = isSkeletonKey(c)
+          const cardIsMap = isMap(c)
+          const cardIsStone = isWhetstone(c)
+          const cardColorClass = isRed
+            ? 'text-blood'
+            : cardIsWound
+              ? 'text-red-700'
+              : cardIsKey
+                ? 'text-amber-300'
+                : cardIsMap
+                  ? 'text-sky-300'
+                  : cardIsStone
+                    ? 'text-slate-300'
+                    : 'text-parchment'
           const baseClass = `card-fan-item relative aspect-[2/3] w-12 sm:w-14 shrink-0 rounded border-2 p-1 flex flex-col justify-between text-left ${
             isSelected
               ? 'border-rune bg-stone-700'
@@ -352,16 +490,19 @@ function CardSuitFanRow({ suit, cards, selected, onPick, readOnly = false }) {
           }`
           const inner = (
             <>
-              <div className={`text-xs sm:text-sm font-bold leading-none ${isRed ? 'text-blood' : 'text-parchment'}`}>
-                {rankLabel(c.rank)}{SUIT_GLYPH[c.suit]}
+              <div className={`text-xs sm:text-sm font-bold leading-none ${cardColorClass}`}>
+                {(cardIsWound || cardIsKey || cardIsMap || cardIsStone) ? SUIT_GLYPH[c.suit] : `${rankLabel(c.rank)}${SUIT_GLYPH[c.suit]}`}
               </div>
-              {(c.transmuted || c.hefted) && (
+              {(c.transmuted || c.hefted || c.inscribed) && (
                 <div className="flex flex-col items-end gap-0.5 leading-none">
                   {c.transmuted && (
                     <div className="text-[8px] text-rune uppercase tracking-wider">tm</div>
                   )}
                   {c.hefted && (
                     <div className="text-[8px] text-rune uppercase tracking-wider">+{c.heftBonus}</div>
+                  )}
+                  {c.inscribed && (
+                    <div className="text-[8px] text-rune uppercase tracking-wider">in</div>
                   )}
                 </div>
               )}

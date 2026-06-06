@@ -1,15 +1,20 @@
 import { useCallback, useEffect, useMemo, useState } from 'react'
 import {
   playCard, playCardBare, fleeRoom,
+  dismissMapPeek,
   getTheme,
   isMonster, isWeapon, isPotion,
   previewMonsterDamage,
   describePotion,
   tutorialAllLessonsDone,
+  devourerEffectiveRank,
   HEART, DIAMOND, SUIT_GLYPH, rankLabel,
 } from '../logic'
 import { PhaseRail, LogPanel } from './atoms'
+import { ModeBadge } from './modes'
+import { AscensionBadge } from './ascensions'
 import { CardSlot, HpBar, WeaponPanel, ConditionsPanel, ForesightPanel } from './cards'
+import { MapPeekModal } from './boons'
 import { SuitIcon, cardBorderTone, suitIconTone } from './SuitIcon'
 
 export function DescentView({ game, setGame }) {
@@ -63,6 +68,16 @@ export function DescentView({ game, setGame }) {
     return () => clearTimeout(t)
   }, [revealing, setGame])
 
+  const onCloseMapPeek = useCallback(() => {
+    setGame(g => dismissMapPeek(g))
+  }, [setGame])
+  useEffect(() => {
+    if (!game.mapPeek) return
+    const onKey = (e) => { if (e.key === 'Escape') onCloseMapPeek() }
+    window.addEventListener('keydown', onKey)
+    return () => window.removeEventListener('keydown', onKey)
+  }, [game.mapPeek, onCloseMapPeek])
+
   const theme = getTheme(game.theme)
 
   const themeIronBones = (game.themeChildren
@@ -99,6 +114,8 @@ export function DescentView({ game, setGame }) {
         />
       )}
 
+      <MapPeekModal cards={game.mapPeek} onClose={onCloseMapPeek} />
+
       <PhaseRail
         title={theme?.name || 'Descent'}
         subtitle={childNames.length > 0 ? childNames.join(' + ') : null}
@@ -108,6 +125,8 @@ export function DescentView({ game, setGame }) {
         <HpBar hp={game.hp} maxHp={game.maxHp} />
         <WeaponPanel game={game} />
         <ConditionsPanel game={game} theme={theme} />
+        <AscensionBadge level={game.ascension} />
+        <ModeBadge modeId={game.mode} />
         <LogPanel lines={game.log} collapsible />
       </PhaseRail>
 
@@ -164,6 +183,10 @@ export function DescentView({ game, setGame }) {
               // The recommended action IS the bare-hands button: glow it so
               // the player's eye finds the right click.
               const bareRecommended = isRecommended && !!c && isMonster(c) && tutorialCue?.recommendBare === true
+              // The Devourer's printed rank is 3, but its real rank is
+              // 3 + the last three kills. Surface that here so the card
+              // top-left reflects the threat at a glance.
+              const displayRank = c?.boss === 'devourer' ? devourerEffectiveRank(game) : undefined
               return (
                 <CardSlot
                   key={i}
@@ -179,6 +202,7 @@ export function DescentView({ game, setGame }) {
                   blocked={blocked}
                   bareBlocked={bareBlocked}
                   bareRecommended={bareRecommended}
+                  displayRank={displayRank}
                 />
               )
             })}
@@ -327,7 +351,7 @@ function IntroCard({ card, delay, removed }) {
           {rankLabel(card.rank)}{SUIT_GLYPH[card.suit]}
         </div>
         <div className="flex-1 min-h-0 flex items-center justify-center">
-          <SuitIcon suit={card.suit} className={`w-[60%] h-auto ${suitIconTone(card)}`} />
+          <SuitIcon suit={card.suit} boss={card.boss} className={`w-[60%] h-auto ${suitIconTone(card)}`} />
         </div>
       </div>
       {removed && (

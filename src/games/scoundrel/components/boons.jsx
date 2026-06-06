@@ -1,11 +1,14 @@
 import { useMemo, useState } from 'react'
+import { createPortal } from 'react-dom'
 import {
   BOONS, getBoon, rankLabel,
   computeCurrentDeck,
+  HEART, DIAMOND, SUIT_GLYPH,
 } from '../logic'
 import { ConfirmButton } from './atoms'
 import { CardSuitFan } from './forge'
 import { WeaponBlock } from './cards'
+import { SuitIcon, cardBorderTone, suitIconTone } from './SuitIcon'
 
 const BOON_TAG_LABEL = {
   combat: 'Combat',
@@ -90,11 +93,13 @@ function BoonCard({ boon, selected, onPick }) {
 // -- Run state ---------------------------------------------------------
 
 export function RunStatePanel({ game }) {
+  const inscribedCount = (game.inscribed || []).length
   const empty =
     game.boons.length === 0 &&
     game.strikes.length === 0 &&
     Object.keys(game.transmutes).length === 0 &&
     Object.keys(game.hefts || {}).length === 0 &&
+    inscribedCount === 0 &&
     !game.carriedWeapon &&
     !game.carriedSpareWeapon
 
@@ -153,6 +158,12 @@ export function RunStatePanel({ game }) {
           <span className="text-rune">{Object.keys(game.hefts).length}</span>
         </div>
       )}
+      {inscribedCount > 0 && (
+        <div className="text-slate-300">
+          <span className="text-slate-500">Inscribed:</span>{' '}
+          <span className="text-rune">{inscribedCount}</span>
+        </div>
+      )}
     </div>
   )
 }
@@ -203,6 +214,74 @@ export function DeckModal({ open, onClose, game }) {
           </p>
         </div>
         <CardSuitFan cards={deck} readOnly />
+      </div>
+    </div>
+  )
+}
+
+// -- Map peek ----------------------------------------------------------
+
+// Shown when the player plays a Map. Snapshot of the next N cards from
+// the top of the deck at play-time. Portal'd to body so it floats above
+// the room cards, which sit inside the action-slot stacking context.
+export function MapPeekModal({ cards, onClose }) {
+  if (!cards) return null
+  return createPortal(
+    <div
+      className="fixed inset-0 z-50 bg-black/80 backdrop-blur-sm flex items-start sm:items-center justify-center p-4 overflow-y-auto"
+      onClick={onClose}
+    >
+      <div
+        className="panel max-w-2xl w-full p-6 my-4 sm:my-auto relative shadow-2xl"
+        onClick={e => e.stopPropagation()}
+      >
+        <button
+          onClick={onClose}
+          className="absolute top-3 right-3 w-9 h-9 rounded-full bg-stone-800 hover:bg-stone-700 text-parchment text-xl leading-none flex items-center justify-center border border-stone-700"
+          aria-label="Close map"
+        >
+          ×
+        </button>
+        <div className="mb-4">
+          <div className="text-[10px] uppercase tracking-[0.3em] text-sky-300/70">The map unfolds</div>
+          <h2 className="font-display text-rune text-2xl mt-1">
+            Next {cards.length} <span className="text-slate-400 text-base">{cards.length === 1 ? 'card' : 'cards'}</span>
+          </h2>
+          {cards.length === 0 ? (
+            <p className="text-[12px] text-slate-500 italic mt-2">The deck is empty.</p>
+          ) : (
+            <p className="text-[11px] text-slate-500 mt-1">
+              Top of the deck on the left. Press <span className="font-mono text-slate-300">Esc</span> or click outside to close.
+            </p>
+          )}
+        </div>
+        {cards.length > 0 && (
+          <div className="flex flex-wrap justify-center gap-3">
+            {cards.map((c, i) => (
+              <PeekCard key={`${c.id}-${i}`} card={c} index={i} />
+            ))}
+          </div>
+        )}
+      </div>
+    </div>,
+    document.body
+  )
+}
+
+// Larger ordered-list card for the Map peek. Numbered so deck order
+// reads at a glance.
+function PeekCard({ card, index }) {
+  const red = card.suit === HEART || card.suit === DIAMOND
+  return (
+    <div className="flex flex-col items-center gap-1">
+      <div className="text-[10px] uppercase tracking-widest text-slate-500">#{index + 1}</div>
+      <div className={`aspect-[2/3] w-20 sm:w-24 rounded-md border-2 ${cardBorderTone(card)} bg-gradient-to-b from-parchment to-[#e8d5b3] text-stone-900 p-2 flex flex-col text-left shadow-md`}>
+        <div className={`text-lg font-bold leading-none ${red ? 'text-blood' : 'text-stone-900'}`}>
+          {rankLabel(card.rank)}{SUIT_GLYPH[card.suit]}
+        </div>
+        <div className="flex-1 min-h-0 flex items-center justify-center py-1">
+          <SuitIcon suit={card.suit} inscribed={card.inscribed} boss={card.boss} className={`w-[60%] h-auto ${suitIconTone(card)}`} />
+        </div>
       </div>
     </div>
   )
