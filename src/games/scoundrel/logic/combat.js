@@ -112,7 +112,9 @@ export function isWeaponUsable(state, monsterCard) {
 export function applyRoomEntryEffects(state, room, firstNewIdx) {
   const themes = activeThemes(state)
   const roomsEntered = (state.roomsEntered || 0) + 1
-  let next = { ...state, roomsEntered }
+  // Run-level tally (persists across descents) for the run-history record.
+  const runRoomsEntered = (state.runRoomsEntered || 0) + 1
+  let next = { ...state, roomsEntered, runRoomsEntered }
   // Refresh Numb's per-room shield before any room-entry damage (Tithe).
   if (hasBoon(next, 'numb')) {
     next = { ...next, numbRemaining: 2 }
@@ -220,11 +222,20 @@ function applyMonsterFight(state, monsterCard, index, useWeapon) {
   const killedRank = effectiveMonsterRank(state, monsterCard)
   const newLastKills = [...(state.lastKilledMonsterRanks || []), killedRank].slice(-3)
 
+  // Run-level history tallies (persist across descents). bossesDefeated is
+  // deduped by id so the Brood's repeated splits count as one boss.
+  const bossesDefeated = monsterCard.boss && !(state.bossesDefeated || []).some(b => b.id === monsterCard.boss)
+    ? [...(state.bossesDefeated || []), { id: monsterCard.boss, name: getBoss(monsterCard.boss)?.name || monsterCard.boss }]
+    : (state.bossesDefeated || [])
+
   let next = {
     ...state,
     room,
     discard: state.discard.concat(monsterCard),
     monstersFoughtThisRoom: state.monstersFoughtThisRoom + 1,
+    monstersSlain: (state.monstersSlain || 0) + 1,
+    biggestKill: Math.max(state.biggestKill || 0, monsterCard.rank),
+    bossesDefeated,
     lastMonsterSuit: monsterCard.suit,
     lastKilledMonsterRanks: newLastKills,
     riposteCharge: 0,

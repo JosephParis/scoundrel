@@ -91,6 +91,17 @@ export function createRun(rng = Math.random, options = {}) {
     roomsEntered: 0,
     mutedBoon: null,
 
+    // Run-level history accumulators. Unlike the per-descent fields below,
+    // these persist across descents (they're never in a reset list, so the
+    // `{ ...state }` spreads in descend/endDescentVictory carry them forward)
+    // and are snapshotted into a stored record by buildRunRecord at run end.
+    runStartedAt: Date.now(),
+    themesFaced: [],
+    runRoomsEntered: 0,
+    monstersSlain: 0,
+    biggestKill: 0,
+    bossesDefeated: [],
+
     // Per-descent transient charges (reset at descent start)
     riposteCharge: 0,
     secondWindUsed: false,
@@ -213,6 +224,9 @@ export function descend(state) {
     monstersFoughtThisRoom: 0,
     lastMonsterSuit: null,
     roomsEntered: 0,
+    // Record the theme of this descent (tutorial walk excluded; it isn't a
+    // real run leg). Run-level, so it accumulates across the whole run.
+    themesFaced: state.tutorial ? (state.themesFaced || []) : [...(state.themesFaced || []), themeId],
     mutedBoon,
     forgeView: null,
     riposteCharge: 0,

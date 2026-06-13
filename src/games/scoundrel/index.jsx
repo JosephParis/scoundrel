@@ -8,7 +8,10 @@ import { SanctuaryView } from './components/SanctuaryView'
 import { DescentView } from './components/DescentView'
 import { OutcomeView } from './components/OutcomeView'
 import { LoginModal } from './components/LoginModal'
+import { HistoryModal } from './components/HistoryModal'
 import { loadUser, signOut as signOutUser } from '../../utils/auth'
+import { historyStore } from '../../utils/historyStore'
+import { buildRunRecord } from './history'
 
 // -- Save / load -------------------------------------------------------
 // Bump SAVE_VERSION whenever the shape of game state in logic.js changes
@@ -84,6 +87,16 @@ function loadSavedGame() {
     if (!Array.isArray(state.unlockedBoons)) {
       state.unlockedBoons = loadLibrary()
     }
+    // Backfill run-history accumulators for saves written before they
+    // existed, so an in-progress old run records a sane (if partial) record
+    // at its end instead of loading with undefined fields. No SAVE_VERSION
+    // bump: these are additive and a bump would discard the live run.
+    if (typeof state.runStartedAt !== 'number') state.runStartedAt = Date.now()
+    if (!Array.isArray(state.themesFaced)) state.themesFaced = []
+    if (typeof state.runRoomsEntered !== 'number') state.runRoomsEntered = state.roomsEntered || 0
+    if (typeof state.monstersSlain !== 'number') state.monstersSlain = 0
+    if (typeof state.biggestKill !== 'number') state.biggestKill = 0
+    if (!Array.isArray(state.bossesDefeated)) state.bossesDefeated = []
     return state
   } catch {
     return null
@@ -142,10 +155,14 @@ export default function Scoundrel() {
   const [tutorialReplayOpen, setTutorialReplayOpen] = useState(false)
   const [loginOpen, setLoginOpen] = useState(false)
   const [cardLibraryOpen, setCardLibraryOpen] = useState(false)
+  const [historyOpen, setHistoryOpen] = useState(false)
 
   const handleLogin = useCallback((u) => {
     setUser(u)
     setLoginOpen(false)
+    // Fold any runs played as a guest into the freshly signed-in account so
+    // pre-login history isn't orphaned. Fire-and-forget; the store is async.
+    if (u?.sub) historyStore.migrateGuest(u.sub)
   }, [])
 
   const handleSignOut = useCallback(() => {
@@ -155,6 +172,17 @@ export default function Scoundrel() {
   useEffect(() => {
     saveGame(game)
   }, [game])
+
+  // Record a finished run into history. Fires on the terminal phases
+  // (victory, death, retire) but skips the tutorial walk (no sigils, curated).
+  // appendRun dedupes by the run's startedAt, so an effect re-fire or
+  // reloading a finished save never writes a duplicate.
+  useEffect(() => {
+    const terminal = game.phase === 'gameover' || game.phase === 'victory'
+    if (!terminal || game.tutorial) return
+    const accountId = user?.sub || 'guest'
+    historyStore.appendRun(accountId, buildRunRecord(game, user))
+  }, [game, user])
 
   // Persist the Boon library on every change so unlocks survive even if
   // the run save is wiped (death, retire, "begin again").
@@ -188,13 +216,14 @@ export default function Scoundrel() {
   }, [game.tutorial, game.phase])
 
   useEffect(() => {
-    const anyOpen = rulesOpen || retireOpen || creditsOpen || devOpen || tutorialReplayOpen || loginOpen || cardLibraryOpen
+    const anyOpen = rulesOpen || retireOpen || creditsOpen || devOpen || tutorialReplayOpen || loginOpen || cardLibraryOpen || historyOpen
     if (!anyOpen) return
     const onKey = (e) => {
       if (e.key !== 'Escape') return
       if (devOpen) setDevOpen(false)
       else if (creditsOpen) setCreditsOpen(false)
       else if (cardLibraryOpen) setCardLibraryOpen(false)
+      else if (historyOpen) setHistoryOpen(false)
       else if (retireOpen) setRetireOpen(false)
       else if (tutorialReplayOpen) setTutorialReplayOpen(false)
       else if (loginOpen) setLoginOpen(false)
@@ -202,7 +231,7 @@ export default function Scoundrel() {
     }
     window.addEventListener('keydown', onKey)
     return () => window.removeEventListener('keydown', onKey)
-  }, [rulesOpen, retireOpen, creditsOpen, devOpen, tutorialReplayOpen, loginOpen, cardLibraryOpen])
+  }, [rulesOpen, retireOpen, creditsOpen, devOpen, tutorialReplayOpen, loginOpen, cardLibraryOpen, historyOpen])
 
   const confirmReplayTutorial = () => {
     setGame(createRun(Math.random, { tutorial: true, unlockedBoons: loadLibrary() }))
@@ -235,6 +264,7 @@ export default function Scoundrel() {
         onOpenLogin={() => setLoginOpen(true)}
         onSignOut={handleSignOut}
         onOpenCardLibrary={() => setCardLibraryOpen(true)}
+        onOpenHistory={() => setHistoryOpen(true)}
       />
       <RulesModal open={rulesOpen} onClose={() => setRulesOpen(false)} />
       <RetireModal
@@ -256,6 +286,11 @@ export default function Scoundrel() {
         open={loginOpen}
         onLogin={handleLogin}
         onClose={() => setLoginOpen(false)}
+      />
+      <HistoryModal
+        open={historyOpen}
+        user={user}
+        onClose={() => setHistoryOpen(false)}
       />
       <main className="flex-1 w-full max-w-7xl px-4 sm:px-6 pt-16 sm:pt-20 pb-8">
         {game.phase === 'sanctuary' && <SanctuaryView game={game} setGame={setGame} onSkipTutorial={skipTutorial} ascensionUnlocked={ascensionUnlocked} />}

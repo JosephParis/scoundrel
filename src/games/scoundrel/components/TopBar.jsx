@@ -1,6 +1,6 @@
 import { useEffect, useRef, useState } from 'react'
 
-export function TopBar({ game, user, onOpenRules, onRetire, onOpenCredits, onOpenDev, onReplayTutorial, onOpenLogin, onSignOut, onOpenCardLibrary }) {
+export function TopBar({ game, user, onOpenRules, onRetire, onOpenCredits, onOpenDev, onReplayTutorial, onOpenLogin, onSignOut, onOpenCardLibrary, onOpenHistory }) {
   const runActive = game.phase === 'sanctuary' || game.phase === 'descent'
   return (
     <header className="fixed top-0 left-0 right-0 z-30 border-b border-stone-800/80 bg-dungeon/85 backdrop-blur-md flex justify-center">
@@ -32,6 +32,7 @@ export function TopBar({ game, user, onOpenRules, onRetire, onOpenCredits, onOpe
             onOpenLogin={onOpenLogin}
             onSignOut={onSignOut}
             onOpenCardLibrary={onOpenCardLibrary}
+            onOpenHistory={onOpenHistory}
           />
         </div>
       </div>
@@ -39,7 +40,7 @@ export function TopBar({ game, user, onOpenRules, onRetire, onOpenCredits, onOpe
   )
 }
 
-function OverflowMenu({ runActive, user, onRetire, onOpenCredits, onOpenDev, onOpenLogin, onSignOut, onOpenCardLibrary }) {
+function OverflowMenu({ runActive, user, onRetire, onOpenCredits, onOpenDev, onOpenLogin, onSignOut, onOpenCardLibrary, onOpenHistory }) {
   const [open, setOpen] = useState(false)
   const ref = useRef(null)
 
@@ -140,6 +141,17 @@ function OverflowMenu({ runActive, user, onRetire, onOpenCredits, onOpenDev, onO
           >
             <span className="text-rune w-4 text-center">☷</span>
             <span>Card library</span>
+          </button>
+          <button
+            role="menuitem"
+            onClick={() => {
+              setOpen(false)
+              onOpenHistory()
+            }}
+            className={itemClass}
+          >
+            <span className="text-rune w-4 text-center">❧</span>
+            <span>Run history</span>
           </button>
           <button
             role="menuitem"

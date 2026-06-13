@@ -1,9 +1,15 @@
+import { useMemo } from 'react'
 import { LogPanel } from './atoms'
+import { RunSummary } from './RunSummary'
+import { buildRunRecord } from '../history'
 
 // onBeginAgain wraps freshRun() in the root so this file doesn't
 // depend on save/load details.
 export function OutcomeView({ game, onBeginAgain }) {
   const won = game.phase === 'victory'
+  // Local view-only record; the persisted copy (with account id) is written
+  // by the root's recording effect. User isn't needed for display.
+  const record = useMemo(() => buildRunRecord(game, null), [game])
   const headline = won
     ? 'You are blinded by the light'
     : 'You fall in the dark.'
@@ -32,8 +38,12 @@ export function OutcomeView({ game, onBeginAgain }) {
         {won ? 'ASCEND' : 'BEGIN AGAIN'}
       </button>
 
+      <div className="max-w-md mx-auto panel p-5 sm:p-6">
+        <RunSummary record={record} />
+      </div>
+
       <div className="pt-4 border-t border-stone-800 max-w-2xl mx-auto">
-        <LogPanel lines={game.log} />
+        <LogPanel lines={game.log} collapsible />
       </div>
     </div>
   )
