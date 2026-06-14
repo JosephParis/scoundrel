@@ -12,6 +12,7 @@ import { HistoryModal } from './components/HistoryModal'
 import { loadUser, signOut as signOutUser } from '../../utils/auth'
 import { historyStore } from '../../utils/historyStore'
 import { buildRunRecord } from './history'
+import { useRunAnalytics } from './analytics'
 
 // -- Save / load -------------------------------------------------------
 // Bump SAVE_VERSION whenever the shape of game state in logic.js changes
@@ -172,6 +173,10 @@ export default function Scoundrel() {
   useEffect(() => {
     saveGame(game)
   }, [game])
+
+  // Emit PostHog run/descent/run-ended events as the game state advances.
+  // Observer only; no-ops while the deferred client is still loading.
+  useRunAnalytics(game, user)
 
   // Record a finished run into history. Fires on the terminal phases
   // (victory, death, retire) but skips the tutorial walk (no sigils, curated).
