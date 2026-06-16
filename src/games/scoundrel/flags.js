@@ -43,7 +43,7 @@ export const FLAG_META = {
   },
   customCards: {
     name: 'Custom cards (Inscribe)',
-    description: 'Forge gains an Inscribe action: add a player-designed card (Lucky Coin, Cursed Idol, Skeleton Key) to the deck. Off: only Strike, Transmute, and Heft are offered.',
+    description: "Inscribe's menu gains the special tool frames (Lucky Coin, Skeleton Key, and the like). Off: Inscribe offers only plain weapons and potions.",
   },
   bosses: {
     name: 'Bosses',

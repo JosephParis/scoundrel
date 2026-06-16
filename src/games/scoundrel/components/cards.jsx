@@ -168,6 +168,7 @@ export function CardSlot({ card, onClick, onBareHands, weaponDamage, bareDamage,
   const inscribed = !!card.inscribed
   const boss = isBoss(card)
   const bossDef = boss ? BOSSES[card.boss] : null
+  const traitLabel = card.armored ? 'armored' : card.fast ? 'fast' : card.warded ? 'warded' : null
   const frame = card.inscribed ? INSCRIBED_FRAMES[card.inscribed] : null
   const kind = bossDef
     ? bossDef.name
@@ -239,6 +240,11 @@ export function CardSlot({ card, onClick, onBareHands, weaponDamage, bareDamage,
             boss
           </div>
         )}
+        {traitLabel && !boss && !inscribed && (
+          <div className="absolute top-1.5 right-1.5 text-[9px] uppercase tracking-widest text-red-800 font-semibold">
+            {traitLabel}
+          </div>
+        )}
         <div className="flex-1 min-h-0 flex items-center justify-center py-1">
           <SuitIcon suit={card.suit} inscribed={card.inscribed} boss={card.boss} className={`w-[62%] h-auto ${suitIconTone(card)}`} />
         </div>
@@ -246,7 +252,7 @@ export function CardSlot({ card, onClick, onBareHands, weaponDamage, bareDamage,
           {monsterPreview ? (
             <>
               <span className="text-[12px] tracking-normal text-stone-800 font-medium">
-                {monsterIcon} take {monsterPreview.value}
+                {monsterIcon} take {monsterPreview.value}{card.fast ? ' ×2' : ''}
               </span>
               {monsterPreview.parts.length > 1 && (
                 <span className="text-[10px] tracking-normal text-stone-500 leading-tight">

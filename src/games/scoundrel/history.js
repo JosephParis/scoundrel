@@ -22,17 +22,16 @@ function outcomeOf(state) {
 // Forge edits, collapsed to the parts worth showing in a summary: the list of
 // inscribed cards (frame name + rank) plus counts of the other three edits.
 function deckChangesOf(state) {
-  const inscribed = (state.inscribed || []).map(card => {
-    const frame = INSCRIBED_FRAMES[card.inscribed]
-    return { frame: card.inscribed, name: frame?.name || card.inscribed, rank: card.rank }
-  })
-  // strikes stores a flat [monsterId, offeringId] pair per removal.
-  const struck = Math.floor((state.strikes || []).length / 2)
+  const inscribed = (state.kit || [])
+    .filter(card => card.inscribed)
+    .map(card => {
+      const frame = INSCRIBED_FRAMES[card.inscribed]
+      return { frame: card.inscribed, name: frame?.name || card.inscribed, rank: card.rank }
+    })
   return {
     inscribed,
-    transmuted: Object.keys(state.transmutes || {}).length,
-    hefted: Object.keys(state.hefts || {}).length,
-    struck,
+    kitEdits: state.kitEdits || 0,
+    kitSize: (state.kit || []).length,
   }
 }
 

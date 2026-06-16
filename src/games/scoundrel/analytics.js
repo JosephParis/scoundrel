@@ -41,9 +41,8 @@ function runEndedProps(r) {
     bosses_defeated: r.bossesDefeated,
     boss_count: r.bossesDefeated.length,
     inscribed_count: r.deckChanges.inscribed.length,
-    transmuted: r.deckChanges.transmuted,
-    hefted: r.deckChanges.hefted,
-    struck: r.deckChanges.struck,
+    kit_edits: r.deckChanges.kitEdits,
+    kit_size: r.deckChanges.kitSize,
     final_weapon_rank: r.finalWeapon?.rank ?? null,
   }
 }

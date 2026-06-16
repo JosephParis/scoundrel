@@ -6,6 +6,7 @@ import {
   isMonster, isWeapon, isPotion,
   previewMonsterDamage,
   describePotion,
+  canFleeRoom,
   tutorialAllLessonsDone,
   devourerEffectiveRank,
   HEART, DIAMOND, SUIT_GLYPH, rankLabel,
@@ -220,7 +221,7 @@ export function DescentView({ game, setGame }) {
               )}
               <button
                 onClick={onFlee}
-                disabled={!game.canFlee || (tutorialActive && tutorialCue?.recommendedId != null)}
+                disabled={!canFleeRoom(game) || (tutorialActive && tutorialCue?.recommendedId != null)}
                 className={`px-6 py-2.5 rounded-md bg-stone-800 hover:bg-stone-700 disabled:opacity-40 disabled:cursor-not-allowed text-sm font-medium border border-stone-700 transition ${tutorialCue?.recommendFlee ? 'tutorial-recommended' : ''}`}
               >
                 Flee the room

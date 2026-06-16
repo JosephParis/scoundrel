@@ -10,7 +10,8 @@ import {
   hasBoon,
   markTutorialLesson,
 } from './helpers'
-import { buildDescentDeck, buildTutorialDeck } from './deck'
+import { buildDescentDeck, buildTutorialDeck, buildStartingKit, rollInscribeCandidates } from './deck'
+import { rollForgeOffer } from './sanctuary'
 import { applyRoomEntryEffects } from './combat'
 
 // -- Run lifecycle ------------------------------------------------------
@@ -58,10 +59,13 @@ export function createRun(rng = Math.random, options = {}) {
     // 'replace', 'barehands', 'flee'.
     tutorialLessons: [],
     boons: [],
-    strikes: [],
-    transmutes: {},
-    hefts: {},
-    inscribed: [],
+    // The player's kit: weapons and potions they own and edit across the run.
+    // Seeded as the low ten (diamonds 2-6, hearts 2-6). Persists across descents
+    // (never in a reset list, so the { ...state } spreads carry it forward).
+    kit: buildStartingKit(),
+    // Count of kit edits applied this run (Inscribe / Upgrade / Remove).
+    // Run-level, surfaced in the run summary.
+    kitEdits: 0,
     carriedWeapon: null,
     carriedSpareWeapon: null,
     rng,
@@ -73,6 +77,12 @@ export function createRun(rng = Math.random, options = {}) {
     forgeUsed: false,
     boonChosen: true, // no Boon to pick on the opening visit
     forgeView: null,
+    // The subset of verbs the Forge offers this visit (['inscribe', ...]).
+    // Rolled when the forge opens; empty on the opening visit.
+    forgeOffer: [],
+    // The plain weapon/potion the Inscribe verb offers this visit. Rolled when
+    // the forge opens (see endDescentVictory); null when no edit is available.
+    inscribeOffer: null,
 
     hp: 0,
     maxHp: 0,
@@ -358,6 +368,11 @@ export function endDescentVictory(state) {
   const boonOffers = mode.noBoons ? [] : pickBoonOffers(state.boons, asc.boonOfferCount, rng, offerPool)
   const boonChosen = mode.noBoons // no boon to pick in modes that skip offers
   const forgeOpen = !mode.noForge && forgeSigilSet.has(newSigils)
+  // When the forge opens, roll the verb subset offered this visit and the plain
+  // weapon/potion the Inscribe verb may offer (rank capped by progress). Empty /
+  // null when the forge is closed.
+  const forgeOffer = forgeOpen ? rollForgeOffer(state.kit, rng) : []
+  const inscribeOffer = forgeOpen ? rollInscribeCandidates(rng, newSigils) : null
 
   let returned = {
     ...state,
@@ -372,6 +387,8 @@ export function endDescentVictory(state) {
     forgeUsed: false,
     boonChosen,
     forgeView: null,
+    forgeOffer,
+    inscribeOffer,
     unlockedBoons: nextLibrary,
 
     // Wipe descent-only state
@@ -439,6 +456,8 @@ function pickPocketTarget(room) {
 export function fleeRoom(state) {
   if (state.phase !== 'descent') return state
   if (!state.canFlee) return state
+  // A warded monster pins you in the room.
+  if ((state.room || []).some(c => c && c.warded)) return state
   const themes = themesFor(state.theme, state.themeChildren)
   if (themeFlagAny(themes, 'cannotFlee')) return state
 

@@ -148,6 +148,15 @@ export const THEMES = {
     potionHealHalf: true,
   },
 
+  the_swarm: {
+    id: 'the_swarm',
+    name: 'The Swarm',
+    description: 'The dungeon teems: 36 monsters, mostly low rank. Your tools are spread thin.',
+    tier: 1,
+    count: 36,
+    bandWeights: { low: 4, mid: 1, high: 0 },
+  },
+
   // ---- Tier 2 ----------------------------------------------------------
 
   blood_moon: {
@@ -246,7 +255,54 @@ export const THEMES = {
     },
   },
 
+  the_gauntlet: {
+    id: 'the_gauntlet',
+    name: 'The Gauntlet',
+    description: 'Few monsters (16), all mid to high rank. Dense with your tools, but every fight bites.',
+    tier: 2,
+    count: 16,
+    bandWeights: { low: 0, mid: 1, high: 2 },
+  },
+
+  the_press: {
+    id: 'the_press',
+    name: 'The Press',
+    description: '28 monsters, four in five of them spades. A one-suit tide.',
+    tier: 2,
+    count: 28,
+    suitSkew: 0.8,
+  },
+
+  the_bulwark: {
+    id: 'the_bulwark',
+    name: 'The Bulwark',
+    description: 'About two in five monsters are armored: weapons do nothing, fight them bare-handed.',
+    tier: 2,
+    count: 22,
+    traits: { armored: 0.4 },
+  },
+
+  the_frenzy: {
+    id: 'the_frenzy',
+    name: 'The Frenzy',
+    description: 'About a third of the monsters are fast and strike twice. Low ranks, but the hits add up.',
+    tier: 2,
+    count: 24,
+    bandWeights: { low: 3, mid: 2, high: 0 },
+    traits: { fast: 0.35 },
+  },
+
   // ---- Tier 3 ----------------------------------------------------------
+
+  the_snare: {
+    id: 'the_snare',
+    name: 'The Snare',
+    description: 'About a third of the monsters are warded: you cannot flee a room while one is present.',
+    tier: 3,
+    count: 20,
+    bandWeights: { low: 0, mid: 2, high: 1 },
+    traits: { warded: 0.3 },
+  },
 
   echo: {
     id: 'echo',

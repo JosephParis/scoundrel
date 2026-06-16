@@ -84,6 +84,9 @@ function isWeaponBoundFor(state, weapon, monsterCard) {
 // Pick the best weapon for swinging at this monster.
 // Prefers the highest *effective* rank among usable weapons.
 export function pickBestWeaponFor(state, monsterCard) {
+  // Armored monsters ignore the weapon entirely: the fight resolves
+  // bare-handed and the blade's binding stays clean.
+  if (monsterCard.armored) return null
   const candidates = []
   if (state.weapon && isWeaponBoundFor(state, state.weapon, monsterCard)) {
     candidates.push({ weapon: state.weapon, slot: 'primary' })
@@ -338,6 +341,14 @@ function applyMonsterFight(state, monsterCard, index, useWeapon) {
   if (dmgResult.dead) return dmgResult.state
   next = dmgResult.state
 
+  // Fast monsters strike a second time. Each hit is a real applyHpLoss so
+  // Numb, wound-bleed, and death all evaluate per hit.
+  if (monsterCard.fast) {
+    const second = applyHpLoss(next, damage)
+    if (second.dead) return second.state
+    next = appendLog(second.state, `${fmt(monsterCard)} strikes twice.`)
+  }
+
   // Cursed Idol gift: a prior idol play left a pending heal that applies
   // on the next real monster kill. Drains and clears here, capped at maxHp.
   if ((next.pendingCursedHeal || 0) > 0) {
@@ -534,8 +545,8 @@ export function playCard(state, index) {
 // Skeleton Key: discards every other card in the room (back to the bottom
 // of the deck so they aren't lost from the run), clears the slot, then lets
 // checkRefillAndComplete pull a fresh room. The descent shape stays the
-// same; the player just skips this room's threats. Consumed from
-// state.inscribed on play so it cannot reappear in future descents.
+// same; the player just skips this room's threats. Consumed from the kit on
+// play so it cannot reappear in future descents.
 function playSkeletonKey(state, index, card) {
   const otherCards = state.room
     .map((c, i) => (i !== index && c) ? c : null)
@@ -548,14 +559,14 @@ function playSkeletonKey(state, index, card) {
     })
   const newRoom = state.room.map(() => null)
   const newDeck = state.deck.concat(otherCards)
-  const inscribed = (state.inscribed || []).filter(c => c.id !== card.id)
+  const kit = (state.kit || []).filter(c => c.id !== card.id)
   let next = appendLog(
     {
       ...state,
       deck: newDeck,
       room: newRoom,
       discard: state.discard.concat(card),
-      inscribed,
+      kit,
       potionsUsedThisRoom: 0,
       monstersFoughtThisRoom: 0,
     },

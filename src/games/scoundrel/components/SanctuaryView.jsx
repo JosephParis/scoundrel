@@ -2,12 +2,12 @@ import { useEffect, useState } from 'react'
 import {
   descend, pickBoon, setRunMode, setRunAscension,
   openForgeAction, closeForgeView, skipForge,
-  applyStrike, applyTransmute, applyHeft, applyInscribe,
+  applyInscribe, upgradeKitCard, removeKitCard,
   isEnabled,
 } from '../logic'
 import { PhaseRail, LogPanel, DescendAction } from './atoms'
 import { BoonOfferPanel, RunStatePanel, DeckPeekButton, DeckModal, LoadoutPanel } from './boons'
-import { ForgePromptPanel, StrikeView, TransmuteView, HeftView, InscribeView } from './forge'
+import { ForgePromptPanel, InscribeView, UpgradeView, RemoveView } from './forge'
 import { RulesInlinePanel, TutorialIntroPanel } from './rules'
 import { ModePickerPanel, ModeBadge } from './modes'
 import { LibraryPanel } from './library'
@@ -70,45 +70,37 @@ export function SanctuaryView({ game, setGame, onSkipTutorial, ascensionUnlocked
         forgeAfter={forgePending}
       />
     )
-  } else if (game.forgeView === 'strike') {
-    actionSlot = (
-      <StrikeView
-        game={game}
-        onConfirm={(mid, oid) => setGame(g => applyStrike(g, mid, oid))}
-        onCancel={() => setGame(g => closeForgeView(g))}
-      />
-    )
-  } else if (game.forgeView === 'transmute') {
-    actionSlot = (
-      <TransmuteView
-        game={game}
-        onConfirm={(cid, suit) => setGame(g => applyTransmute(g, cid, suit))}
-        onCancel={() => setGame(g => closeForgeView(g))}
-      />
-    )
-  } else if (game.forgeView === 'heft') {
-    actionSlot = (
-      <HeftView
-        game={game}
-        onConfirm={(cid) => setGame(g => applyHeft(g, cid))}
-        onCancel={() => setGame(g => closeForgeView(g))}
-      />
-    )
   } else if (game.forgeView === 'inscribe') {
     actionSlot = (
       <InscribeView
         game={game}
-        onConfirm={(frameId, rank) => setGame(g => applyInscribe(g, frameId, rank))}
+        onConfirm={(sel) => setGame(g => applyInscribe(g, sel))}
+        onCancel={() => setGame(g => closeForgeView(g))}
+      />
+    )
+  } else if (game.forgeView === 'upgrade') {
+    actionSlot = (
+      <UpgradeView
+        game={game}
+        onConfirm={(cid) => setGame(g => upgradeKitCard(g, cid))}
+        onCancel={() => setGame(g => closeForgeView(g))}
+      />
+    )
+  } else if (game.forgeView === 'remove') {
+    actionSlot = (
+      <RemoveView
+        game={game}
+        onConfirm={(cid) => setGame(g => removeKitCard(g, cid))}
         onCancel={() => setGame(g => closeForgeView(g))}
       />
     )
   } else if (showForgePrompt) {
     actionSlot = (
       <ForgePromptPanel
-        onStrike={() => setGame(g => openForgeAction(g, 'strike'))}
-        onTransmute={() => setGame(g => openForgeAction(g, 'transmute'))}
-        onHeft={() => setGame(g => openForgeAction(g, 'heft'))}
+        offer={game.forgeOffer}
         onInscribe={() => setGame(g => openForgeAction(g, 'inscribe'))}
+        onUpgrade={() => setGame(g => openForgeAction(g, 'upgrade'))}
+        onRemove={() => setGame(g => openForgeAction(g, 'remove'))}
         onSkip={() => setGame(g => skipForge(g))}
       />
     )

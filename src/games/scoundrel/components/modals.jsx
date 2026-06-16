@@ -1,6 +1,7 @@
 import { useEffect, useMemo, useState } from 'react'
 import {
-  THEMES, BOONS, FORGE_SIGILS, getTheme,
+  THEMES, BOONS, getTheme,
+  rollForgeOffer, rollInscribeCandidates,
   FLAG_IDS, FLAG_META, getFlags, setFlag, resetAllFlags,
 } from '../logic'
 
@@ -96,22 +97,28 @@ export function DevModal({ open, onClose, game, setGame }) {
   }
 
   const apply = () => {
-    setGame(g => ({
-      ...g,
-      sigilsEarned: sigils,
-      nextTheme: themeId,
-      nextThemeChildren: isCompound
-        ? [child1, child2].filter(Boolean)
-        : null,
-      boons: Array.from(selectedBoons),
-      boonChosen: true,
-      boonOffers: [],
-      forgeOpen: FORGE_SIGILS.has(sigils),
-      forgeUsed: false,
-      forgeView: null,
-      mutedBoon: null,
-      log: [...g.log, `[dev] overrides applied: sigils ${sigils}, theme "${themeObj?.name || themeId}".`],
-    }))
+    setGame(g => {
+      // The Forge opens after every descent (any non-opening, non-final sigil).
+      const forgeOpen = sigils >= 1 && sigils < g.sigilTarget
+      return {
+        ...g,
+        sigilsEarned: sigils,
+        nextTheme: themeId,
+        nextThemeChildren: isCompound
+          ? [child1, child2].filter(Boolean)
+          : null,
+        boons: Array.from(selectedBoons),
+        boonChosen: true,
+        boonOffers: [],
+        forgeOpen,
+        forgeUsed: false,
+        forgeView: null,
+        forgeOffer: forgeOpen ? rollForgeOffer(g.kit, Math.random) : [],
+        inscribeOffer: forgeOpen ? rollInscribeCandidates(Math.random, sigils) : null,
+        mutedBoon: null,
+        log: [...g.log, `[dev] overrides applied: sigils ${sigils}, theme "${themeObj?.name || themeId}".`],
+      }
+    })
     onClose()
   }
 
@@ -151,7 +158,7 @@ export function DevModal({ open, onClose, game, setGame }) {
               className="w-16 bg-stone-900 border border-stone-700 rounded px-2 py-1 text-parchment font-mono"
             />
             <span className="text-slate-500">/ {game.sigilTarget}</span>
-            {FORGE_SIGILS.has(sigils) && (
+            {sigils >= 1 && sigils < game.sigilTarget && (
               <span className="text-amber-300/70 text-[10px] uppercase tracking-wider">Forge opens</span>
             )}
           </div>

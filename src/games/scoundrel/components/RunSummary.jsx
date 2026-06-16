@@ -67,12 +67,10 @@ export function RunSummary({ record }) {
     roomsEntered, monstersSlain, durationMs,
   } = record
 
-  const dc = deckChanges || { inscribed: [], transmuted: 0, hefted: 0, struck: 0 }
+  const dc = deckChanges || { inscribed: [], kitEdits: 0, kitSize: 0 }
   const deckChangeItems = [
     ...dc.inscribed.map(c => `${c.name} ${rankLabel(c.rank)}`),
-    ...(dc.transmuted > 0 ? [`${dc.transmuted} transmuted`] : []),
-    ...(dc.hefted > 0 ? [`${dc.hefted} hefted`] : []),
-    ...(dc.struck > 0 ? [`${dc.struck} struck`] : []),
+    ...(dc.kitEdits > 0 ? [`${dc.kitEdits} kit edit${dc.kitEdits === 1 ? '' : 's'}`] : []),
   ]
 
   const modeItems = [

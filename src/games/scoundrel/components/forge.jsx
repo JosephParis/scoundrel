@@ -1,44 +1,37 @@
 import { useMemo, useState } from 'react'
 import {
-  STRIKE_OFFERING_RANGE, HEFT_BONUS,
-  getStrikeOptions, getTransmuteOptions, getHeftOptions, getInscribeOptions,
-  suitColor, rankLabel,
+  UPGRADE_BONUS,
+  getInscribeFrameOptions, getUpgradeOptions, getRemoveOptions,
+  rankLabel,
   SUIT_GLYPH, HEART, DIAMOND, CLUB, SPADE, WOUND, KEY, MAP, STONE, isWound, isSkeletonKey, isMap, isWhetstone,
-  isEnabled,
 } from '../logic'
 import { ConfirmButton } from './atoms'
 import { cardBorderTone } from './SuitIcon'
 
 // -- Forge prompt ------------------------------------------------------
 
-export function ForgePromptPanel({ onStrike, onTransmute, onHeft, onInscribe, onSkip }) {
+export function ForgePromptPanel({ offer = [], onInscribe, onUpgrade, onRemove, onSkip }) {
   const [selected, setSelected] = useState(null)
   const options = [
     {
-      id: 'strike',
-      name: 'Strike',
-      description: `Remove a monster, then pick a weapon or potion at its rank or up to ${STRIKE_OFFERING_RANGE} below to also remove. Aces and Kings cannot be struck.`,
-      open: onStrike,
-    },
-    {
-      id: 'transmute',
-      name: 'Transmute',
-      description: "Change a card's suit. Rank is unchanged. Color is locked: hearts ↔ diamonds, clubs ↔ spades.",
-      open: onTransmute,
-    },
-    {
-      id: 'heft',
-      name: 'Heft',
-      description: `Raise a weapon or potion's rank by ${HEFT_BONUS}. Capped at rank 10.`,
-      open: onHeft,
-    },
-    isEnabled('customCards') && {
       id: 'inscribe',
       name: 'Inscribe',
-      description: 'Add a player-authored card to the deck: Lucky Coin, Cursed Idol, or Skeleton Key. Persists for the rest of the run.',
+      description: 'Add a card to your kit: a plain weapon or potion, or a special tool (Lucky Coin, Skeleton Key, and the like).',
       open: onInscribe,
     },
-  ].filter(Boolean)
+    {
+      id: 'upgrade',
+      name: 'Upgrade',
+      description: `Raise a kit weapon or potion's rank by ${UPGRADE_BONUS}. Capped at rank 10.`,
+      open: onUpgrade,
+    },
+    {
+      id: 'remove',
+      name: 'Remove',
+      description: 'Drop a card from your kit. A thinner kit means your good tools come up more often.',
+      open: onRemove,
+    },
+  ].filter(o => offer.includes(o.id))
   const selectedOption = options.find(o => o.id === selected)
   return (
     <section className="panel panel-warm p-6">
@@ -124,158 +117,22 @@ function ForgeViewShell({ kindLabel, title, blurb, children, onCancel, cancelLab
   )
 }
 
-// -- Strike / Transmute / Heft -----------------------------------------
+// -- Upgrade / Remove --------------------------------------------------
 
-export function StrikeView({ game, onConfirm, onCancel }) {
-  const { monsters, byRank } = useMemo(() => getStrikeOptions(game), [game])
-  const [pickedMonster, setPickedMonster] = useState(null)
-  const [pickedOffering, setPickedOffering] = useState(null)
-  const offerings = pickedMonster
-    ? Array.from({ length: STRIKE_OFFERING_RANGE + 1 }, (_, i) => byRank[pickedMonster.rank - i] || [])
-        .flat()
-    : []
-
-  const lowest = pickedMonster ? Math.max(2, pickedMonster.rank - STRIKE_OFFERING_RANGE) : null
-
-  const pickMonster = (c) => {
-    setPickedMonster(c)
-    setPickedOffering(null)
-  }
-
-  const confirmLabel = pickedMonster && pickedOffering
-    ? `Strike ${rankLabel(pickedMonster.rank)}${SUIT_GLYPH[pickedMonster.suit]} with ${rankLabel(pickedOffering.rank)}${SUIT_GLYPH[pickedOffering.suit]}`
-    : pickedMonster
-      ? 'Pick an offering'
-      : 'Pick a name'
-
-  return (
-    <ForgeViewShell
-      kindLabel="Strike"
-      title="Cast into the fire"
-      blurb={`Pick a monster, then pick a weapon or potion at its rank or up to ${STRIKE_OFFERING_RANGE} below. Both are gone for good. Kings and Aces are too heavy to melt.`}
-      onCancel={onCancel}
-      cancelLabel="Step away"
-      onConfirm={() => onConfirm(pickedMonster.id, pickedOffering.id)}
-      canConfirm={!!(pickedMonster && pickedOffering)}
-      confirmLabel={confirmLabel}
-    >
-      <div className="mb-4">
-        <div className="text-[10px] uppercase tracking-widest text-slate-500 mb-2">1. Name to bind</div>
-        <CardSuitFan
-          cards={monsters}
-          selected={pickedMonster?.id}
-          onPick={pickMonster}
-        />
-        {monsters.length === 0 && (
-          <div className="text-[12px] text-slate-500 italic">No dead remain to bind.</div>
-        )}
-      </div>
-
-      {pickedMonster && (
-        <div>
-          <div className="text-[10px] uppercase tracking-widest text-slate-500 mb-2">
-            2. Matched offering · rank {rankLabel(lowest)}–{rankLabel(pickedMonster.rank)}
-          </div>
-          {offerings.length > 0 ? (
-            <CardSuitFan
-              cards={offerings}
-              selected={pickedOffering?.id}
-              onPick={(o) => setPickedOffering(o)}
-            />
-          ) : (
-            <div className="text-[12px] text-slate-500 italic">
-              No weapon or potion of rank {rankLabel(lowest)}–{rankLabel(pickedMonster.rank)} remains. Pick another name.
-            </div>
-          )}
-        </div>
-      )}
-    </ForgeViewShell>
-  )
-}
-
-export function TransmuteView({ game, onConfirm, onCancel }) {
-  const cards = useMemo(() => getTransmuteOptions(game), [game])
-  const [picked, setPicked] = useState(null)
-  const [pickedSuit, setPickedSuit] = useState(null)
-  const suits = [HEART, DIAMOND, CLUB, SPADE]
-  const allowedSuits = picked
-    ? suits.filter(s => s !== picked.suit && suitColor(s) === suitColor(picked.suit))
-    : []
-
-  const pickCard = (c) => {
-    setPicked(c)
-    setPickedSuit(null)
-  }
-
-  const confirmLabel = picked && pickedSuit
-    ? `Transmute ${rankLabel(picked.rank)}${SUIT_GLYPH[picked.suit]} → ${rankLabel(picked.rank)}${SUIT_GLYPH[pickedSuit]}`
-    : picked
-      ? 'Pick a new suit'
-      : 'Pick a card'
-
-  return (
-    <ForgeViewShell
-      kindLabel="Transmute"
-      title="Reshape a card"
-      blurb="The rank stays. Color is locked, so hearts swap with diamonds, clubs swap with spades. A spade can become a club, a potion can become a weapon."
-      onCancel={onCancel}
-      cancelLabel="Step away"
-      onConfirm={() => onConfirm(picked.id, pickedSuit)}
-      canConfirm={!!(picked && pickedSuit)}
-      confirmLabel={confirmLabel}
-    >
-      <div className="mb-4">
-        <div className="text-[10px] uppercase tracking-widest text-slate-500 mb-2">1. Card to transmute</div>
-        <CardSuitFan
-          cards={cards}
-          selected={picked?.id}
-          onPick={pickCard}
-        />
-      </div>
-
-      {picked && (
-        <div>
-          <div className="text-[10px] uppercase tracking-widest text-slate-500 mb-2">
-            2. New suit for {rankLabel(picked.rank)}{SUIT_GLYPH[picked.suit]}
-          </div>
-          <div className="flex gap-2 flex-wrap justify-center">
-            {allowedSuits.map(s => {
-              const isSelected = pickedSuit === s
-              return (
-                <button
-                  key={s}
-                  onClick={() => setPickedSuit(s)}
-                  className={`px-4 py-2 rounded-md text-sm border transition ${
-                    isSelected
-                      ? 'bg-stone-700 border-rune text-parchment'
-                      : 'bg-stone-800 hover:bg-stone-700 border-stone-700 text-slate-200'
-                  }`}
-                >
-                  {SUIT_GLYPH[s]}: {rankLabel(picked.rank)} as a {suitName(s)}
-                </button>
-              )
-            })}
-          </div>
-        </div>
-      )}
-    </ForgeViewShell>
-  )
-}
-
-export function HeftView({ game, onConfirm, onCancel }) {
-  const cards = useMemo(() => getHeftOptions(game), [game])
+export function UpgradeView({ game, onConfirm, onCancel }) {
+  const cards = useMemo(() => getUpgradeOptions(game), [game])
   const [picked, setPicked] = useState(null)
 
-  const newRank = picked ? Math.min(10, picked.rank + HEFT_BONUS) : null
+  const newRank = picked ? Math.min(10, picked.rank + UPGRADE_BONUS) : null
   const confirmLabel = picked
-    ? `Heft ${rankLabel(picked.rank)}${SUIT_GLYPH[picked.suit]} → ${rankLabel(newRank)}${SUIT_GLYPH[picked.suit]}`
+    ? `Upgrade ${rankLabel(picked.rank)}${SUIT_GLYPH[picked.suit]} → ${rankLabel(newRank)}${SUIT_GLYPH[picked.suit]}`
     : 'Pick a card'
 
   return (
     <ForgeViewShell
-      kindLabel="Heft"
+      kindLabel="Upgrade"
       title="Add weight"
-      blurb={`Pick a weapon or potion. Its rank rises by ${HEFT_BONUS}. Capped at rank 10.`}
+      blurb={`Pick a kit weapon or potion. Its rank rises by ${UPGRADE_BONUS}. Capped at rank 10.`}
       onCancel={onCancel}
       cancelLabel="Step away"
       onConfirm={() => onConfirm(picked.id)}
@@ -290,7 +147,7 @@ export function HeftView({ game, onConfirm, onCancel }) {
         />
         {cards.length === 0 && (
           <div className="text-[12px] text-slate-500 italic">
-            No weapons or potions remain low enough to heft.
+            No kit weapons or potions remain low enough to upgrade.
           </div>
         )}
       </div>
@@ -298,24 +155,52 @@ export function HeftView({ game, onConfirm, onCancel }) {
   )
 }
 
-function suitName(suit) {
-  if (suit === HEART) return 'potion'
-  if (suit === DIAMOND) return 'weapon'
-  if (suit === CLUB) return 'club monster'
-  return 'spade monster'
+export function RemoveView({ game, onConfirm, onCancel }) {
+  const cards = useMemo(() => getRemoveOptions(game), [game])
+  const [picked, setPicked] = useState(null)
+
+  const confirmLabel = picked
+    ? `Remove ${rankLabel(picked.rank)}${SUIT_GLYPH[picked.suit]} from the kit`
+    : 'Pick a card'
+
+  return (
+    <ForgeViewShell
+      kindLabel="Remove"
+      title="Thin the kit"
+      blurb="Pick a card to drop. Fewer, better tools come up more often against a deck full of monsters."
+      onCancel={onCancel}
+      cancelLabel="Step away"
+      onConfirm={() => onConfirm(picked.id)}
+      canConfirm={!!picked}
+      confirmLabel={confirmLabel}
+    >
+      <div>
+        <CardSuitFan
+          cards={cards}
+          selected={picked?.id}
+          onPick={(c) => setPicked(c)}
+        />
+      </div>
+    </ForgeViewShell>
+  )
 }
 
 // -- Inscribe view -----------------------------------------------------
 
+// Inscribe adds a card to the kit. The menu mixes the plain weapon/potion
+// rolled for this visit (game.inscribeOffer) with the special frames. The
+// selection is `{ type:'plain', id }` or `{ type:'frame', frameId }`.
 export function InscribeView({ game, onConfirm, onCancel }) {
-  const frames = useMemo(() => getInscribeOptions(game), [game])
-  const [pickedFrameId, setPickedFrameId] = useState(null)
-  const pickedFrame = pickedFrameId ? frames.find(f => f.id === pickedFrameId) : null
-  // Default each frame's rank to its minimum until the player picks
-  // a different one. Stored per-frame so switching frames doesn't lose
-  // your prior rank choice.
+  const frames = useMemo(() => getInscribeFrameOptions(game), [game])
+  const offer = game.inscribeOffer
+  const plainCards = useMemo(
+    () => (offer ? [offer.weapon, offer.potion].filter(Boolean) : []),
+    [offer]
+  )
+  const [sel, setSel] = useState(null)
   const [rankByFrame, setRankByFrame] = useState({})
 
+  const pickedFrame = sel?.type === 'frame' ? frames.find(f => f.id === sel.frameId) : null
   const currentRank = pickedFrame
     ? (rankByFrame[pickedFrame.id] ?? pickedFrame.rankMin)
     : null
@@ -323,43 +208,60 @@ export function InscribeView({ game, onConfirm, onCancel }) {
     if (!pickedFrame) return
     setRankByFrame(prev => ({ ...prev, [pickedFrame.id]: rank }))
   }
-
   const hasRankPick = pickedFrame && pickedFrame.rankMax > pickedFrame.rankMin
-  const canConfirm = !!pickedFrame
-  const confirmLabel = pickedFrame
-    ? `Inscribe ${pickedFrame.name}${hasRankPick ? ` (${rankLabel(currentRank)})` : ''}`
-    : 'Pick a frame'
+
+  const canConfirm = !!sel
+  let confirmLabel = 'Pick a card'
+  if (sel?.type === 'plain') {
+    const c = plainCards.find(x => x.id === sel.id)
+    if (c) confirmLabel = `Add ${rankLabel(c.rank)}${SUIT_GLYPH[c.suit]}`
+  } else if (pickedFrame) {
+    confirmLabel = `Inscribe ${pickedFrame.name}${hasRankPick ? ` (${rankLabel(currentRank)})` : ''}`
+  }
+
+  const confirm = () => {
+    if (sel?.type === 'plain') onConfirm({ type: 'plain', id: sel.id })
+    else if (pickedFrame) onConfirm({ type: 'frame', frameId: pickedFrame.id, rank: currentRank })
+  }
 
   return (
     <ForgeViewShell
       kindLabel="Inscribe"
-      title="Set a new name in the deck"
-      blurb="Pick a frame. Inscribed cards persist for the rest of the run."
+      title="Add a tool to your kit"
+      blurb="Take the offered weapon or potion, or set a special tool. The card joins your kit for the rest of the run."
       onCancel={onCancel}
       cancelLabel="Step away"
-      onConfirm={() => onConfirm(pickedFrame.id, currentRank)}
+      onConfirm={confirm}
       canConfirm={canConfirm}
       confirmLabel={confirmLabel}
     >
-      <div className="space-y-3">
-        {frames.length === 0 ? (
-          <div className="text-[12px] text-slate-500 italic">
-            No frames available right now. All one-per-run frames are already inscribed.
-          </div>
-        ) : (
-          frames.map(frame => (
+      {plainCards.length > 0 && (
+        <div className="mb-4">
+          <div className="text-[10px] uppercase tracking-widest text-slate-500 mb-2">Take a tool</div>
+          <CardSuitFan
+            cards={plainCards}
+            selected={sel?.type === 'plain' ? sel.id : null}
+            onPick={(c) => setSel({ type: 'plain', id: c.id })}
+          />
+        </div>
+      )}
+
+      {frames.length > 0 && (
+        <div className="space-y-3">
+          <div className="text-[10px] uppercase tracking-widest text-slate-500">Or set a special tool</div>
+          {frames.map(frame => (
             <button
               key={frame.id}
-              onClick={() => setPickedFrameId(frame.id)}
+              onClick={() => setSel({ type: 'frame', frameId: frame.id })}
               className={`w-full text-left rounded-md border p-3 transition ${
-                pickedFrameId === frame.id
+                sel?.type === 'frame' && sel.frameId === frame.id
                   ? 'border-rune bg-stone-800/60 shadow-[0_0_18px_-8px_rgba(251,191,36,0.6)]'
                   : 'border-stone-700 bg-stone-900/40 hover:border-rune/60 hover:bg-stone-800/50'
               }`}
             >
               <div className="flex items-baseline justify-between">
                 <span className={`font-display text-base ${
-                  pickedFrameId === frame.id ? 'text-rune' : 'text-parchment'
+                  sel?.type === 'frame' && sel.frameId === frame.id ? 'text-rune' : 'text-parchment'
                 }`}>
                   {frame.name}
                 </span>
@@ -373,35 +275,35 @@ export function InscribeView({ game, onConfirm, onCancel }) {
                 {frame.description}
               </div>
             </button>
-          ))
-        )}
+          ))}
 
-        {hasRankPick && (
-          <div className="border border-stone-700 rounded-md p-3 bg-stone-900/40">
-            <div className="text-[10px] uppercase tracking-widest text-slate-500 mb-2">
-              Pick the rank
+          {hasRankPick && (
+            <div className="border border-stone-700 rounded-md p-3 bg-stone-900/40">
+              <div className="text-[10px] uppercase tracking-widest text-slate-500 mb-2">
+                Pick the rank
+              </div>
+              <div className="flex flex-wrap gap-2">
+                {Array.from(
+                  { length: pickedFrame.rankMax - pickedFrame.rankMin + 1 },
+                  (_, i) => pickedFrame.rankMin + i
+                ).map(r => (
+                  <button
+                    key={r}
+                    onClick={() => setCurrentRank(r)}
+                    className={`w-10 h-10 rounded-md border font-mono text-sm transition ${
+                      currentRank === r
+                        ? 'border-rune bg-stone-700 text-rune'
+                        : 'border-stone-700 bg-stone-900 text-parchment hover:border-rune/60'
+                    }`}
+                  >
+                    {rankLabel(r)}
+                  </button>
+                ))}
+              </div>
             </div>
-            <div className="flex flex-wrap gap-2">
-              {Array.from(
-                { length: pickedFrame.rankMax - pickedFrame.rankMin + 1 },
-                (_, i) => pickedFrame.rankMin + i
-              ).map(r => (
-                <button
-                  key={r}
-                  onClick={() => setCurrentRank(r)}
-                  className={`w-10 h-10 rounded-md border font-mono text-sm transition ${
-                    currentRank === r
-                      ? 'border-rune bg-stone-700 text-rune'
-                      : 'border-stone-700 bg-stone-900 text-parchment hover:border-rune/60'
-                  }`}
-                >
-                  {rankLabel(r)}
-                </button>
-              ))}
-            </div>
-          </div>
-        )}
-      </div>
+          )}
+        </div>
+      )}
     </ForgeViewShell>
   )
 }
@@ -493,13 +395,10 @@ function CardSuitFanRow({ suit, cards, selected, onPick, readOnly = false }) {
               <div className={`text-xs sm:text-sm font-bold leading-none ${cardColorClass}`}>
                 {(cardIsWound || cardIsKey || cardIsMap || cardIsStone) ? SUIT_GLYPH[c.suit] : `${rankLabel(c.rank)}${SUIT_GLYPH[c.suit]}`}
               </div>
-              {(c.transmuted || c.hefted || c.inscribed) && (
+              {(c.upgraded || c.inscribed) && (
                 <div className="flex flex-col items-end gap-0.5 leading-none">
-                  {c.transmuted && (
-                    <div className="text-[8px] text-rune uppercase tracking-wider">tm</div>
-                  )}
-                  {c.hefted && (
-                    <div className="text-[8px] text-rune uppercase tracking-wider">+{c.heftBonus}</div>
+                  {c.upgraded && (
+                    <div className="text-[8px] text-rune uppercase tracking-wider">+{c.upgradeBonus}</div>
                   )}
                   {c.inscribed && (
                     <div className="text-[8px] text-rune uppercase tracking-wider">in</div>

@@ -1,16 +1,45 @@
-import { HEART, DIAMOND, CLUB, SPADE } from '../constants'
+import { HEART, DIAMOND, CLUB, SPADE, makeKitCard, makeMonsterCard } from '../constants'
 import { isEnabled as isFlagEnabled } from '../flags'
 import { rollBossForDescent } from '../bosses'
 import { themesFor } from './helpers'
 
 // -- Base deck ---------------------------------------------------------
 
-export function buildBaseDeck() {
+// The dungeon's monster half: clubs and spades, ranks 2-14 (face cards and
+// aces included). 26 cards. The player never edits these; the dungeon owns them.
+export function buildBaseMonsters() {
   const cards = []
-  for (const suit of [HEART, DIAMOND, CLUB, SPADE]) {
+  for (const suit of [CLUB, SPADE]) {
     for (let r = 2; r <= 14; r++) {
-      const isRed = suit === HEART || suit === DIAMOND
-      if (isRed && r >= 11) continue
+      cards.push({ suit, rank: r, id: `${suit}${r}` })
+    }
+  }
+  return cards
+}
+
+// The full tool half: hearts and diamonds, ranks 2-10 (no red face cards or
+// aces). 18 cards. Retained for buildBaseDeck and any external callers.
+export function buildBaseTools() {
+  const cards = []
+  for (const suit of [DIAMOND, HEART]) {
+    for (let r = 2; r <= 10; r++) {
+      cards.push({ suit, rank: r, id: `${suit}${r}` })
+    }
+  }
+  return cards
+}
+
+// The base 44-card Scoundrel deck: monster half + full tool half.
+export function buildBaseDeck() {
+  return buildBaseMonsters().concat(buildBaseTools())
+}
+
+// The player's starting kit: the "low ten". Diamonds 2-6 and hearts 2-6.
+// Seeded into state.kit by createRun; persists and is edited across the run.
+export function buildStartingKit() {
+  const cards = []
+  for (const suit of [DIAMOND, HEART]) {
+    for (let r = 2; r <= 6; r++) {
       cards.push({ suit, rank: r, id: `${suit}${r}` })
     }
   }
@@ -26,48 +55,103 @@ export function shuffle(arr, rng = Math.random) {
   return a
 }
 
-// The "persistent deck": base 44 minus strikes, with transmutes and hefts
-// applied, plus any inscribed cards. IDs are stable across these edits.
-// Used by the Forge UI and as the starting point for buildDescentDeck.
-export function computeCurrentDeck(state) {
-  let deck = buildBaseDeck()
-  const strikeSet = new Set(state.strikes)
-  deck = deck.filter(c => !strikeSet.has(c.id))
-  deck = deck.map(c => {
-    let result = c
-    if (state.transmutes[c.id]) {
-      result = {
-        ...result,
-        suit: state.transmutes[c.id],
-        transmuted: true,
-        originalSuit: c.suit,
-      }
-    }
-    const heftBonus = state.hefts?.[c.id]
-    if (heftBonus) {
-      result = {
-        ...result,
-        rank: result.rank + heftBonus,
-        hefted: true,
-        heftBonus,
-        preHeftRank: c.rank,
-      }
-    }
-    return result
-  })
-  const inscribed = state.inscribed || []
-  if (inscribed.length > 0) {
-    deck = deck.concat(inscribed)
+// -- Dungeon monster set (per-descent) ---------------------------------
+
+// Rank bands the dungeon samples from. low/mid/high let a theme skew the
+// monster distribution without enumerating every rank.
+const RANK_BANDS = {
+  low: [2, 6],
+  mid: [7, 10],
+  high: [11, 14],
+}
+
+// The default dungeon: the canonical 26-card monster half, deterministic and
+// identical to today. Themes that omit a composition payload use this, so
+// existing themes are unchanged; dilution and rank-skew enter only through
+// composition themes.
+export const DEFAULT_DUNGEON = { canonical: true }
+
+function pickBand(weights, rng) {
+  const entries = Object.entries(weights).filter(([, w]) => w > 0)
+  const total = entries.reduce((s, [, w]) => s + w, 0)
+  let roll = rng() * total
+  for (const [band, w] of entries) {
+    roll -= w
+    if (roll < 0) return band
   }
-  return deck
+  return entries[entries.length - 1][0]
+}
+
+// Stamp at most one trait on a sampled monster per the spec's `traits`
+// probabilities (armored / fast / warded). Mutates and returns the card.
+function applyMonsterTraits(card, traits, rng) {
+  if (!traits) return card
+  if (rng() < (traits.armored ?? 0)) card.armored = true
+  else if (rng() < (traits.fast ?? 0)) card.fast = true
+  else if (rng() < (traits.warded ?? 0)) card.warded = true
+  return card
+}
+
+// Build the dungeon's monster set for a descent from a composition spec:
+//   { canonical: true }                          -> the deterministic 26
+//   { count, bandWeights, suitSkew, traits }     -> sampled set of `count` monsters
+// bandWeights default to an even low/mid/high spread; suitSkew is the chance a
+// monster is a spade (vs club), default 0.5; traits stamps armored/fast/warded.
+export function buildDungeonMonsters(rng, spec = DEFAULT_DUNGEON) {
+  if (!spec || spec.canonical) return buildBaseMonsters()
+  const weights = spec.bandWeights || { low: 1, mid: 1, high: 1 }
+  const suitSkew = spec.suitSkew ?? 0.5
+  const out = []
+  for (let i = 0; i < spec.count; i++) {
+    const band = pickBand(weights, rng)
+    const [lo, hi] = RANK_BANDS[band]
+    const rank = lo + Math.floor(rng() * (hi - lo + 1))
+    const suit = rng() < suitSkew ? SPADE : CLUB
+    out.push(applyMonsterTraits(makeMonsterCard(suit, rank), spec.traits, rng))
+  }
+  return out
+}
+
+// Resolve the dungeon composition spec for the descent. Composition rides on
+// the theme (one roll per descent); the first active theme that defines a
+// `count` wins, else the canonical default. Compound themes thus take the
+// first child that carries a spec.
+export function resolveDungeonSpec(themeId, themeChildren) {
+  const themes = themesFor(themeId, themeChildren)
+  const withSpec = themes.find(t => t && t.count != null)
+  if (!withSpec) return DEFAULT_DUNGEON
+  return {
+    count: withSpec.count,
+    bandWeights: withSpec.bandWeights,
+    suitSkew: withSpec.suitSkew,
+    traits: withSpec.traits,
+  }
+}
+
+// Roll the plain weapon/potion the Inscribe verb can offer this visit. Rank is
+// capped by run progress (4 + sigils, max 10); the player takes one or skips.
+export function rollInscribeCandidates(rng, sigils) {
+  const cap = Math.min(10, 4 + sigils)
+  const rollRank = () => 2 + Math.floor(rng() * (cap - 1)) // 2..cap inclusive
+  return {
+    weapon: makeKitCard(DIAMOND, rollRank()),
+    potion: makeKitCard(HEART, rollRank()),
+  }
 }
 
 // Themes that modify the deck return either a plain array (the new deck) or
 // an object `{ deck, log, additions?, removals? }`. Compound themes chain
 // through each child's applyToDeck in order, accumulating log lines and
 // per-theme card changes so the UI can animate exactly what entered/left.
+//
+// The descent deck is the dungeon's per-descent monster set (rolled from the
+// theme's composition spec) merged with the player's kit, then shuffled. Theme
+// deck-mutations (tool disruption, monster adds) and boss injection run on the
+// assembled deck.
 export function buildDescentDeck(state, themeId, themeChildren, rng) {
-  let deck = computeCurrentDeck(state)
+  const spec = resolveDungeonSpec(themeId, themeChildren)
+  const monsterDeck = buildDungeonMonsters(rng, spec)
+  let deck = monsterDeck.concat(state.kit || buildStartingKit())
   const themes = themesFor(themeId, themeChildren)
   let extraLog = []
   const changes = []
