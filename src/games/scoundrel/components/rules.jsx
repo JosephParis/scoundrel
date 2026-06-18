@@ -1,5 +1,5 @@
 import { useState } from 'react'
-import { BOONS, THEMES } from '../logic'
+import { BOONS, THEMES, SIGIL_TARGET } from '../logic'
 
 // -- Tutorial intro (shown in sanctuary action slot) -------------------
 
@@ -162,7 +162,7 @@ function RulesContentFull() {
   return (
     <div className="space-y-5 text-[13px] leading-snug">
       <p className="text-slate-300">
-        Earn <span className="text-rune font-semibold">7 sigils</span> (one per successful
+        Earn <span className="text-rune font-semibold">{SIGIL_TARGET} sigils</span> (one per successful
         descent) to escape the hold. Die in the dungeon and the run ends.
       </p>
 

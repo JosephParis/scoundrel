@@ -1,7 +1,7 @@
 import { useEffect, useMemo, useState } from 'react'
 import {
   THEMES, BOONS, getTheme,
-  rollForgeOffer, rollInscribeCandidates,
+  rollForgeGrants, initForgeBatch,
   FLAG_IDS, FLAG_META, getFlags, setFlag, resetAllFlags,
 } from '../logic'
 
@@ -100,6 +100,10 @@ export function DevModal({ open, onClose, game, setGame }) {
     setGame(g => {
       // The Forge opens after every descent (any non-opening, non-final sigil).
       const forgeOpen = sigils >= 1 && sigils < g.sigilTarget
+      const forgeGrants = forgeOpen ? rollForgeGrants(g.kit, sigils, Math.random) : []
+      const batch = forgeGrants.length > 0
+        ? initForgeBatch(forgeGrants, g.kit, sigils, Math.random)
+        : { forgeGrantIndex: 0, forgeChoices: [] }
       return {
         ...g,
         sigilsEarned: sigils,
@@ -111,10 +115,9 @@ export function DevModal({ open, onClose, game, setGame }) {
         boonChosen: true,
         boonOffers: [],
         forgeOpen,
-        forgeUsed: false,
-        forgeView: null,
-        forgeOffer: forgeOpen ? rollForgeOffer(g.kit, Math.random) : [],
-        inscribeOffer: forgeOpen ? rollInscribeCandidates(Math.random, sigils) : null,
+        forgeGrants,
+        forgeGrantIndex: batch.forgeGrantIndex,
+        forgeChoices: batch.forgeChoices,
         mutedBoon: null,
         log: [...g.log, `[dev] overrides applied: sigils ${sigils}, theme "${themeObj?.name || themeId}".`],
       }

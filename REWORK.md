@@ -93,25 +93,39 @@ draft proposed renaming the internals to `edit*`; we are not doing that, because
 is an established storyline element and the every-visit cadence fits its "coals never died"
 framing.
 
-**Cadence (decided).** The Forge opens on **every sanctuary visit except the opening one**
-(so the visits after descents 1 through 6, about six edit opportunities a run). The player
-applies **one edit per visit**, then the Forge closes for the visit. The variability lives
-in *which* verbs a visit offers, not in whether the Forge opens: every non-opening visit
-shows a subset of the verb pool (sometimes one verb, sometimes a few), and the player picks
-one edit from it. Inscribe is always in the subset so kit growth is never starved; Upgrade
-and Remove appear conditionally.
+**Cadence (decided).** The Forge opens on **every sanctuary visit except the opening one**.
 
-**The verb pool (decided first pass).** Three verbs:
+**Granted batch of typed edits (decided).** A visit does not ask the player to pick one
+verb from a menu; it **grants a batch of edits whose types are chosen for the player**, and
+the player carries each one out. The agency is "how do I spend the edits I was handed," not
+"which one edit do I make."
 
-- **Inscribe** adds a card to the kit. This is the single "add to kit" verb; it absorbed
-  a separate Add. Its menu mixes plain tools (a rolled weapon or potion at the progress
-  rank cap, take it or skip) with the special frames (Lucky Coin, Potion of Strength,
-  Skeleton Key, Map, Whetstone). Because Inscribe is now the only way to grow the kit, it
-  is always available; the `customCards` flag gates only the special frames within it,
-  not the plain-tool adds. Cursed Idol is dropped, since the player only builds tools.
-- **Upgrade** raises a kit card's rank by +2, capped at rank 10. (Replaces the old Heft.)
-- **Remove** drops a kit card. A real verb, not a penalty: thinning a dud raises the
-  *density* of good tools against the dungeon's dilution.
+- **How many:** 2 edits per visit through Tier 1-2, **3 from Tier 3** (sigils 5+). About
+  14 edits a run, which is also the kit-growth dial against the scaling monster decks.
+- **Types:** each grant is rolled from a weighted bag, **Inscribe 50 / Upgrade 35 /
+  Remove 15**; an unavailable type (no upgrade target, kit too small to remove) falls back
+  to Inscribe. Duplicates are allowed (two Inscribes can happen), but **at most one Remove
+  per visit**, since multiple Removes is the only repeat rarely wanted.
+- **Each edit is a card-choice screen:** the active grant shows **up to 4 candidate cards**
+  laid out like a room or boon offer; the player picks one (or skips that edit), then the
+  next grant opens. An "Edit N of M" header tracks the batch. Empty grants (e.g. an Upgrade
+  with nothing left to upgrade) are skipped automatically.
+
+**The three edits.** Each presents its 3-4 cards as selectable card faces:
+
+- **Inscribe** adds a card to the kit. Its 4 candidates mix plain tools (weapons/potions at
+  the progress rank cap) with the occasional special frame (Lucky Coin, Skeleton Key, and
+  the like). It absorbed a separate Add; the `customCards` flag gates only the special
+  frames within it, not the plain-tool adds. Cursed Idol is dropped (the player builds only
+  tools). Inscribe is weighted high so kit growth is never starved.
+- **Upgrade** raises a kit card's rank by +2 (capped at 10), chosen from up to 4 of your
+  upgradable kit cards. Replaces the old Heft.
+- **Remove** drops one of up to 4 of your kit cards. A real verb, not a penalty: thinning a
+  dud raises the *density* of good tools against the dungeon's dilution.
+
+State: `forgeGrants` (the ordered type batch), `forgeGrantIndex` (active edit), and
+`forgeChoices` (the active edit's candidate cards), replacing the old single-pick
+`forgeOffer` / `forgeUsed` / `forgeView` / `inscribeOffer`.
 
 **Add bounding (decided).** The plain weapon/potion an Inscribe can offer is a concrete
 rolled card whose rank is capped by run progress: `cap = 4 + sigils earned`, clamped to

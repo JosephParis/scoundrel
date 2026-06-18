@@ -151,10 +151,9 @@ export const THEMES = {
   the_swarm: {
     id: 'the_swarm',
     name: 'The Swarm',
-    description: 'The dungeon teems: 36 monsters, mostly low rank. Your tools are spread thin.',
+    description: 'Adds a swarm of low-rank monsters, spreading your tools thin.',
     tier: 1,
-    count: 36,
-    bandWeights: { low: 4, mid: 1, high: 0 },
+    monsterMods: { add: { count: 14, band: 'low' } },
   },
 
   // ---- Tier 2 ----------------------------------------------------------
@@ -171,7 +170,7 @@ export const THEMES = {
     id: 'hungry_dark',
     name: 'Hungry Dark',
     description: 'You cannot flee this descent.',
-    tier: 3,
+    tier: 4,
     cannotFlee: true,
   },
 
@@ -179,7 +178,7 @@ export const THEMES = {
     id: 'cramped_halls',
     name: 'Cramped Halls',
     description: 'Rooms hold 5 cards. Clear 4 to refill.',
-    tier: 2,
+    tier: 3,
     roomSize: 5,
   },
 
@@ -187,7 +186,7 @@ export const THEMES = {
     id: 'iron_bones',
     name: 'The Catacombs',
     description: 'You cannot fight bare-handed while a usable weapon is equipped.',
-    tier: 2,
+    tier: 3,
     ironBones: true,
   },
 
@@ -195,7 +194,7 @@ export const THEMES = {
     id: 'cracked_blade',
     name: 'The Anvil',
     description: 'Your weapon is no longer bound by rank, but it shatters if it slays a monster of higher rank than itself.',
-    tier: 3,
+    tier: 4,
     crackedBlade: true,
   },
 
@@ -242,13 +241,15 @@ export const THEMES = {
   the_reliquary: {
     id: 'the_reliquary',
     name: 'The Vault',
-    description: 'Adds 4 aces to the deck.',
+    description: "Adds 4 copies of the deck's strongest monster.",
     tier: 2,
     applyToDeck(deck, rng) {
+      const monsterRanks = deck.filter(c => c.suit === SPADE || c.suit === CLUB).map(c => c.rank)
+      const top = monsterRanks.length ? Math.max(...monsterRanks) : 10
       const additions = []
       for (let i = 0; i < 4; i++) {
         const suit = rng() < 0.5 ? SPADE : CLUB
-        additions.push({ suit, rank: 14, id: `${suit}14_relic${i}`, themed: true })
+        additions.push({ suit, rank: top, id: `${suit}${top}_relic${i}`, themed: true })
       }
       const log = [`The Reliquary unsealed ${joinList(additions.map(fmt))}.`]
       return { deck: deck.concat(additions), log, additions, removals: [] }
@@ -258,19 +259,17 @@ export const THEMES = {
   the_gauntlet: {
     id: 'the_gauntlet',
     name: 'The Gauntlet',
-    description: 'Few monsters (16), all mid to high rank. Dense with your tools, but every fight bites.',
-    tier: 2,
-    count: 16,
-    bandWeights: { low: 0, mid: 1, high: 2 },
+    description: 'Strips out the low-rank monsters, leaving a smaller, deadlier deck.',
+    tier: 3,
+    monsterMods: { remove: { count: 8, band: 'low' } },
   },
 
   the_press: {
     id: 'the_press',
     name: 'The Press',
-    description: '28 monsters, four in five of them spades. A one-suit tide.',
+    description: 'Most club monsters turn to spades. A one-suit tide.',
     tier: 2,
-    count: 28,
-    suitSkew: 0.8,
+    monsterMods: { suitShift: { to: SPADE, fraction: 0.6 } },
   },
 
   the_bulwark: {
@@ -278,18 +277,15 @@ export const THEMES = {
     name: 'The Bulwark',
     description: 'About two in five monsters are armored: weapons do nothing, fight them bare-handed.',
     tier: 2,
-    count: 22,
-    traits: { armored: 0.4 },
+    monsterMods: { traits: { armored: 0.4 } },
   },
 
   the_frenzy: {
     id: 'the_frenzy',
     name: 'The Frenzy',
-    description: 'About a third of the monsters are fast and strike twice. Low ranks, but the hits add up.',
-    tier: 2,
-    count: 24,
-    bandWeights: { low: 3, mid: 2, high: 0 },
-    traits: { fast: 0.35 },
+    description: 'About two in five monsters are fast and strike twice. The hits add up.',
+    tier: 3,
+    monsterMods: { traits: { fast: 0.4 } },
   },
 
   // ---- Tier 3 ----------------------------------------------------------
@@ -298,17 +294,15 @@ export const THEMES = {
     id: 'the_snare',
     name: 'The Snare',
     description: 'About a third of the monsters are warded: you cannot flee a room while one is present.',
-    tier: 3,
-    count: 20,
-    bandWeights: { low: 0, mid: 2, high: 1 },
-    traits: { warded: 0.3 },
+    tier: 4,
+    monsterMods: { traits: { warded: 0.3 } },
   },
 
   echo: {
     id: 'echo',
     name: 'Echo',
     description: 'Every third room: every monster present is duplicated and slid to the bottom of the deck.',
-    tier: 3,
+    tier: 4,
     echo: 3,
   },
 
@@ -316,7 +310,7 @@ export const THEMES = {
     id: 'carrion',
     name: 'Carrion',
     description: 'Each slain monster returns to the deck once, as a rank-2 of its suit.',
-    tier: 3,
+    tier: 4,
     carrion: true,
   },
 
@@ -324,7 +318,7 @@ export const THEMES = {
     id: 'wormwood',
     name: 'Wormwood',
     description: 'One of your Boons is muted this descent.',
-    tier: 2,
+    tier: 3,
     wormwood: true,
   },
 
@@ -332,7 +326,7 @@ export const THEMES = {
     id: 'the_long_night',
     name: 'The Long Night',
     description: 'Two Tier 2 themes at once.',
-    tier: 3,
+    tier: 4,
     compound: true,
   },
 }
@@ -340,15 +334,19 @@ export const THEMES = {
 const TIER_1_IDS = Object.values(THEMES).filter(t => t.tier === 1).map(t => t.id)
 const TIER_2_IDS = Object.values(THEMES).filter(t => t.tier === 2).map(t => t.id)
 const TIER_3_IDS = Object.values(THEMES).filter(t => t.tier === 3).map(t => t.id)
+const TIER_4_IDS = Object.values(THEMES).filter(t => t.tier === 4).map(t => t.id)
 
-// Each band of descents draws exclusively from its own tier. Higher tiers
-// crowd lower ones out as the dungeon deepens:
-// - 0–2 sigils → Tier 1 only (descents 2–3)
-// - 3–4 sigils → Tier 2 only (descents 4–5)
-// - 5+ sigils  → Tier 3 only (descents 6–7)
+// Each band of descents draws exclusively from its own tier, one face card per
+// tier (Tier 1 jacks, 2 queens, 3 kings, 4 aces). The 10-descent run splits
+// 3 / 2 / 2 / 2 after the Quiet:
+// - sigils 1–3 → Tier 1 (descents 2–4, jacks)
+// - sigils 4–5 → Tier 2 (descents 5–6, queens)
+// - sigils 6–7 → Tier 3 (descents 7–8, kings)
+// - sigils 8+  → Tier 4 (descents 9–10, aces)
 function getThemePool(sigils) {
-  if (sigils >= 5) return TIER_3_IDS
-  if (sigils >= 3) return TIER_2_IDS
+  if (sigils >= 8) return TIER_4_IDS
+  if (sigils >= 6) return TIER_3_IDS
+  if (sigils >= 4) return TIER_2_IDS
   return TIER_1_IDS
 }
 

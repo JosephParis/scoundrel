@@ -1,13 +1,12 @@
 import { useEffect, useState } from 'react'
 import {
   descend, pickBoon, setRunMode, setRunAscension,
-  openForgeAction, closeForgeView, skipForge,
-  applyInscribe, upgradeKitCard, removeKitCard,
+  applyForgeEdit, skipForgeEdit, forgeActive,
   isEnabled,
 } from '../logic'
 import { PhaseRail, LogPanel, DescendAction } from './atoms'
 import { BoonOfferPanel, RunStatePanel, DeckPeekButton, DeckModal, LoadoutPanel } from './boons'
-import { ForgePromptPanel, InscribeView, UpgradeView, RemoveView } from './forge'
+import { EditOfferPanel } from './forge'
 import { RulesInlinePanel, TutorialIntroPanel } from './rules'
 import { ModePickerPanel, ModeBadge } from './modes'
 import { LibraryPanel } from './library'
@@ -16,12 +15,11 @@ import { AscensionPickerPanel, AscensionBadge } from './ascensions'
 export function SanctuaryView({ game, setGame, onSkipTutorial, ascensionUnlocked = 0 }) {
   const isOpeningVisit = game.sigilsEarned === 0
   const needsBoon = !isOpeningVisit && !game.boonChosen && game.boonOffers.length > 0
-  const forgePending = game.forgeOpen && !game.forgeUsed
-  // Sequence is boon → forge → descend. Forge prompt only appears
-  // once the boon is picked. Descend only appears once both stages
-  // are resolved (forge used, skipped, or never available).
-  const showForgePrompt = forgePending && !needsBoon && !game.forgeView
-  const showDescend = !needsBoon && !showForgePrompt && game.forgeView === null
+  // Sequence is boon → forge edits → descend. The Forge grants a batch of edits
+  // worked one at a time; descend appears once the batch is done (or none).
+  const forgeWaiting = game.forgeOpen && (game.forgeGrants || []).length > 0
+  const showForge = !needsBoon && forgeActive(game)
+  const showDescend = !needsBoon && !showForge
   const [deckOpen, setDeckOpen] = useState(false)
 
   useEffect(() => {
@@ -67,41 +65,16 @@ export function SanctuaryView({ game, setGame, onSkipTutorial, ascensionUnlocked
       <BoonOfferPanel
         offers={game.boonOffers}
         onPick={(id) => setGame(g => pickBoon(g, id))}
-        forgeAfter={forgePending}
+        forgeAfter={forgeWaiting}
       />
     )
-  } else if (game.forgeView === 'inscribe') {
+  } else if (showForge) {
     actionSlot = (
-      <InscribeView
+      <EditOfferPanel
+        key={game.forgeGrantIndex}
         game={game}
-        onConfirm={(sel) => setGame(g => applyInscribe(g, sel))}
-        onCancel={() => setGame(g => closeForgeView(g))}
-      />
-    )
-  } else if (game.forgeView === 'upgrade') {
-    actionSlot = (
-      <UpgradeView
-        game={game}
-        onConfirm={(cid) => setGame(g => upgradeKitCard(g, cid))}
-        onCancel={() => setGame(g => closeForgeView(g))}
-      />
-    )
-  } else if (game.forgeView === 'remove') {
-    actionSlot = (
-      <RemoveView
-        game={game}
-        onConfirm={(cid) => setGame(g => removeKitCard(g, cid))}
-        onCancel={() => setGame(g => closeForgeView(g))}
-      />
-    )
-  } else if (showForgePrompt) {
-    actionSlot = (
-      <ForgePromptPanel
-        offer={game.forgeOffer}
-        onInscribe={() => setGame(g => openForgeAction(g, 'inscribe'))}
-        onUpgrade={() => setGame(g => openForgeAction(g, 'upgrade'))}
-        onRemove={() => setGame(g => openForgeAction(g, 'remove'))}
-        onSkip={() => setGame(g => skipForge(g))}
+        onPick={(cardId) => setGame(g => applyForgeEdit(g, cardId))}
+        onSkip={() => setGame(g => skipForgeEdit(g))}
       />
     )
   } else {

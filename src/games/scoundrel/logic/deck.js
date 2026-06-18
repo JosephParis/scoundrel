@@ -1,4 +1,4 @@
-import { HEART, DIAMOND, CLUB, SPADE, makeKitCard, makeMonsterCard } from '../constants'
+import { HEART, DIAMOND, CLUB, SPADE, makeMonsterCard } from '../constants'
 import { isEnabled as isFlagEnabled } from '../flags'
 import { rollBossForDescent } from '../bosses'
 import { themesFor } from './helpers'
@@ -57,29 +57,58 @@ export function shuffle(arr, rng = Math.random) {
 
 // -- Dungeon monster set (per-descent) ---------------------------------
 
-// Rank bands the dungeon samples from. low/mid/high let a theme skew the
-// monster distribution without enumerating every rank.
+// Rank bands a theme's monster mods draw from. `high` is clamped to the tier
+// ceiling (bandRange) so a theme never introduces a face card above its tier.
 const RANK_BANDS = {
   low: [2, 6],
   mid: [7, 10],
   high: [11, 14],
 }
 
-// The default dungeon: the canonical 26-card monster half, deterministic and
-// identical to today. Themes that omit a composition payload use this, so
-// existing themes are unchanged; dilution and rank-skew enter only through
-// composition themes.
-export const DEFAULT_DUNGEON = { canonical: true }
+// A band's [lo, hi] rank range, clamped to the tier ceiling.
+function bandRange(band, ceiling) {
+  const [lo, hi] = RANK_BANDS[band] || RANK_BANDS.low
+  return [Math.min(lo, ceiling), Math.min(hi, ceiling)]
+}
 
-function pickBand(weights, rng) {
-  const entries = Object.entries(weights).filter(([, w]) => w > 0)
-  const total = entries.reduce((s, [, w]) => s + w, 0)
-  let roll = rng() * total
-  for (const [band, w] of entries) {
-    roll -= w
-    if (roll < 0) return band
+// Default dungeon strength scales with progress, one face card per theme tier:
+// the Quiet tops out at rank 9, then Tier 1 adds jacks, Tier 2 queens, Tier 3
+// kings, Tier 4 aces. The top rank holds steady within a tier, so a new face
+// card appears only when you cross into the next tier.
+function defaultMonsterCeiling(sigils) {
+  const s = Math.max(0, sigils || 0)
+  if (s === 0) return 9    // The Quiet
+  if (s <= 3) return 11    // Tier 1 (sigils 1-3): jacks
+  if (s <= 5) return 12    // Tier 2 (sigils 4-5): queens
+  if (s <= 7) return 13    // Tier 3 (sigils 6-7): kings
+  return 14                // Tier 4 (sigils 8+): aces
+}
+
+// In the ace tier (Tier 4, sigils 8+) the rank can't climb further, so the
+// dungeon escalates by volume instead: extra high-rank (J-A) monsters pile on,
+// more each descent into the tier. This is also the climax tier's extra rooms.
+const ACE_TIER_START_SIGIL = 8
+const EXTRA_MONSTERS_PER_SIGIL = 3
+
+// The default (non-composition) monster set: one of each club and spade from
+// rank 2 up to the progress ceiling, plus the ace-tier high-rank extras above.
+// 16 cards at the Quiet up to 26 at the ace tier, then +3 per descent into it.
+export function buildDefaultMonsters(sigils = 0) {
+  const ceiling = defaultMonsterCeiling(sigils)
+  const cards = []
+  for (const suit of [CLUB, SPADE]) {
+    for (let r = 2; r <= ceiling; r++) {
+      cards.push({ suit, rank: r, id: `${suit}${r}` })
+    }
   }
-  return entries[entries.length - 1][0]
+  const intoAceTier = (sigils || 0) - ACE_TIER_START_SIGIL + 1
+  const extra = Math.max(0, intoAceTier) * EXTRA_MONSTERS_PER_SIGIL
+  for (let i = 0; i < extra; i++) {
+    const rank = 11 + (i % 4)              // J, Q, K, A cycling
+    const suit = i % 2 === 0 ? CLUB : SPADE
+    cards.push(makeMonsterCard(suit, rank))
+  }
+  return cards
 }
 
 // Stamp at most one trait on a sampled monster per the spec's `traits`
@@ -92,67 +121,72 @@ function applyMonsterTraits(card, traits, rng) {
   return card
 }
 
-// Build the dungeon's monster set for a descent from a composition spec:
-//   { canonical: true }                          -> the deterministic 26
-//   { count, bandWeights, suitSkew, traits }     -> sampled set of `count` monsters
-// bandWeights default to an even low/mid/high spread; suitSkew is the chance a
-// monster is a spade (vs club), default 0.5; traits stamps armored/fast/warded.
-export function buildDungeonMonsters(rng, spec = DEFAULT_DUNGEON) {
-  if (!spec || spec.canonical) return buildBaseMonsters()
-  const weights = spec.bandWeights || { low: 1, mid: 1, high: 1 }
-  const suitSkew = spec.suitSkew ?? 0.5
-  const out = []
-  for (let i = 0; i < spec.count; i++) {
-    const band = pickBand(weights, rng)
-    const [lo, hi] = RANK_BANDS[band]
-    const rank = lo + Math.floor(rng() * (hi - lo + 1))
-    const suit = rng() < suitSkew ? SPADE : CLUB
-    out.push(applyMonsterTraits(makeMonsterCard(suit, rank), spec.traits, rng))
+// Apply one theme's monster modifications to the (tier base) monster deck.
+// Every descent starts from buildDefaultMonsters; a theme adds, removes,
+// re-suits, or traits those monsters, always within the tier's rank ceiling:
+//   remove:    { count, band }                drop N monsters from a band
+//   add:       { count, band }                add N monsters in a band
+//   suitShift: { to, fraction }               convert a fraction of the other suit
+//   traits:    { armored?, fast?, warded? }   stamp on the monsters
+export function applyMonsterMods(monsters, mods, ceiling, rng) {
+  if (!mods) return monsters
+  let out = monsters.slice()
+
+  if (mods.remove) {
+    const [lo, hi] = bandRange(mods.remove.band, ceiling)
+    const pool = out.filter(m => m.rank >= lo && m.rank <= hi)
+    const removeIds = new Set()
+    for (let i = 0; i < mods.remove.count && pool.length > 0; i++) {
+      const idx = Math.floor(rng() * pool.length)
+      removeIds.add(pool[idx].id)
+      pool.splice(idx, 1)
+    }
+    out = out.filter(m => !removeIds.has(m.id))
   }
+
+  if (mods.add) {
+    const [lo, hi] = bandRange(mods.add.band, ceiling)
+    for (let i = 0; i < mods.add.count; i++) {
+      const rank = lo + Math.floor(rng() * (hi - lo + 1))
+      const suit = rng() < 0.5 ? CLUB : SPADE
+      out.push(makeMonsterCard(suit, rank))
+    }
+  }
+
+  if (mods.suitShift) {
+    const from = mods.suitShift.to === SPADE ? CLUB : SPADE
+    out = out.map(m =>
+      (m.suit === from && rng() < mods.suitShift.fraction)
+        ? makeMonsterCard(mods.suitShift.to, m.rank)
+        : m
+    )
+  }
+
+  if (mods.traits) {
+    out = out.map(m => applyMonsterTraits({ ...m }, mods.traits, rng))
+  }
+
   return out
 }
 
-// Resolve the dungeon composition spec for the descent. Composition rides on
-// the theme (one roll per descent); the first active theme that defines a
-// `count` wins, else the canonical default. Compound themes thus take the
-// first child that carries a spec.
-export function resolveDungeonSpec(themeId, themeChildren) {
-  const themes = themesFor(themeId, themeChildren)
-  const withSpec = themes.find(t => t && t.count != null)
-  if (!withSpec) return DEFAULT_DUNGEON
-  return {
-    count: withSpec.count,
-    bandWeights: withSpec.bandWeights,
-    suitSkew: withSpec.suitSkew,
-    traits: withSpec.traits,
-  }
-}
-
-// Roll the plain weapon/potion the Inscribe verb can offer this visit. Rank is
-// capped by run progress (4 + sigils, max 10); the player takes one or skips.
-export function rollInscribeCandidates(rng, sigils) {
-  const cap = Math.min(10, 4 + sigils)
-  const rollRank = () => 2 + Math.floor(rng() * (cap - 1)) // 2..cap inclusive
-  return {
-    weapon: makeKitCard(DIAMOND, rollRank()),
-    potion: makeKitCard(HEART, rollRank()),
-  }
-}
-
-// Themes that modify the deck return either a plain array (the new deck) or
-// an object `{ deck, log, additions?, removals? }`. Compound themes chain
-// through each child's applyToDeck in order, accumulating log lines and
+// Themes that modify the deck via applyToDeck return either a plain array (the
+// new deck) or an object `{ deck, log, additions?, removals? }`. Compound themes
+// chain through each child's applyToDeck in order, accumulating log lines and
 // per-theme card changes so the UI can animate exactly what entered/left.
 //
-// The descent deck is the dungeon's per-descent monster set (rolled from the
-// theme's composition spec) merged with the player's kit, then shuffled. Theme
-// deck-mutations (tool disruption, monster adds) and boss injection run on the
-// assembled deck.
+// Every descent starts from the tier's base monster deck (buildDefaultMonsters);
+// active themes modify it (applyMonsterMods, within the tier ceiling), it merges
+// with the kit, then applyToDeck themes and boss injection run on the assembled
+// deck before the shuffle.
 export function buildDescentDeck(state, themeId, themeChildren, rng) {
-  const spec = resolveDungeonSpec(themeId, themeChildren)
-  const monsterDeck = buildDungeonMonsters(rng, spec)
-  let deck = monsterDeck.concat(state.kit || buildStartingKit())
+  const sigils = state.sigilsEarned || 0
+  const ceiling = defaultMonsterCeiling(sigils)
   const themes = themesFor(themeId, themeChildren)
+  let monsterDeck = buildDefaultMonsters(sigils)
+  for (const theme of themes) {
+    if (theme.monsterMods) monsterDeck = applyMonsterMods(monsterDeck, theme.monsterMods, ceiling, rng)
+  }
+  let deck = monsterDeck.concat(state.kit || buildStartingKit())
   let extraLog = []
   const changes = []
   for (const theme of themes) {

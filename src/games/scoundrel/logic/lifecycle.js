@@ -10,8 +10,8 @@ import {
   hasBoon,
   markTutorialLesson,
 } from './helpers'
-import { buildDescentDeck, buildTutorialDeck, buildStartingKit, rollInscribeCandidates } from './deck'
-import { rollForgeOffer } from './sanctuary'
+import { buildDescentDeck, buildTutorialDeck, buildStartingKit } from './deck'
+import { rollForgeGrants, initForgeBatch } from './sanctuary'
 import { applyRoomEntryEffects } from './combat'
 
 // -- Run lifecycle ------------------------------------------------------
@@ -74,15 +74,13 @@ export function createRun(rng = Math.random, options = {}) {
     nextTheme,
     nextThemeChildren: null,
     forgeOpen: false,
-    forgeUsed: false,
     boonChosen: true, // no Boon to pick on the opening visit
-    forgeView: null,
-    // The subset of verbs the Forge offers this visit (['inscribe', ...]).
-    // Rolled when the forge opens; empty on the opening visit.
-    forgeOffer: [],
-    // The plain weapon/potion the Inscribe verb offers this visit. Rolled when
-    // the forge opens (see endDescentVictory); null when no edit is available.
-    inscribeOffer: null,
+    // The Forge's granted edit batch for the visit: the ordered edit types, the
+    // index of the active edit, and the cards offered for it. Rolled when the
+    // forge opens (see endDescentVictory); empty on the opening visit.
+    forgeGrants: [],
+    forgeGrantIndex: 0,
+    forgeChoices: [],
 
     hp: 0,
     maxHp: 0,
@@ -238,7 +236,10 @@ export function descend(state) {
     // real run leg). Run-level, so it accumulates across the whole run.
     themesFaced: state.tutorial ? (state.themesFaced || []) : [...(state.themesFaced || []), themeId],
     mutedBoon,
-    forgeView: null,
+    forgeOpen: false,
+    forgeGrants: [],
+    forgeGrantIndex: 0,
+    forgeChoices: [],
     riposteCharge: 0,
     secondWindUsed: false,
     cloakUsed: false,
@@ -303,8 +304,9 @@ export function endDescentVictory(state) {
         boonOffers: [],
         boonChosen: true,
         forgeOpen: false,
-        forgeUsed: false,
-        forgeView: null,
+        forgeGrants: [],
+        forgeGrantIndex: 0,
+        forgeChoices: [],
         deck: [],
         room: [],
         theme: null,
@@ -341,7 +343,7 @@ export function endDescentVictory(state) {
       carriedSpareWeapon,
       unlockedBoons: nextLibrary,
     }
-    won = appendLog(won, 'The seventh sigil is set in the threshold. The high gate opens.')
+    won = appendLog(won, 'The final sigil is set in the threshold. The high gate opens.')
     if (discoveredBoonId) {
       const boon = BOONS[discoveredBoonId]
       won = appendLog(won, `Discovered a new Boon: ${boon?.name || discoveredBoonId}.`)
@@ -368,11 +370,12 @@ export function endDescentVictory(state) {
   const boonOffers = mode.noBoons ? [] : pickBoonOffers(state.boons, asc.boonOfferCount, rng, offerPool)
   const boonChosen = mode.noBoons // no boon to pick in modes that skip offers
   const forgeOpen = !mode.noForge && forgeSigilSet.has(newSigils)
-  // When the forge opens, roll the verb subset offered this visit and the plain
-  // weapon/potion the Inscribe verb may offer (rank capped by progress). Empty /
-  // null when the forge is closed.
-  const forgeOffer = forgeOpen ? rollForgeOffer(state.kit, rng) : []
-  const inscribeOffer = forgeOpen ? rollInscribeCandidates(rng, newSigils) : null
+  // When the forge opens, roll the visit's granted edit batch and the first
+  // edit's card choices. Empty when the forge is closed.
+  const forgeGrants = forgeOpen ? rollForgeGrants(state.kit, newSigils, rng) : []
+  const { forgeGrantIndex, forgeChoices } = forgeGrants.length > 0
+    ? initForgeBatch(forgeGrants, state.kit, newSigils, rng)
+    : { forgeGrantIndex: 0, forgeChoices: [] }
 
   let returned = {
     ...state,
@@ -384,11 +387,10 @@ export function endDescentVictory(state) {
     nextThemeChildren,
     boonOffers,
     forgeOpen,
-    forgeUsed: false,
     boonChosen,
-    forgeView: null,
-    forgeOffer,
-    inscribeOffer,
+    forgeGrants,
+    forgeGrantIndex,
+    forgeChoices,
     unlockedBoons: nextLibrary,
 
     // Wipe descent-only state

@@ -41,7 +41,6 @@ export { TUTORIAL_LESSONS, tutorialAllLessonsDone, canFleeRoom } from './logic/h
 export {
   buildBaseDeck,
   shuffle,
-  rollInscribeCandidates,
 } from './logic/deck'
 
 export {
@@ -61,17 +60,13 @@ export {
 
 export {
   pickBoon,
-  openForgeAction,
-  closeForgeView,
-  skipForge,
-  applyInscribe,
-  upgradeKitCard,
-  removeKitCard,
-  rollForgeOffer,
+  applyForgeEdit,
+  skipForgeEdit,
+  forgeActive,
+  rollForgeGrants,
+  rollForgeChoices,
+  initForgeBatch,
   dismissMapPeek,
-  getInscribeFrameOptions,
-  getUpgradeOptions,
-  getRemoveOptions,
   isWeaponUsableFor,
   previewMonsterDamage,
   getActiveThemesForState,

@@ -20,7 +20,7 @@ export const SUIT_GLYPH = { H: '♥', D: '♦', C: '♣', S: '♠', W: '✕', K:
 export const RANK_LABEL = { 11: 'J', 12: 'Q', 13: 'K', 14: 'A' }
 
 export const BASE_MAX_HP = 20
-export const SIGIL_TARGET = 7
+export const SIGIL_TARGET = 10
 export const ROOM_SIZE = 4
 
 // Run modes. Each mode is a small bundle of flags applied at the run loop's
