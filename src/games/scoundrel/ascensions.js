@@ -29,7 +29,7 @@ export const ASCENSIONS = [
   {
     level: 3,
     name: 'Quickening Halls',
-    description: 'The dungeon escalates one sigil earlier. Tier 2 starts at sigil 2, Tier 3 at sigil 4.',
+    description: 'Theme tiers arrive one sigil earlier, so harder themes show up sooner.',
     themeTierOffset: 1,
   },
   {

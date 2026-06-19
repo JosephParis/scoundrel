@@ -1,4 +1,4 @@
-import { rankLabel } from '../constants'
+import { CardSuitFan } from './forge'
 
 // Presentational view of one stored run record. Reused by the end-of-run
 // screen (OutcomeView) and the expanded row in the history modal. Mechanical
@@ -39,7 +39,7 @@ function RuneList({ items }) {
   )
 }
 
-function Section({ title, children }) {
+export function Section({ title, children }) {
   return (
     <div>
       <div className="text-rune text-[10px] font-semibold uppercase tracking-[0.25em] mb-1.5">
@@ -59,19 +59,27 @@ function Stat({ label, value }) {
   )
 }
 
-export function RunSummary({ record }) {
+// The run's final kit as a read-only card fan, in the same visual language
+// as the in-game "Your kit" view. Exported so the end-of-run screen can place
+// it in its own column instead of stacking it under the rest of the summary.
+export function EndingKitSection({ deck }) {
+  if (!deck || deck.length === 0) return null
+  return (
+    <Section title={`Ending kit · ${deck.length} cards`}>
+      <CardSuitFan cards={deck} readOnly />
+    </Section>
+  )
+}
+
+export function RunSummary({ record, showDeck = true }) {
   if (!record) return null
   const {
     outcome, sigilsEarned, sigilTarget, mode, ascension, ascensionName,
-    boons, deckChanges, themesFaced, bossesDefeated,
+    boons, endingDeck, themesFaced, bossesDefeated,
     roomsEntered, monstersSlain, durationMs,
   } = record
 
-  const dc = deckChanges || { inscribed: [], kitEdits: 0, kitSize: 0 }
-  const deckChangeItems = [
-    ...dc.inscribed.map(c => `${c.name} ${rankLabel(c.rank)}`),
-    ...(dc.kitEdits > 0 ? [`${dc.kitEdits} kit edit${dc.kitEdits === 1 ? '' : 's'}`] : []),
-  ]
+  const deck = endingDeck || []
 
   const modeItems = [
     mode?.name || 'Default',
@@ -119,11 +127,7 @@ export function RunSummary({ record }) {
         </Section>
       )}
 
-      {deckChangeItems.length > 0 && (
-        <Section title="Deck changes">
-          <RuneList items={deckChangeItems} />
-        </Section>
-      )}
+      {showDeck && <EndingKitSection deck={deck} />}
     </div>
   )
 }

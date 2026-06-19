@@ -5,7 +5,7 @@
  * screen or the history modal.
  */
 
-import { getMode, INSCRIBED_FRAMES } from './constants'
+import { getMode } from './constants'
 import { getAscension } from './ascensions'
 import { BOONS } from './boons'
 import { getTheme } from './themes'
@@ -19,20 +19,18 @@ function outcomeOf(state) {
   return 'death'
 }
 
-// Forge edits, collapsed to the parts worth showing in a summary: the list of
-// inscribed cards (frame name + rank) plus counts of the other three edits.
-function deckChangesOf(state) {
-  const inscribed = (state.kit || [])
-    .filter(card => card.inscribed)
-    .map(card => {
-      const frame = INSCRIBED_FRAMES[card.inscribed]
-      return { frame: card.inscribed, name: frame?.name || card.inscribed, rank: card.rank }
-    })
-  return {
-    inscribed,
-    kitEdits: state.kitEdits || 0,
-    kitSize: (state.kit || []).length,
-  }
+// The kit as it stood when the run ended, serialized down to the fields the
+// card fan needs to render. Lets the summary show the final deck the same way
+// the rest of the game does, rather than a text list of edits.
+function endingDeckOf(state) {
+  return (state.kit || []).map((card, i) => ({
+    id: card.id ?? `deck_${i}`,
+    suit: card.suit,
+    rank: card.rank,
+    upgraded: card.upgraded || false,
+    upgradeBonus: card.upgradeBonus || 0,
+    inscribed: card.inscribed || null,
+  }))
 }
 
 function namedThemes(state) {
@@ -72,7 +70,7 @@ export function buildRunRecord(state, user) {
     ascension: state.ascension || 0,
     ascensionName: getAscension(state.ascension)?.name || null,
     boons: namedBoons(state),
-    deckChanges: deckChangesOf(state),
+    endingDeck: endingDeckOf(state),
     themesFaced: namedThemes(state),
     bossesDefeated: state.bossesDefeated || [],
     roomsEntered: state.runRoomsEntered || 0,

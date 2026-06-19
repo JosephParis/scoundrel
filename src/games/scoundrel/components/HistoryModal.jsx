@@ -1,7 +1,7 @@
 import { useEffect, useState } from 'react'
 import { historyStore } from '../../../utils/historyStore'
 import { computeLifetimeStats } from '../history'
-import { RunSummary } from './RunSummary'
+import { RunSummary, EndingKitSection } from './RunSummary'
 
 const OUTCOME_LABEL = { victory: 'Victory', death: 'Died', retired: 'Retired' }
 const OUTCOME_COLOR = {
@@ -70,8 +70,13 @@ function RunRow({ record, expanded, onToggle }) {
         </span>
       </button>
       {expanded && (
-        <div className="px-3 pb-4 pt-1 border-t border-stone-800/70 bg-stone-900/30">
-          <RunSummary record={record} />
+        <div className="px-3 pb-4 pt-3 border-t border-stone-800/70 bg-stone-900/30">
+          {/* Two columns on wider screens so the run details and the ending
+              kit sit side by side, surfacing more before any scroll. */}
+          <div className="grid gap-5 md:grid-cols-2 items-start">
+            <RunSummary record={record} showDeck={false} />
+            <EndingKitSection deck={record.endingDeck || []} />
+          </div>
         </div>
       )}
     </li>

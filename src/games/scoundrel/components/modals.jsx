@@ -60,14 +60,14 @@ export function CreditsModal({ open, onClose }) {
 // -- Dev modal ---------------------------------------------------------
 
 export function DevModal({ open, onClose, game, setGame }) {
-  const tier2Ids = useMemo(
-    () => Object.values(THEMES).filter(t => t.tier === 2).map(t => t.id),
+  const tier3Ids = useMemo(
+    () => Object.values(THEMES).filter(t => t.tier === 3).map(t => t.id),
     []
   )
   const [sigils, setSigils] = useState(game.sigilsEarned)
   const [themeId, setThemeId] = useState(game.nextTheme || 'the_quiet')
-  const [child1, setChild1] = useState(() => game.nextThemeChildren?.[0] || tier2Ids[0] || '')
-  const [child2, setChild2] = useState(() => game.nextThemeChildren?.[1] || tier2Ids[1] || '')
+  const [child1, setChild1] = useState(() => game.nextThemeChildren?.[0] || tier3Ids[0] || '')
+  const [child2, setChild2] = useState(() => game.nextThemeChildren?.[1] || tier3Ids[1] || '')
   const [selectedBoons, setSelectedBoons] = useState(() => new Set(game.boons))
 
   // When the modal re-opens, seed local form state from current game state
@@ -76,10 +76,10 @@ export function DevModal({ open, onClose, game, setGame }) {
     if (!open) return
     setSigils(game.sigilsEarned)
     setThemeId(game.nextTheme || 'the_quiet')
-    setChild1(game.nextThemeChildren?.[0] || tier2Ids[0] || '')
-    setChild2(game.nextThemeChildren?.[1] || tier2Ids[1] || '')
+    setChild1(game.nextThemeChildren?.[0] || tier3Ids[0] || '')
+    setChild2(game.nextThemeChildren?.[1] || tier3Ids[1] || '')
     setSelectedBoons(new Set(game.boons))
-  }, [open, game.sigilsEarned, game.nextTheme, game.nextThemeChildren, game.boons, tier2Ids])
+  }, [open, game.sigilsEarned, game.nextTheme, game.nextThemeChildren, game.boons, tier3Ids])
 
   if (!open) return null
 
@@ -188,13 +188,13 @@ export function DevModal({ open, onClose, game, setGame }) {
               { label: 'Child B', value: child2, set: setChild2 },
             ].map(({ label, value, set }) => (
               <div key={label}>
-                <div className="text-[10px] uppercase tracking-wider text-slate-500 mb-1">{label} (T2)</div>
+                <div className="text-[10px] uppercase tracking-wider text-slate-500 mb-1">{label} (T3)</div>
                 <select
                   value={value}
                   onChange={(e) => set(e.target.value)}
                   className="block w-full bg-stone-900 border border-stone-700 rounded px-2 py-1 text-parchment"
                 >
-                  {tier2Ids.map(id => (
+                  {tier3Ids.map(id => (
                     <option key={id} value={id}>{THEMES[id].name}</option>
                   ))}
                 </select>

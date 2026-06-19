@@ -71,23 +71,24 @@ function bandRange(band, ceiling) {
   return [Math.min(lo, ceiling), Math.min(hi, ceiling)]
 }
 
-// Default dungeon strength scales with progress, one face card per theme tier:
-// the Quiet tops out at rank 9, then Tier 1 adds jacks, Tier 2 queens, Tier 3
-// kings, Tier 4 aces. The top rank holds steady within a tier, so a new face
-// card appears only when you cross into the next tier.
+// Default dungeon strength scales with progress, one rank per theme tier: the
+// Quiet tops out at rank 9, then tens (Tier 1), jacks (Tier 2), queens (Tier 3),
+// kings (Tier 4), aces (Tier 5). The top rank holds steady within the later
+// two-sigil tiers, so a new top card appears only on crossing into the next.
 function defaultMonsterCeiling(sigils) {
   const s = Math.max(0, sigils || 0)
   if (s === 0) return 9    // The Quiet
-  if (s <= 3) return 11    // Tier 1 (sigils 1-3): jacks
-  if (s <= 5) return 12    // Tier 2 (sigils 4-5): queens
-  if (s <= 7) return 13    // Tier 3 (sigils 6-7): kings
-  return 14                // Tier 4 (sigils 8+): aces
+  if (s === 1) return 10   // Tier 1 (sigil 1): tens
+  if (s === 2) return 11   // Tier 2 (sigil 2): jacks
+  if (s <= 4) return 12    // Tier 3 (sigils 3-4): queens
+  if (s <= 6) return 13    // Tier 4 (sigils 5-6): kings
+  return 14                // Tier 5 (sigils 7+): aces
 }
 
-// In the ace tier (Tier 4, sigils 8+) the rank can't climb further, so the
+// In the ace tier (Tier 5, sigils 7+) the rank can't climb further, so the
 // dungeon escalates by volume instead: extra high-rank (J-A) monsters pile on,
 // more each descent into the tier. This is also the climax tier's extra rooms.
-const ACE_TIER_START_SIGIL = 8
+const ACE_TIER_START_SIGIL = 7
 const EXTRA_MONSTERS_PER_SIGIL = 3
 
 // The default (non-composition) monster set: one of each club and spade from

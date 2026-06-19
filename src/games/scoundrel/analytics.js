@@ -40,9 +40,8 @@ function runEndedProps(r) {
     themes_faced: r.themesFaced.map(t => t.id),
     bosses_defeated: r.bossesDefeated,
     boss_count: r.bossesDefeated.length,
-    inscribed_count: r.deckChanges.inscribed.length,
-    kit_edits: r.deckChanges.kitEdits,
-    kit_size: r.deckChanges.kitSize,
+    inscribed_count: (r.endingDeck || []).filter(c => c.inscribed).length,
+    kit_size: (r.endingDeck || []).length,
     final_weapon_rank: r.finalWeapon?.rank ?? null,
   }
 }

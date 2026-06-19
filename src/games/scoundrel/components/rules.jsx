@@ -304,19 +304,22 @@ function BoonsGlossary() {
   )
 }
 
+// One tier per band of descents, matching the dungeon's rising monster ceiling
+// (tens → jacks → queens → kings → aces). Labels escalate in intensity.
 const TIER_META = {
   opening: { label: 'Descent 1 (always)', blurb: 'Friendly warm-up; first descent of every run.' },
-  1: { label: 'Tier 1: Light', blurb: 'Single deck bias, no rule changes.' },
-  2: { label: 'Tier 2: Heavy', blurb: 'Rule changes, harder bias.' },
-  3: { label: 'Tier 3: Spire', blurb: 'Paired effects, weirder rules.' },
+  1: { label: 'Tier 1: Gentle', blurb: 'Extra cards stocked into the deck, no rule changes (tens).' },
+  2: { label: 'Tier 2: Light', blurb: 'Single deck bias or mild debuff (jacks).' },
+  3: { label: 'Tier 3: Heavy', blurb: 'Rule changes and harder bias (queens).' },
+  4: { label: 'Tier 4: Severe', blurb: 'Stronger rules that reshape the room (kings).' },
+  5: { label: 'Tier 5: Lethal', blurb: 'The climax: punishing effects, sometimes two at once (aces).' },
 }
 
 function ThemesGlossary() {
   const all = Object.values(THEMES)
   const opening = all.filter(t => !t.tier)
-  const tier1 = all.filter(t => t.tier === 1)
-  const tier2 = all.filter(t => t.tier === 2)
-  const tier3 = all.filter(t => t.tier === 3)
+  const byTier = [1, 2, 3, 4, 5].map(n => all.filter(t => t.tier === n))
+  const deeperEmpty = byTier.slice(1).every(group => group.length === 0)
   return (
     <div className="space-y-5 text-[13px] leading-snug">
       <p className="text-slate-400">
@@ -325,13 +328,13 @@ function ThemesGlossary() {
       </p>
 
       <ThemeSection meta={TIER_META.opening} themes={opening} />
-      {tier1.length > 0 && <ThemeSection meta={TIER_META[1]} themes={tier1} />}
-      {tier2.length > 0 && <ThemeSection meta={TIER_META[2]} themes={tier2} />}
-      {tier3.length > 0 && <ThemeSection meta={TIER_META[3]} themes={tier3} />}
+      {byTier.map((themes, i) => (
+        themes.length > 0 && <ThemeSection key={i + 1} meta={TIER_META[i + 1]} themes={themes} />
+      ))}
 
-      {tier2.length === 0 && tier3.length === 0 && (
+      {deeperEmpty && (
         <p className="text-[11px] text-slate-500 italic">
-          Heavier tiers (Heavy, Spire) will arrive as the dungeon deepens.
+          Heavier tiers arrive as the dungeon deepens.
         </p>
       )}
     </div>

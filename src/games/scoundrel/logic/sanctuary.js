@@ -44,7 +44,7 @@ export function pickBoon(state, boonId) {
 export const UPGRADE_BONUS = 2
 export const UPGRADE_RANK_CAP = 10
 
-// How many edits a visit grants: 2 through Tier 1-2, 3 from Tier 3 (sigils 5+).
+// How many edits a visit grants: 2 through Tier 1-3, 3 from Tier 4 (sigils 5+).
 function editsPerVisit(sigils) {
   return (sigils || 0) >= 5 ? 3 : 2
 }
@@ -120,8 +120,8 @@ export function rollForgeGrants(kit, sigils, rng) {
     const canRemove = !removeUsed && (kit || []).length > 1
     const r = rng()
     let type
-    if (r < 0.5) type = 'inscribe'
-    else if (r < 0.85) type = canUpgrade ? 'upgrade' : 'inscribe'
+    if (r < 0.45) type = 'inscribe'
+    else if (r < 0.8) type = canUpgrade ? 'upgrade' : 'inscribe'
     else type = canRemove ? 'remove' : 'inscribe'
     if (type === 'remove') removeUsed = true
     grants.push(type)
