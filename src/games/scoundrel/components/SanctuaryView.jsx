@@ -11,8 +11,9 @@ import { RulesInlinePanel, TutorialIntroPanel } from './rules'
 import { ModePickerPanel, ModeBadge } from './modes'
 import { LibraryPanel } from './library'
 import { AscensionPickerPanel, AscensionBadge } from './ascensions'
+import { audio } from '../audio'
 
-export function SanctuaryView({ game, setGame, onSkipTutorial, ascensionUnlocked = 0 }) {
+export function SanctuaryView({ game, setGame, onSkipTutorial, ascensionUnlocked = 0, celebrateSigil = false, onSigilCelebrated }) {
   const isOpeningVisit = game.sigilsEarned === 0
   const needsBoon = !isOpeningVisit && !game.boonChosen && game.boonOffers.length > 0
   // Sequence is boon → forge edits → descend. The Forge grants a batch of edits
@@ -48,13 +49,13 @@ export function SanctuaryView({ game, setGame, onSkipTutorial, ascensionUnlocked
       <>
         <ModePickerPanel
           currentMode={game.mode}
-          onSelect={(id) => setGame(g => setRunMode(g, id))}
+          onSelect={(id) => { audio.sfx('cardFlip'); setGame(g => setRunMode(g, id)) }}
         />
         {showAscensionPicker && (
           <AscensionPickerPanel
             currentLevel={game.ascension || 0}
             ceiling={ascensionUnlocked}
-            onSelect={(level) => setGame(g => setRunAscension(g, level))}
+            onSelect={(level) => { audio.sfx('cardFlip'); setGame(g => setRunAscension(g, level)) }}
           />
         )}
         {!showAscensionPicker && <RulesInlinePanel />}
@@ -64,7 +65,7 @@ export function SanctuaryView({ game, setGame, onSkipTutorial, ascensionUnlocked
     actionSlot = (
       <BoonOfferPanel
         offers={game.boonOffers}
-        onPick={(id) => setGame(g => pickBoon(g, id))}
+        onPick={(id) => { audio.sfx('boon'); setGame(g => pickBoon(g, id)) }}
         forgeAfter={forgeWaiting}
       />
     )
@@ -73,8 +74,8 @@ export function SanctuaryView({ game, setGame, onSkipTutorial, ascensionUnlocked
       <EditOfferPanel
         key={game.forgeGrantIndex}
         game={game}
-        onPick={(cardId) => setGame(g => applyForgeEdit(g, cardId))}
-        onSkip={() => setGame(g => skipForgeEdit(g))}
+        onPick={(cardId) => { audio.sfx('forge'); setGame(g => applyForgeEdit(g, cardId)) }}
+        onSkip={() => { audio.sfx('cardFlip'); setGame(g => skipForgeEdit(g)) }}
       />
     )
   } else {
@@ -90,6 +91,8 @@ export function SanctuaryView({ game, setGame, onSkipTutorial, ascensionUnlocked
           : 'The chamber is still. Below, the dark waits.'}
         sigilsEarned={game.sigilsEarned}
         sigilTarget={game.sigilTarget}
+        celebrateSigil={celebrateSigil}
+        onSigilCelebrated={onSigilCelebrated}
       >
         <div className="panel p-3">
           <div className="text-[10px] uppercase tracking-widest text-slate-500 mb-1">Lifeblood</div>
@@ -114,7 +117,7 @@ export function SanctuaryView({ game, setGame, onSkipTutorial, ascensionUnlocked
         {showDescend && (
           <div className="relative">
             <DescendAction
-              onDescend={() => setGame(g => descend(g))}
+              onDescend={() => { audio.sfx('descend'); setGame(g => descend(g)) }}
               disabled={false}
               reason={null}
             />

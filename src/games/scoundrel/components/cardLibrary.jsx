@@ -115,7 +115,7 @@ function PreviewCard({ card }) {
   const boss = !!card.boss
   const inscribed = !!card.inscribed
   return (
-    <div className={`relative shrink-0 aspect-[2/3] w-20 rounded-md border-2 ${cardBorderTone(card)} bg-gradient-to-b from-parchment to-[#e8d5b3] text-stone-900 p-2 flex flex-col shadow-md`}>
+    <div className={`relative shrink-0 aspect-[2/3] w-20 rounded-md border-2 ${cardBorderTone(card)} card-face text-stone-900 p-2 flex flex-col`}>
       <div className={`text-sm font-bold leading-none ${red ? 'text-blood' : 'text-stone-900'}`}>
         {rankLabel(card.rank)}{SUIT_GLYPH[card.suit]}
       </div>

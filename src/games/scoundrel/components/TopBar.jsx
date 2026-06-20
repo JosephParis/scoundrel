@@ -1,16 +1,23 @@
 import { useEffect, useRef, useState } from 'react'
+import { audio, useMuted } from '../audio'
 
-export function TopBar({ game, user, onOpenRules, onRetire, onOpenCredits, onOpenDev, onReplayTutorial, onOpenLogin, onSignOut, onOpenCardLibrary, onOpenHistory }) {
+export function TopBar({ game, user, onOpenRules, onRetire, onOpenCredits, onOpenDev, onReplayTutorial, onOpenLogin, onSignOut, onOpenCardLibrary, onOpenHistory, onOpenHome }) {
   const runActive = game.phase === 'sanctuary' || game.phase === 'descent'
   return (
     <header className="fixed top-0 left-0 right-0 z-30 border-b border-stone-800/80 bg-dungeon/85 backdrop-blur-md flex justify-center">
       <div className="w-full max-w-4xl px-4 sm:px-6 h-14 flex items-center justify-between gap-4">
         <div className="flex items-center gap-3 sm:gap-4 min-w-0">
-          <span className="font-display text-rune text-sm sm:text-base tracking-[0.25em]">
+          <button
+            onClick={onOpenHome}
+            aria-label="Home menu"
+            title="Home menu"
+            className="font-display text-rune text-sm sm:text-base tracking-[0.25em] hover:text-amber-300 transition"
+          >
             SCOUNDREL
-          </span>
+          </button>
         </div>
         <div className="flex items-center gap-1.5 sm:gap-2 shrink-0">
+          <MuteButton />
           <button
             onClick={onOpenRules}
             className="px-3 py-1.5 rounded-md border border-stone-700 hover:border-rune/60 text-slate-300 hover:text-parchment text-xs sm:text-sm font-medium transition"
@@ -37,6 +44,48 @@ export function TopBar({ game, user, onOpenRules, onRetire, onOpenCredits, onOpe
         </div>
       </div>
     </header>
+  )
+}
+
+// Global sound toggle. Reads the mute flag straight from the audio store so it
+// stays in sync no matter what flips it, and persists across visits.
+function MuteButton() {
+  const muted = useMuted()
+  return (
+    <button
+      onClick={() => audio.toggleMuted()}
+      aria-label={muted ? 'Unmute sound' : 'Mute sound'}
+      aria-pressed={muted}
+      title={muted ? 'Sound off' : 'Sound on'}
+      className="w-8 h-8 sm:w-9 sm:h-9 grid place-items-center rounded-md border border-stone-700 hover:border-rune/60 text-slate-400 hover:text-parchment transition"
+    >
+      <SpeakerIcon muted={muted} />
+    </button>
+  )
+}
+
+function SpeakerIcon({ muted }) {
+  return (
+    <svg
+      viewBox="0 0 24 24"
+      className="w-4 h-4 sm:w-[18px] sm:h-[18px]"
+      fill="none"
+      stroke="currentColor"
+      strokeWidth="1.8"
+      strokeLinecap="round"
+      strokeLinejoin="round"
+      aria-hidden="true"
+    >
+      <path d="M4 9v6h4l5 4V5L8 9H4z" fill="currentColor" stroke="none" />
+      {muted ? (
+        <path d="M17 9l5 6M22 9l-5 6" />
+      ) : (
+        <>
+          <path d="M16.5 8.5a5 5 0 0 1 0 7" />
+          <path d="M19 6a8.5 8.5 0 0 1 0 12" />
+        </>
+      )}
+    </svg>
   )
 }
 

@@ -1,3 +1,4 @@
+import { useState } from 'react'
 import {
   HEART, DIAMOND, SUIT_GLYPH, rankLabel,
   isMonster, isWeapon, isPotion, isWound, isSkeletonKey, isMap, isWhetstone, isBoss,
@@ -12,8 +13,26 @@ import { SuitIcon, cardBorderTone, suitIconTone } from './SuitIcon'
 export function HpBar({ hp, maxHp }) {
   const pct = maxHp > 0 ? Math.max(0, Math.min(100, (hp / maxHp) * 100)) : 0
   const critical = hp <= maxHp * 0.25
+  // Flash + shake when HP changes. Derived during render (no effect) by
+  // comparing against the last seen value; the flash overlay clears `pulse`
+  // on its own animationEnd. 'damage' shakes and flashes red, 'heal' flashes
+  // green only.
+  const [prevHp, setPrevHp] = useState(hp)
+  const [pulse, setPulse] = useState(null)
+  if (hp !== prevHp) {
+    setPulse(hp < prevHp ? 'damage' : 'heal')
+    setPrevHp(hp)
+  }
   return (
-    <div className="panel p-3 w-full">
+    <div className={`panel p-3 w-full relative overflow-hidden ${pulse === 'damage' ? 'animate-hp-shake' : ''}`}>
+      {pulse && (
+        <div
+          onAnimationEnd={() => setPulse(null)}
+          className={`absolute inset-0 rounded-[inherit] pointer-events-none ${
+            pulse === 'damage' ? 'bg-red-600 animate-hp-flash-damage' : 'bg-emerald-500 animate-hp-flash-heal'
+          }`}
+        />
+      )}
       <div className="flex items-baseline justify-between mb-1.5">
         <span className="text-[10px] uppercase tracking-widest text-slate-500">Lifeblood</span>
         <span className="font-mono text-parchment text-lg">
@@ -24,7 +43,7 @@ export function HpBar({ hp, maxHp }) {
         <div
           className={`h-full transition-all duration-300 ${
             critical
-              ? 'bg-gradient-to-r from-red-900 to-red-600 shadow-[0_0_8px_rgba(239,68,68,0.6)]'
+              ? 'bg-gradient-to-r from-red-900 to-red-600 animate-critical-pulse'
               : 'bg-gradient-to-r from-red-700 to-red-500'
           }`}
           style={{ width: `${pct}%` }}
@@ -151,14 +170,16 @@ export function ConditionsPanel({ game, theme }) {
 
 // -- Card slot ---------------------------------------------------------
 
-export function CardSlot({ card, onClick, onBareHands, weaponDamage, bareDamage, potionPreview, reveal, recommended, tutorialTip, blocked, bareBlocked, bareRecommended, displayRank }) {
+export function CardSlot({ card, onClick, onBareHands, weaponDamage, bareDamage, potionPreview, reveal, recommended, tutorialTip, blocked, bareBlocked, bareRecommended, displayRank, dealIndex }) {
+  // Slight per-slot delay so a refill of several cards cascades in.
+  const dealStyle = dealIndex != null ? { animationDelay: `${dealIndex * 0.04}s` } : undefined
   if (!card) {
     return (
       <div className="aspect-[2/3] w-full max-w-[240px] rounded-lg border border-dashed border-stone-800 bg-stone-900/30" />
     )
   }
   if (card.faceDown && !reveal) {
-    return <FaceDownCardSlot onClick={blocked ? undefined : onClick} blocked={blocked} />
+    return <FaceDownCardSlot onClick={blocked ? undefined : onClick} blocked={blocked} dealStyle={dealStyle} />
   }
   const red = card.suit === HEART || card.suit === DIAMOND
   const wound = isWound(card)
@@ -211,7 +232,7 @@ export function CardSlot({ card, onClick, onBareHands, weaponDamage, bareDamage,
       : 'hover:-translate-y-1 hover:shadow-[0_8px_24px_-6px_rgba(0,0,0,0.6)]'
 
   return (
-    <div className="group relative w-full max-w-[240px] flex flex-col">
+    <div className="group relative w-full max-w-[240px] flex flex-col animate-card-deal" style={dealStyle}>
       {recommended && !bareRecommended && (
         <div
           className="absolute -top-7 left-1/2 -translate-x-1/2 z-20 text-rune text-2xl animate-bounce pointer-events-none drop-shadow-[0_0_6px_rgba(251,191,36,0.75)]"
@@ -223,7 +244,7 @@ export function CardSlot({ card, onClick, onBareHands, weaponDamage, bareDamage,
       <button
         onClick={cardDisabled ? undefined : onClick}
         disabled={cardDisabled}
-        className={`aspect-[2/3] rounded-lg border-2 ${cardBorderTone(card)} bg-gradient-to-b from-parchment to-[#e8d5b3] text-stone-900 p-3 flex flex-col text-left transition-all shadow-md ${cardInteractive} ${(recommended && !bareRecommended) ? 'tutorial-recommended' : ''}`}
+        className={`aspect-[2/3] rounded-lg border-2 ${cardBorderTone(card)} card-face ${boss ? 'is-boss' : ''} text-stone-900 p-3 flex flex-col text-left transition-all ${cardInteractive} ${(recommended && !bareRecommended) ? 'tutorial-recommended' : ''}`}
       >
         <div className={`text-2xl font-bold leading-none ${
           red ? 'text-blood' : wound ? 'text-red-900' : key ? 'text-amber-700' : map ? 'text-sky-800' : stone ? 'text-slate-700' : 'text-stone-900'
@@ -337,13 +358,13 @@ export function CardSlot({ card, onClick, onBareHands, weaponDamage, bareDamage,
   )
 }
 
-function FaceDownCardSlot({ onClick, blocked }) {
+function FaceDownCardSlot({ onClick, blocked, dealStyle }) {
   return (
-    <div className="w-full max-w-[240px] flex flex-col">
+    <div className="w-full max-w-[240px] flex flex-col animate-card-deal" style={dealStyle}>
       <button
         onClick={blocked ? undefined : onClick}
         disabled={!!blocked}
-        className={`aspect-[2/3] rounded-lg border-2 border-stone-700 bg-gradient-to-br from-stone-900 via-stone-950 to-black p-4 flex flex-col justify-between transition-all shadow-md text-rune/60 ${blocked ? 'cursor-not-allowed grayscale opacity-40' : 'hover:-translate-y-1 hover:shadow-[0_8px_24px_-6px_rgba(0,0,0,0.6)] hover:border-rune/50'}`}
+        className={`aspect-[2/3] rounded-lg border-2 border-stone-700 card-back bg-gradient-to-br from-stone-900 via-stone-950 to-black p-4 flex flex-col justify-between transition-all text-rune/60 ${blocked ? 'cursor-not-allowed grayscale opacity-40' : 'hover:-translate-y-1 hover:shadow-[0_8px_24px_-6px_rgba(0,0,0,0.6)] hover:border-rune/50'}`}
       >
         <div className="text-4xl leading-none font-display">?</div>
         <div className="text-xs uppercase tracking-[0.2em] text-slate-500 text-center">
@@ -392,8 +413,21 @@ export function WeaponBlock({ game, weapon, label }) {
 export function WeaponPanel({ game }) {
   const { weapon, spareWeapon } = game
   const hasQuartermaster = game.boons.includes('quartermaster')
+  // Snap the panel when the equipped weapon's strike value changes (equip,
+  // replace, or a strength gain). A kill only moves the binding, not the
+  // strike value, so those don't snap here; the HP bar handles the hit.
+  const sig = weapon ? String(describeWeaponStrength(game, weapon).value) : 'bare'
+  const [prevSig, setPrevSig] = useState(sig)
+  const [snap, setSnap] = useState(false)
+  if (sig !== prevSig) {
+    if (weapon) setSnap(true) // arm only on becoming/staying armed, not on disarm
+    setPrevSig(sig)
+  }
   return (
-    <div className="panel p-4">
+    <div
+      className={`panel p-4 ${snap ? 'animate-weapon-snap' : ''}`}
+      onAnimationEnd={e => { if (e.target === e.currentTarget) setSnap(false) }}
+    >
       <div className="text-[10px] uppercase tracking-widest text-slate-500 mb-2">
         {hasQuartermaster ? 'Weapons' : 'Weapon'}
       </div>

@@ -96,7 +96,7 @@ function EditChoiceCard({ card, mode, selected, onPick }) {
   return (
     <button
       onClick={onPick}
-      className={`relative w-full max-w-[150px] aspect-[2/3] rounded-lg border-2 bg-gradient-to-b from-parchment to-[#e8d5b3] text-stone-900 p-2.5 flex flex-col text-left transition-all shadow-md ${
+      className={`relative w-full max-w-[150px] aspect-[2/3] rounded-lg border-2 card-face text-stone-900 p-2.5 flex flex-col text-left transition-all ${
         selected
           ? 'border-rune ring-2 ring-rune/60 -translate-y-1'
           : `${cardBorderTone(card)} hover:-translate-y-1 hover:shadow-lg`

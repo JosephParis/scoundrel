@@ -260,7 +260,7 @@ function PeekCard({ card, index }) {
   return (
     <div className="flex flex-col items-center gap-1">
       <div className="text-[10px] uppercase tracking-widest text-slate-500">#{index + 1}</div>
-      <div className={`aspect-[2/3] w-20 sm:w-24 rounded-md border-2 ${cardBorderTone(card)} bg-gradient-to-b from-parchment to-[#e8d5b3] text-stone-900 p-2 flex flex-col text-left shadow-md`}>
+      <div className={`aspect-[2/3] w-20 sm:w-24 rounded-md border-2 ${cardBorderTone(card)} card-face text-stone-900 p-2 flex flex-col text-left`}>
         <div className={`text-lg font-bold leading-none ${red ? 'text-blood' : 'text-stone-900'}`}>
           {rankLabel(card.rank)}{SUIT_GLYPH[card.suit]}
         </div>
