@@ -44,7 +44,7 @@ const RULES_TABS = [
 
 function RulesTabBar({ tab, setTab }) {
   return (
-    <div className="flex gap-1 mb-5 border-b border-stone-800 overflow-x-auto">
+    <div className="flex flex-wrap gap-1 mb-5 border-b border-stone-800">
       {RULES_TABS.map(t => {
         const active = tab === t.id
         return (
