@@ -10,7 +10,9 @@ import { getAscension } from './ascensions'
 import { BOONS } from './boons'
 import { getTheme } from './themes'
 
-const RECORD_VERSION = 1
+// v2 added `death` (where/how the run ended). v1 records simply lack it;
+// readers treat a missing `death` as null.
+const RECORD_VERSION = 2
 const GUEST_ID = 'guest'
 
 function outcomeOf(state) {
@@ -77,6 +79,9 @@ export function buildRunRecord(state, user) {
     monstersSlain: state.monstersSlain || 0,
     biggestKill: state.biggestKill || 0,
     finalWeapon: finalWeaponOf(state),
+    // Where and how the run ended. Only populated on death; victory and
+    // retire leave it null.
+    death: outcomeOf(state) === 'death' ? (state.deathContext || null) : null,
   }
 }
 

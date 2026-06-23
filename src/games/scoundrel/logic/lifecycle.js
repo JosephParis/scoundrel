@@ -267,9 +267,29 @@ export function descend(state) {
 
 // -- Run end states -----------------------------------------------------
 
-export function endDescentDeath(state) {
+// Record where and how the run ended. `cause` carries the killing-blow detail
+// the combat code knows (source, card, weapon); the situational context
+// (which descent, theme, how deep) is derived from state here so call sites
+// stay lean. Snapshotted into the stored record by buildRunRecord, then
+// flattened into the run_ended analytics event.
+export function endDescentDeath(state, cause = null) {
+  const deathContext = {
+    source: cause?.source || 'unknown',
+    card: cause?.card || null,            // { suit, rank, effRank, boss }
+    barehanded: cause?.barehanded ?? null,
+    weaponRank: cause?.weaponRank ?? null,
+    damage: cause?.damage ?? null,
+    hpBefore: cause?.hpBefore ?? null,
+    descent: (state.sigilsEarned || 0) + 1,
+    theme: state.theme || null,
+    themeChildren: state.themeChildren || null,
+    roomsThisDescent: state.roomsEntered || 0,
+    runRoomsEntered: state.runRoomsEntered || 0,
+    monstersSlain: state.monstersSlain || 0,
+    deckRemaining: (state.deck || []).length,
+  }
   return appendLog(
-    { ...state, phase: 'gameover' },
+    { ...state, phase: 'gameover', deathContext },
     'You fall in the dark. The hall above forgets you.'
   )
 }

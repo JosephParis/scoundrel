@@ -23,8 +23,24 @@ import { buildRunRecord } from './history'
 // Flatten a stored run record into PostHog-friendly properties: scalar
 // dimensions stay scalar (filterable), id-bearing lists collapse to id arrays.
 function runEndedProps(r) {
+  // Death detail (null on victory/retire). Flattened to scalars so each
+  // dimension is filterable/groupable in PostHog: "where and how they died".
+  const d = r.death || {}
   return {
     outcome: r.outcome,
+    death_source: d.source || null,
+    death_card_suit: d.card?.suit ?? null,
+    death_card_rank: d.card?.rank ?? null,
+    death_card_eff_rank: d.card?.effRank ?? null,
+    death_boss: d.card?.boss ?? null,
+    death_barehanded: d.barehanded ?? null,
+    death_weapon_rank: d.weaponRank ?? null,
+    death_damage: d.damage ?? null,
+    death_hp_before: d.hpBefore ?? null,
+    death_descent: d.descent ?? null,
+    death_theme: d.theme ?? null,
+    death_rooms_this_descent: d.roomsThisDescent ?? null,
+    death_deck_remaining: d.deckRemaining ?? null,
     mode: r.mode?.id,
     mode_name: r.mode?.name,
     ascension: r.ascension || 0,
