@@ -20,8 +20,11 @@ import { endDescentDeath, endDescentVictory } from './lifecycle'
 
 // Apply pre-mitigated HP damage, honoring Twin Souls and Second Wind.
 // Used by combat, Tithe, and Apothecary's sour second potion.
-// Returns { state, dead }. If dead, state is already in gameover phase.
-export function applyHpLoss(state, amount) {
+// `cause` describes the killing blow (source/card/weapon) for death analytics;
+// it is only read if this hit is lethal. Returns { state, dead }. If dead,
+// state is already in gameover phase.
+export function applyHpLoss(state, amount, cause = null) {
+  const hpBefore = state.hp
   let next = { ...state }
   // Numb soaks the first chunk of incoming damage each room (any source).
   if (hasBoon(state, 'numb') && (state.numbRemaining || 0) > 0 && amount > 0) {
@@ -60,7 +63,8 @@ export function applyHpLoss(state, amount) {
       'Twin Souls: the second self steadies the body. You stand at 1 HP.')
   }
   if (next.hp <= 0) {
-    return { state: endDescentDeath({ ...next, hp: 0 }), dead: true }
+    const death = { ...(cause || {}), damage: amount, hpBefore }
+    return { state: endDescentDeath({ ...next, hp: 0 }, death), dead: true }
   }
   if (next.hp > 0 && next.hp <= 3 && hasBoon(next, 'second_wind') && !next.secondWindUsed) {
     next = appendLog({ ...next, hp: Math.min(next.maxHp, 6), secondWindUsed: true },
@@ -84,6 +88,9 @@ function isWeaponBoundFor(state, weapon, monsterCard) {
 // Pick the best weapon for swinging at this monster.
 // Prefers the highest *effective* rank among usable weapons.
 export function pickBestWeaponFor(state, monsterCard) {
+  // Armored monsters ignore the weapon entirely: the fight resolves
+  // bare-handed and the blade's binding stays clean.
+  if (monsterCard.armored) return null
   const candidates = []
   if (state.weapon && isWeaponBoundFor(state, state.weapon, monsterCard)) {
     candidates.push({ weapon: state.weapon, slot: 'primary' })
@@ -165,7 +172,7 @@ export function applyRoomEntryEffects(state, room, firstNewIdx) {
   const titheLoss = themeFieldSum(themes, 'tithe')
   if (titheLoss > 0) {
     next = appendLog(next, `Tithe: the hall takes ${titheLoss} HP at the threshold.`)
-    const result = applyHpLoss(next, titheLoss)
+    const result = applyHpLoss(next, titheLoss, { source: 'tithe' })
     return { state: result.state, room: nextRoom, dead: result.dead }
   }
 
@@ -334,9 +341,31 @@ function applyMonsterFight(state, monsterCard, index, useWeapon) {
     }
   }
 
-  const dmgResult = applyHpLoss(next, damage)
+  // Killing-blow detail for death analytics, shared by the main hit and the
+  // fast monster's second strike.
+  const monsterCause = {
+    source: monsterCard.boss ? 'boss' : 'monster',
+    card: {
+      suit: monsterCard.suit,
+      rank: monsterCard.rank,
+      effRank: effectiveMonsterRank(state, monsterCard),
+      boss: monsterCard.boss || null,
+    },
+    barehanded: !weaponUsed,
+    weaponRank: weaponUsed ? weaponUsed.rank : null,
+  }
+
+  const dmgResult = applyHpLoss(next, damage, monsterCause)
   if (dmgResult.dead) return dmgResult.state
   next = dmgResult.state
+
+  // Fast monsters strike a second time. Each hit is a real applyHpLoss so
+  // Numb, wound-bleed, and death all evaluate per hit.
+  if (monsterCard.fast) {
+    const second = applyHpLoss(next, damage, monsterCause)
+    if (second.dead) return second.state
+    next = appendLog(second.state, `${fmt(monsterCard)} strikes twice.`)
+  }
 
   // Cursed Idol gift: a prior idol play left a pending heal that applies
   // on the next real monster kill. Drains and clears here, capped at maxHp.
@@ -376,7 +405,10 @@ function playCursedIdol(state, index, card) {
     { ...state, room, discard: state.discard.concat(card) },
     `Cursed Idol bites for ${card.rank}. Its bargain waits.`
   )
-  const result = applyHpLoss(next, card.rank)
+  const result = applyHpLoss(next, card.rank, {
+    source: 'cursed_idol',
+    card: { suit: card.suit, rank: card.rank },
+  })
   if (result.dead) return result.state
   next = { ...result.state, pendingCursedHeal: card.rank }
   return checkRefillAndComplete(next)
@@ -414,7 +446,10 @@ function playPotion(state, index, card) {
   if (apothecary && playedNow >= 1) {
     const damage = card.rank
     next = appendLog(next, `Sour draught: ${fmt(card)} bites back for ${damage}.`)
-    const result = applyHpLoss(next, damage)
+    const result = applyHpLoss(next, damage, {
+      source: 'apothecary_potion',
+      card: { suit: card.suit, rank: card.rank },
+    })
     if (result.dead) return result.state
     return checkRefillAndComplete(result.state)
   }
@@ -534,8 +569,8 @@ export function playCard(state, index) {
 // Skeleton Key: discards every other card in the room (back to the bottom
 // of the deck so they aren't lost from the run), clears the slot, then lets
 // checkRefillAndComplete pull a fresh room. The descent shape stays the
-// same; the player just skips this room's threats. Consumed from
-// state.inscribed on play so it cannot reappear in future descents.
+// same; the player just skips this room's threats. Consumed from the kit on
+// play so it cannot reappear in future descents.
 function playSkeletonKey(state, index, card) {
   const otherCards = state.room
     .map((c, i) => (i !== index && c) ? c : null)
@@ -548,14 +583,14 @@ function playSkeletonKey(state, index, card) {
     })
   const newRoom = state.room.map(() => null)
   const newDeck = state.deck.concat(otherCards)
-  const inscribed = (state.inscribed || []).filter(c => c.id !== card.id)
+  const kit = (state.kit || []).filter(c => c.id !== card.id)
   let next = appendLog(
     {
       ...state,
       deck: newDeck,
       room: newRoom,
       discard: state.discard.concat(card),
-      inscribed,
+      kit,
       potionsUsedThisRoom: 0,
       monstersFoughtThisRoom: 0,
     },

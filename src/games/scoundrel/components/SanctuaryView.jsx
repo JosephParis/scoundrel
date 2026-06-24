@@ -1,27 +1,26 @@
 import { useEffect, useState } from 'react'
 import {
   descend, pickBoon, setRunMode, setRunAscension,
-  openForgeAction, closeForgeView, skipForge,
-  applyStrike, applyTransmute, applyHeft, applyInscribe,
+  applyForgeEdit, skipForgeEdit, forgeActive,
   isEnabled,
 } from '../logic'
 import { PhaseRail, LogPanel, DescendAction } from './atoms'
 import { BoonOfferPanel, RunStatePanel, DeckPeekButton, DeckModal, LoadoutPanel } from './boons'
-import { ForgePromptPanel, StrikeView, TransmuteView, HeftView, InscribeView } from './forge'
+import { EditOfferPanel } from './forge'
 import { RulesInlinePanel, TutorialIntroPanel } from './rules'
 import { ModePickerPanel, ModeBadge } from './modes'
 import { LibraryPanel } from './library'
 import { AscensionPickerPanel, AscensionBadge } from './ascensions'
+import { audio } from '../audio'
 
-export function SanctuaryView({ game, setGame, onSkipTutorial, ascensionUnlocked = 0 }) {
+export function SanctuaryView({ game, setGame, onSkipTutorial, ascensionUnlocked = 0, celebrateSigil = false, onSigilCelebrated }) {
   const isOpeningVisit = game.sigilsEarned === 0
   const needsBoon = !isOpeningVisit && !game.boonChosen && game.boonOffers.length > 0
-  const forgePending = game.forgeOpen && !game.forgeUsed
-  // Sequence is boon → forge → descend. Forge prompt only appears
-  // once the boon is picked. Descend only appears once both stages
-  // are resolved (forge used, skipped, or never available).
-  const showForgePrompt = forgePending && !needsBoon && !game.forgeView
-  const showDescend = !needsBoon && !showForgePrompt && game.forgeView === null
+  // Sequence is boon → forge edits → descend. The Forge grants a batch of edits
+  // worked one at a time; descend appears once the batch is done (or none).
+  const forgeWaiting = game.forgeOpen && (game.forgeGrants || []).length > 0
+  const showForge = !needsBoon && forgeActive(game)
+  const showDescend = !needsBoon && !showForge
   const [deckOpen, setDeckOpen] = useState(false)
 
   useEffect(() => {
@@ -50,13 +49,13 @@ export function SanctuaryView({ game, setGame, onSkipTutorial, ascensionUnlocked
       <>
         <ModePickerPanel
           currentMode={game.mode}
-          onSelect={(id) => setGame(g => setRunMode(g, id))}
+          onSelect={(id) => { audio.sfx('cardFlip'); setGame(g => setRunMode(g, id)) }}
         />
         {showAscensionPicker && (
           <AscensionPickerPanel
             currentLevel={game.ascension || 0}
             ceiling={ascensionUnlocked}
-            onSelect={(level) => setGame(g => setRunAscension(g, level))}
+            onSelect={(level) => { audio.sfx('cardFlip'); setGame(g => setRunAscension(g, level)) }}
           />
         )}
         {!showAscensionPicker && <RulesInlinePanel />}
@@ -66,50 +65,17 @@ export function SanctuaryView({ game, setGame, onSkipTutorial, ascensionUnlocked
     actionSlot = (
       <BoonOfferPanel
         offers={game.boonOffers}
-        onPick={(id) => setGame(g => pickBoon(g, id))}
-        forgeAfter={forgePending}
+        onPick={(id) => { audio.sfx('boon'); setGame(g => pickBoon(g, id)) }}
+        forgeAfter={forgeWaiting}
       />
     )
-  } else if (game.forgeView === 'strike') {
+  } else if (showForge) {
     actionSlot = (
-      <StrikeView
+      <EditOfferPanel
+        key={game.forgeGrantIndex}
         game={game}
-        onConfirm={(mid, oid) => setGame(g => applyStrike(g, mid, oid))}
-        onCancel={() => setGame(g => closeForgeView(g))}
-      />
-    )
-  } else if (game.forgeView === 'transmute') {
-    actionSlot = (
-      <TransmuteView
-        game={game}
-        onConfirm={(cid, suit) => setGame(g => applyTransmute(g, cid, suit))}
-        onCancel={() => setGame(g => closeForgeView(g))}
-      />
-    )
-  } else if (game.forgeView === 'heft') {
-    actionSlot = (
-      <HeftView
-        game={game}
-        onConfirm={(cid) => setGame(g => applyHeft(g, cid))}
-        onCancel={() => setGame(g => closeForgeView(g))}
-      />
-    )
-  } else if (game.forgeView === 'inscribe') {
-    actionSlot = (
-      <InscribeView
-        game={game}
-        onConfirm={(frameId, rank) => setGame(g => applyInscribe(g, frameId, rank))}
-        onCancel={() => setGame(g => closeForgeView(g))}
-      />
-    )
-  } else if (showForgePrompt) {
-    actionSlot = (
-      <ForgePromptPanel
-        onStrike={() => setGame(g => openForgeAction(g, 'strike'))}
-        onTransmute={() => setGame(g => openForgeAction(g, 'transmute'))}
-        onHeft={() => setGame(g => openForgeAction(g, 'heft'))}
-        onInscribe={() => setGame(g => openForgeAction(g, 'inscribe'))}
-        onSkip={() => setGame(g => skipForge(g))}
+        onPick={(cardId) => { audio.sfx('forge'); setGame(g => applyForgeEdit(g, cardId)) }}
+        onSkip={() => { audio.sfx('cardFlip'); setGame(g => skipForgeEdit(g)) }}
       />
     )
   } else {
@@ -125,6 +91,8 @@ export function SanctuaryView({ game, setGame, onSkipTutorial, ascensionUnlocked
           : 'The chamber is still. Below, the dark waits.'}
         sigilsEarned={game.sigilsEarned}
         sigilTarget={game.sigilTarget}
+        celebrateSigil={celebrateSigil}
+        onSigilCelebrated={onSigilCelebrated}
       >
         <div className="panel p-3">
           <div className="text-[10px] uppercase tracking-widest text-slate-500 mb-1">Lifeblood</div>
@@ -149,7 +117,7 @@ export function SanctuaryView({ game, setGame, onSkipTutorial, ascensionUnlocked
         {showDescend && (
           <div className="relative">
             <DescendAction
-              onDescend={() => setGame(g => descend(g))}
+              onDescend={() => { audio.sfx('descend'); setGame(g => descend(g)) }}
               disabled={false}
               reason={null}
             />

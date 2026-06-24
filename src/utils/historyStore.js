@@ -1,11 +1,13 @@
 /**
  * Run-history storage for Scoundrel.
  *
- * The app is currently client-only: this stores finished-run records in
- * localStorage, namespaced by account. Every method is async (Promise-based)
- * so a real backend (Firestore, Supabase, a serverless API) can replace
- * LocalHistoryStore later without changing a single call site. Game/UI code
- * only ever touches the `historyStore` singleton and the four methods below.
+ * localStorage is the source of truth for in-app reads: records are stored
+ * namespaced by account, capped, and every method is async so the seam is
+ * backend-ready. Finished runs are additionally mirrored to a server table
+ * (POST /api/runs) for cross-player analytics. The mirror is best-effort and
+ * production-only: a failed or absent endpoint never blocks or breaks play,
+ * and dev (no /api) skips it entirely. Game/UI code only ever touches the
+ * `historyStore` singleton and the four methods below.
  *
  * Account id is the Google `sub` claim, or 'guest' when signed out. On first
  * login the caller invokes migrateGuest() to fold the guest bucket into the
@@ -14,6 +16,7 @@
 
 const KEY_PREFIX = 'scoundrel:history:'
 const GUEST_ID = 'guest'
+const RUNS_API = '/api/runs'
 // Keep storage bounded so a heavy player never trips the localStorage quota.
 // Oldest runs fall off the end first.
 const MAX_RUNS = 200
@@ -44,6 +47,29 @@ function writeRaw(accountId, records) {
   }
 }
 
+// Mirror one finished-run record to the analytics table. sendBeacon is
+// preferred so the write survives the navigation that often follows a run
+// ending; fetch+keepalive is the fallback. Either way this is fire-and-forget
+// and wrapped so analytics can never break play. Skipped in dev (no /api).
+function mirrorRemote(record) {
+  if (!import.meta.env.PROD) return
+  try {
+    const body = JSON.stringify(record)
+    if (typeof navigator !== 'undefined' && navigator.sendBeacon) {
+      navigator.sendBeacon(RUNS_API, new Blob([body], { type: 'application/json' }))
+    } else {
+      fetch(RUNS_API, {
+        method: 'POST',
+        headers: { 'Content-Type': 'application/json' },
+        body,
+        keepalive: true,
+      }).catch(() => {})
+    }
+  } catch {
+    // never break play
+  }
+}
+
 class LocalHistoryStore {
   /** Returns records newest-first. */
   async listRuns(accountId) {
@@ -62,6 +88,9 @@ class LocalHistoryStore {
       return existing.slice().reverse()
     }
     const next = writeRaw(accountId, existing.concat(record))
+    // Mirror only fresh appends (after the dedupe above) so an effect re-fire
+    // never double-posts. The server also dedupes by run key as a backstop.
+    mirrorRemote(record)
     return next.slice().reverse()
   }
 

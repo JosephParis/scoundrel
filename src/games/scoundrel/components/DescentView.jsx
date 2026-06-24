@@ -6,6 +6,7 @@ import {
   isMonster, isWeapon, isPotion,
   previewMonsterDamage,
   describePotion,
+  canFleeRoom,
   tutorialAllLessonsDone,
   devourerEffectiveRank,
   HEART, DIAMOND, SUIT_GLYPH, rankLabel,
@@ -16,6 +17,23 @@ import { AscensionBadge } from './ascensions'
 import { CardSlot, HpBar, WeaponPanel, ConditionsPanel, ForesightPanel } from './cards'
 import { MapPeekModal } from './boons'
 import { SuitIcon, cardBorderTone, suitIconTone } from './SuitIcon'
+import { audio } from '../audio'
+
+// Which SFX a played card should fire. Weapons clang, monsters hit, an
+// effective potion glugs; anything else (a wasted potion, a key/map/whetstone)
+// just gets the soft card sound so the click still registers. The card object
+// carries its real suit/rank even while face-down, so this is correct for Oath
+// reveals computed at click time too.
+function sfxForPlayedCard(game, card) {
+  if (!card) return null
+  if (isWeapon(card)) return 'equip'
+  if (isMonster(card)) return 'hit'
+  if (isPotion(card)) {
+    const heals = game.potionsUsedThisRoom === 0 && game.hp < game.maxHp
+    return heals ? 'heal' : 'cardFlip'
+  }
+  return 'cardFlip'
+}
 
 export function DescentView({ game, setGame }) {
   // When the player commits to a face-down card (Oath), flip it visibly first,
@@ -45,28 +63,35 @@ export function DescentView({ game, setGame }) {
     if (revealing != null) return
     const card = game.room[i]
     if (card?.faceDown) {
+      audio.sfx('cardFlip')
       setRevealing(i)
       return
     }
+    audio.sfx(sfxForPlayedCard(game, card))
     setGame(g => playCard(g, i))
-  }, [game.room, revealing, setGame])
+  }, [game, revealing, setGame])
   const onCardBare = useCallback((i) => {
     if (revealing != null) return
+    audio.sfx('hit')
     setGame(g => playCardBare(g, i))
   }, [revealing, setGame])
   const onFlee = useCallback(() => {
     if (revealing != null) return
+    audio.sfx('flee')
     setGame(g => fleeRoom(g))
   }, [revealing, setGame])
 
   useEffect(() => {
     if (revealing == null) return
     const t = setTimeout(() => {
+      // Resolution of an Oath reveal: play the now-flipped card's category
+      // sound. Actions are locked while revealing, so `game` is stable here.
+      audio.sfx(sfxForPlayedCard(game, game.room[revealing]))
       setGame(g => playCard(g, revealing))
       setRevealing(null)
     }, 1400)
     return () => clearTimeout(t)
-  }, [revealing, setGame])
+  }, [revealing, setGame, game])
 
   const onCloseMapPeek = useCallback(() => {
     setGame(g => dismissMapPeek(g))
@@ -189,8 +214,9 @@ export function DescentView({ game, setGame }) {
               const displayRank = c?.boss === 'devourer' ? devourerEffectiveRank(game) : undefined
               return (
                 <CardSlot
-                  key={i}
+                  key={c?.id ?? `empty-${i}`}
                   card={c}
+                  dealIndex={i}
                   reveal={revealing === i}
                   onClick={() => c && onCard(i)}
                   onBareHands={showBare ? () => onCardBare(i) : null}
@@ -220,7 +246,7 @@ export function DescentView({ game, setGame }) {
               )}
               <button
                 onClick={onFlee}
-                disabled={!game.canFlee || (tutorialActive && tutorialCue?.recommendedId != null)}
+                disabled={!canFleeRoom(game) || (tutorialActive && tutorialCue?.recommendedId != null)}
                 className={`px-6 py-2.5 rounded-md bg-stone-800 hover:bg-stone-700 disabled:opacity-40 disabled:cursor-not-allowed text-sm font-medium border border-stone-700 transition ${tutorialCue?.recommendFlee ? 'tutorial-recommended' : ''}`}
               >
                 Flee the room
@@ -344,7 +370,7 @@ function IntroCard({ card, delay, removed }) {
   return (
     <div className="relative w-16 sm:w-[72px]">
       <div
-        className={`aspect-[2/3] rounded-md border-2 ${cardBorderTone(card)} bg-gradient-to-b from-parchment to-[#e8d5b3] text-stone-900 p-1.5 flex flex-col text-left shadow-md ${animClass}`}
+        className={`aspect-[2/3] rounded-md border-2 ${cardBorderTone(card)} card-face text-stone-900 p-1.5 flex flex-col text-left ${animClass}`}
         style={{ animationDelay: `${delay}s` }}
       >
         <div className={`text-base font-bold leading-none ${red ? 'text-blood' : 'text-stone-900'}`}>

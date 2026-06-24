@@ -5,7 +5,7 @@
 export {
   HEART, DIAMOND, CLUB, SPADE, WOUND, KEY, MAP, STONE,
   SUIT_GLYPH, RANK_LABEL,
-  BASE_MAX_HP, SIGIL_TARGET, FORGE_SIGILS, ROOM_SIZE,
+  BASE_MAX_HP, SIGIL_TARGET, ROOM_SIZE,
   MODES, DEFAULT_MODE, getMode,
   WOUND_DAMAGE_THRESHOLD, WOUND_CAP_PER_DESCENT, makeWoundCard,
   INSCRIBED_FRAMES, INSCRIBED_FRAME_IDS, makeInscribedCard,
@@ -36,12 +36,11 @@ export {
   getFlagDefault,
 } from './flags'
 
-export { TUTORIAL_LESSONS, tutorialAllLessonsDone } from './logic/helpers'
+export { TUTORIAL_LESSONS, tutorialAllLessonsDone, canFleeRoom } from './logic/helpers'
 
 export {
   buildBaseDeck,
   shuffle,
-  computeCurrentDeck,
 } from './logic/deck'
 
 export {
@@ -61,18 +60,13 @@ export {
 
 export {
   pickBoon,
-  openForgeAction,
-  closeForgeView,
-  skipForge,
-  applyStrike,
-  applyTransmute,
-  applyHeft,
-  applyInscribe,
+  applyForgeEdit,
+  skipForgeEdit,
+  forgeActive,
+  rollForgeGrants,
+  rollForgeChoices,
+  initForgeBatch,
   dismissMapPeek,
-  getStrikeOptions,
-  getTransmuteOptions,
-  getHeftOptions,
-  getInscribeOptions,
   isWeaponUsableFor,
   previewMonsterDamage,
   getActiveThemesForState,
@@ -80,7 +74,6 @@ export {
   describeWeaponStrength,
   describeDamage,
   describePotion,
-  STRIKE_OFFERING_RANGE,
-  HEFT_BONUS,
-  HEFT_RANK_CAP,
+  UPGRADE_BONUS,
+  UPGRADE_RANK_CAP,
 } from './logic/sanctuary'

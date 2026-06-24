@@ -9,10 +9,12 @@ import { DescentView } from './components/DescentView'
 import { OutcomeView } from './components/OutcomeView'
 import { LoginModal } from './components/LoginModal'
 import { HistoryModal } from './components/HistoryModal'
+import { HomeView } from './components/HomeView'
 import { loadUser, signOut as signOutUser } from '../../utils/auth'
 import { historyStore } from '../../utils/historyStore'
 import { buildRunRecord } from './history'
 import { useRunAnalytics } from './analytics'
+import { audio } from './audio'
 
 // -- Save / load -------------------------------------------------------
 // Bump SAVE_VERSION whenever the shape of game state in logic.js changes
@@ -157,6 +159,7 @@ export default function Scoundrel() {
   const [loginOpen, setLoginOpen] = useState(false)
   const [cardLibraryOpen, setCardLibraryOpen] = useState(false)
   const [historyOpen, setHistoryOpen] = useState(false)
+  const [homeOpen, setHomeOpen] = useState(false)
 
   const handleLogin = useCallback((u) => {
     setUser(u)
@@ -177,6 +180,37 @@ export default function Scoundrel() {
   // Emit PostHog run/descent/run-ended events as the game state advances.
   // Observer only; no-ops while the deferred client is still loading.
   useRunAnalytics(game, user)
+
+  // Drive the music bed off the game phase. Phase ids line up with the audio
+  // registry's music keys, so this is the whole wiring; playMusic dedupes and
+  // crossfades, and stays silent until the track files are added.
+  useEffect(() => {
+    audio.playMusic(game.phase)
+  }, [game.phase])
+
+  // Sigil-earned chime. Fired off a state diff rather than an action site
+  // because a sigil can land from either emptying the deck (back to sanctuary)
+  // or the final win; both just bump sigilsEarned. Seeded from the loaded value
+  // so it never fires on mount or after a "begin again" reset (count drops).
+  const prevSigilsRef = useRef(game.sigilsEarned)
+  useEffect(() => {
+    if (game.sigilsEarned > prevSigilsRef.current) audio.sfx('sigil')
+    prevSigilsRef.current = game.sigilsEarned
+  }, [game.sigilsEarned])
+
+  // Flourish the newest sigil pip on arrival back in the sanctuary with a
+  // freshly earned sigil. Derived during render (no effect) so it survives the
+  // descent→sanctuary view swap that fires it; gated to the sanctuary phase so
+  // the victory screen keeps its own celebration. Cleared by the pip's
+  // animationEnd via onSigilCelebrated.
+  const [sigilCelebrate, setSigilCelebrate] = useState(false)
+  const [prevSigilsSeen, setPrevSigilsSeen] = useState(game.sigilsEarned)
+  if (game.sigilsEarned !== prevSigilsSeen) {
+    if (game.sigilsEarned > prevSigilsSeen && game.phase === 'sanctuary') {
+      setSigilCelebrate(true)
+    }
+    setPrevSigilsSeen(game.sigilsEarned)
+  }
 
   // Record a finished run into history. Fires on the terminal phases
   // (victory, death, retire) but skips the tutorial walk (no sigils, curated).
@@ -221,7 +255,7 @@ export default function Scoundrel() {
   }, [game.tutorial, game.phase])
 
   useEffect(() => {
-    const anyOpen = rulesOpen || retireOpen || creditsOpen || devOpen || tutorialReplayOpen || loginOpen || cardLibraryOpen || historyOpen
+    const anyOpen = rulesOpen || retireOpen || creditsOpen || devOpen || tutorialReplayOpen || loginOpen || cardLibraryOpen || historyOpen || homeOpen
     if (!anyOpen) return
     const onKey = (e) => {
       if (e.key !== 'Escape') return
@@ -233,14 +267,16 @@ export default function Scoundrel() {
       else if (tutorialReplayOpen) setTutorialReplayOpen(false)
       else if (loginOpen) setLoginOpen(false)
       else if (rulesOpen) setRulesOpen(false)
+      else if (homeOpen) setHomeOpen(false)
     }
     window.addEventListener('keydown', onKey)
     return () => window.removeEventListener('keydown', onKey)
-  }, [rulesOpen, retireOpen, creditsOpen, devOpen, tutorialReplayOpen, loginOpen, cardLibraryOpen, historyOpen])
+  }, [rulesOpen, retireOpen, creditsOpen, devOpen, tutorialReplayOpen, loginOpen, cardLibraryOpen, historyOpen, homeOpen])
 
   const confirmReplayTutorial = () => {
     setGame(createRun(Math.random, { tutorial: true, unlockedBoons: loadLibrary() }))
     setTutorialReplayOpen(false)
+    setHomeOpen(false)
   }
 
   // Skip the tutorial from the sanctuary intro panel. Marks it
@@ -270,6 +306,7 @@ export default function Scoundrel() {
         onSignOut={handleSignOut}
         onOpenCardLibrary={() => setCardLibraryOpen(true)}
         onOpenHistory={() => setHistoryOpen(true)}
+        onOpenHome={() => setHomeOpen(true)}
       />
       <RulesModal open={rulesOpen} onClose={() => setRulesOpen(false)} />
       <RetireModal
@@ -297,8 +334,17 @@ export default function Scoundrel() {
         user={user}
         onClose={() => setHistoryOpen(false)}
       />
+      <HomeView
+        open={homeOpen}
+        onResume={() => setHomeOpen(false)}
+        onOpenRules={() => setRulesOpen(true)}
+        onOpenHistory={() => setHistoryOpen(true)}
+        onOpenCardLibrary={() => setCardLibraryOpen(true)}
+        onReplayTutorial={() => setTutorialReplayOpen(true)}
+        onOpenCredits={() => setCreditsOpen(true)}
+      />
       <main className="flex-1 w-full max-w-7xl px-4 sm:px-6 pt-16 sm:pt-20 pb-8">
-        {game.phase === 'sanctuary' && <SanctuaryView game={game} setGame={setGame} onSkipTutorial={skipTutorial} ascensionUnlocked={ascensionUnlocked} />}
+        {game.phase === 'sanctuary' && <SanctuaryView game={game} setGame={setGame} onSkipTutorial={skipTutorial} ascensionUnlocked={ascensionUnlocked} celebrateSigil={sigilCelebrate} onSigilCelebrated={() => setSigilCelebrate(false)} />}
         {game.phase === 'descent' && <DescentView game={game} setGame={setGame} />}
         {(game.phase === 'gameover' || game.phase === 'victory') && (
           <OutcomeView game={game} onBeginAgain={() => setGame(freshRun())} />

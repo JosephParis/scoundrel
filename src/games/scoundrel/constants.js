@@ -20,8 +20,7 @@ export const SUIT_GLYPH = { H: '♥', D: '♦', C: '♣', S: '♠', W: '✕', K:
 export const RANK_LABEL = { 11: 'J', 12: 'Q', 13: 'K', 14: 'A' }
 
 export const BASE_MAX_HP = 20
-export const SIGIL_TARGET = 7
-export const FORGE_SIGILS = new Set([2, 4, 6])
+export const SIGIL_TARGET = 10
 export const ROOM_SIZE = 4
 
 // Run modes. Each mode is a small bundle of flags applied at the run loop's
@@ -65,6 +64,10 @@ export function isMonster(c) { return !!c && (c.suit === CLUB || c.suit === SPAD
 export function isWeapon(c) { return !!c && c.suit === DIAMOND }
 export function isPotion(c) { return !!c && c.suit === HEART }
 export function isWound(c) { return !!c && c.suit === WOUND }
+// A kit card is anything the player owns and carries: weapons, potions, and the
+// neutral tool cards (Skeleton Key, Map, Whetstone). Wounds are descent-transient
+// and never belong to the persisted kit, so they are excluded explicitly.
+export function isKitCard(c) { return !!c && !isMonster(c) && !isWound(c) }
 export function isSkeletonKey(c) { return !!c && c.suit === KEY }
 export function isMap(c) { return !!c && c.suit === MAP }
 export function isWhetstone(c) { return !!c && c.suit === STONE }
@@ -98,10 +101,27 @@ export function makeWoundCard() {
   }
 }
 
-// Inscribed cards: player-authored additions to the deck (the Forge's
-// Inscribe action). Each frame is one template; the player picks a rank
-// within the frame's range, and the card is stored on state.inscribed and
-// added to the deck each descent. `playEffect` is read by combat handlers.
+// A plain kit card (weapon or potion) added to the kit via the Inscribe
+// verb's "add a tool" option. Needs a fresh unique id because the kit may
+// already hold a card of the same suit and rank (e.g. a second D6).
+let kitCounter = 0
+export function makeKitCard(suit, rank) {
+  kitCounter += 1
+  return { suit, rank, id: `kit_${suit}${rank}_${kitCounter}_${Date.now().toString(36)}` }
+}
+
+// A sampled monster card for the dungeon's per-descent monster set. Needs a
+// fresh unique id because composition sampling can produce duplicate ranks.
+let monsterCounter = 0
+export function makeMonsterCard(suit, rank) {
+  monsterCounter += 1
+  return { suit, rank, id: `mon_${suit}${rank}_${monsterCounter}_${Date.now().toString(36)}` }
+}
+
+// Inscribed cards: player-authored tools added via the Inscribe verb. Each
+// frame is one template; the player picks a rank within the frame's range, and
+// the card is added to the kit (state.kit) and shuffled into the deck each
+// descent. `playEffect` is read by combat handlers.
 export const INSCRIBED_FRAMES = {
   lucky_coin: {
     id: 'lucky_coin',

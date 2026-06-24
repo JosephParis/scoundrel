@@ -29,3 +29,10 @@ dist-ssr
 .vercel
 
 .env.local
+
+# Playwright visual-review output (the harness config + spec are tracked,
+# but generated screenshots/results are not)
+visual-screens/
+test-results/
+playwright-report/
+.playwright/

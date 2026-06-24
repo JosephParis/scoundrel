@@ -1,8 +1,7 @@
-import { useMemo, useState } from 'react'
+import { useState } from 'react'
 import { createPortal } from 'react-dom'
 import {
   BOONS, getBoon, rankLabel,
-  computeCurrentDeck,
   HEART, DIAMOND, SUIT_GLYPH,
 } from '../logic'
 import { ConfirmButton } from './atoms'
@@ -93,13 +92,11 @@ function BoonCard({ boon, selected, onPick }) {
 // -- Run state ---------------------------------------------------------
 
 export function RunStatePanel({ game }) {
-  const inscribedCount = (game.inscribed || []).length
+  const inscribedCount = (game.kit || []).filter(c => c.inscribed).length
+  const kitEdits = game.kitEdits || 0
   const empty =
     game.boons.length === 0 &&
-    game.strikes.length === 0 &&
-    Object.keys(game.transmutes).length === 0 &&
-    Object.keys(game.hefts || {}).length === 0 &&
-    inscribedCount === 0 &&
+    kitEdits === 0 &&
     !game.carriedWeapon &&
     !game.carriedSpareWeapon
 
@@ -140,22 +137,10 @@ export function RunStatePanel({ game }) {
           ))}
         </div>
       )}
-      {game.strikes.length > 0 && (
+      {kitEdits > 0 && (
         <div className="text-slate-300">
-          <span className="text-slate-500">Names carved:</span>{' '}
-          <span className="text-rune">{game.strikes.length / 2}</span>
-        </div>
-      )}
-      {Object.keys(game.transmutes).length > 0 && (
-        <div className="text-slate-300">
-          <span className="text-slate-500">Transmutations:</span>{' '}
-          <span className="text-rune">{Object.keys(game.transmutes).length}</span>
-        </div>
-      )}
-      {Object.keys(game.hefts || {}).length > 0 && (
-        <div className="text-slate-300">
-          <span className="text-slate-500">Hefts:</span>{' '}
-          <span className="text-rune">{Object.keys(game.hefts).length}</span>
+          <span className="text-slate-500">Kit edits:</span>{' '}
+          <span className="text-rune">{kitEdits}</span>
         </div>
       )}
       {inscribedCount > 0 && (
@@ -171,13 +156,13 @@ export function RunStatePanel({ game }) {
 // -- Deck peek ---------------------------------------------------------
 
 export function DeckPeekButton({ game, onClick }) {
-  const count = useMemo(() => computeCurrentDeck(game).length, [game])
+  const count = (game.kit || []).length
   return (
     <button
       onClick={onClick}
       className="panel p-3 w-full text-left hover:border-rune/40 transition flex items-baseline justify-between"
     >
-      <span className="text-[10px] uppercase tracking-widest text-slate-500">View deck</span>
+      <span className="text-[10px] uppercase tracking-widest text-slate-500">View kit</span>
       <span className="text-[11px] text-slate-500">
         <span className="font-mono text-slate-300">{count}</span> cards
       </span>
@@ -186,7 +171,7 @@ export function DeckPeekButton({ game, onClick }) {
 }
 
 export function DeckModal({ open, onClose, game }) {
-  const deck = useMemo(() => (open ? computeCurrentDeck(game) : []), [open, game])
+  const deck = game.kit || []
   if (!open) return null
   return (
     <div
@@ -205,7 +190,7 @@ export function DeckModal({ open, onClose, game }) {
           ×
         </button>
         <div className="mb-4">
-          <div className="text-[10px] uppercase tracking-[0.3em] text-slate-500">The deck</div>
+          <div className="text-[10px] uppercase tracking-[0.3em] text-slate-500">Your kit</div>
           <h2 className="font-display text-rune text-2xl mt-1">
             {deck.length} <span className="text-slate-400 text-base">cards</span>
           </h2>
@@ -275,7 +260,7 @@ function PeekCard({ card, index }) {
   return (
     <div className="flex flex-col items-center gap-1">
       <div className="text-[10px] uppercase tracking-widest text-slate-500">#{index + 1}</div>
-      <div className={`aspect-[2/3] w-20 sm:w-24 rounded-md border-2 ${cardBorderTone(card)} bg-gradient-to-b from-parchment to-[#e8d5b3] text-stone-900 p-2 flex flex-col text-left shadow-md`}>
+      <div className={`aspect-[2/3] w-20 sm:w-24 rounded-md border-2 ${cardBorderTone(card)} card-face text-stone-900 p-2 flex flex-col text-left`}>
         <div className={`text-lg font-bold leading-none ${red ? 'text-blood' : 'text-stone-900'}`}>
           {rankLabel(card.rank)}{SUIT_GLYPH[card.suit]}
         </div>
@@ -290,7 +275,7 @@ function PeekCard({ card, index }) {
 // -- Loadout (idle review panel) ---------------------------------------
 
 export function LoadoutPanel({ game }) {
-  const deck = useMemo(() => computeCurrentDeck(game), [game])
+  const deck = game.kit || []
   const { carriedWeapon, carriedSpareWeapon, boons } = game
   const showWeapons = carriedWeapon || carriedSpareWeapon
   const showBoons = boons.length > 0
@@ -300,7 +285,7 @@ export function LoadoutPanel({ game }) {
       <div className="flex items-baseline justify-between gap-3 flex-wrap mb-3">
         <h2 className="font-display text-rune text-base leading-tight">Ready to descend</h2>
         <div className="text-[10px] uppercase tracking-widest text-slate-500">
-          Deck · <span className="font-mono text-parchment">{deck.length}</span> cards
+          Kit · <span className="font-mono text-parchment">{deck.length}</span> cards
           {showBoons && (
             <>
               <span className="text-stone-700 mx-2">|</span>

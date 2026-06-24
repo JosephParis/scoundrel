@@ -39,14 +39,19 @@ export function ConfirmButton({ onClick, disabled, label }) {
 // a status slot (HP bar in descent, "Rested" badge in sanctuary).
 // On desktop it sticks below the top bar; on mobile it sits as a
 // normal block at the top of the column flow.
-export function PhaseRail({ title, subtitle, sigilsEarned, sigilTarget, children }) {
+export function PhaseRail({ title, subtitle, sigilsEarned, sigilTarget, celebrateSigil, onSigilCelebrated, children }) {
   const showSigils = typeof sigilsEarned === 'number' && typeof sigilTarget === 'number'
   return (
     <aside className="md:sticky md:top-20 md:self-start space-y-4">
       <div>
         <h1 className="font-display text-3xl md:text-4xl text-rune leading-tight">{title}</h1>
         {showSigils && (
-          <SigilTracker count={sigilsEarned} target={sigilTarget} />
+          <SigilTracker
+            count={sigilsEarned}
+            target={sigilTarget}
+            celebrate={celebrateSigil}
+            onCelebrated={onSigilCelebrated}
+          />
         )}
         {subtitle && (
           <p className="mt-2 text-[12px] text-slate-400 leading-snug">{subtitle}</p>
@@ -60,7 +65,7 @@ export function PhaseRail({ title, subtitle, sigilsEarned, sigilTarget, children
   )
 }
 
-function SigilTracker({ count, target }) {
+function SigilTracker({ count, target, celebrate, onCelebrated }) {
   return (
     <div className="mt-2 flex items-center gap-1.5">
       <span className="text-[10px] uppercase tracking-widest text-slate-500 mr-1">
@@ -69,14 +74,18 @@ function SigilTracker({ count, target }) {
       <div className="flex items-center gap-1">
         {Array.from({ length: target }).map((_, i) => {
           const set = i < count
+          // Flourish only the newest pip, and only when arriving with a
+          // freshly earned sigil. Clears the root flag on animation end.
+          const flourish = celebrate && set && i === count - 1
           return (
             <span
               key={i}
-              className={
+              onAnimationEnd={flourish ? onCelebrated : undefined}
+              className={`${
                 set
                   ? 'w-2.5 h-2.5 rotate-45 bg-rune shadow-[0_0_8px_rgba(251,191,36,0.7)]'
                   : 'w-2.5 h-2.5 rotate-45 border border-stone-600'
-              }
+              } ${flourish ? 'animate-sigil-flourish' : ''}`}
               aria-label={set ? 'sigil set' : 'sigil empty'}
             />
           )

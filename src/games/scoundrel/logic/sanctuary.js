@@ -1,7 +1,8 @@
 import {
-  SUIT_GLYPH, BASE_MAX_HP, isMonster, isWeapon, isPotion, rankLabel, suitColor,
-  INSCRIBED_FRAMES, INSCRIBED_FRAME_IDS, makeInscribedCard,
+  SUIT_GLYPH, BASE_MAX_HP, isMonster, isWeapon, isPotion, rankLabel,
+  HEART, DIAMOND, INSCRIBED_FRAMES, INSCRIBED_FRAME_IDS, makeInscribedCard, makeKitCard,
 } from '../constants'
+import { isEnabled as isFlagEnabled } from '../flags'
 import { BOONS } from '../boons'
 import { getAscensionEffectsForState } from '../ascensions'
 import { BOSSES } from '../bosses'
@@ -13,7 +14,6 @@ import {
   computePotionsPerRoomLimit,
   sumParts,
 } from './helpers'
-import { computeCurrentDeck } from './deck'
 import { isWeaponUsable, pickBestWeaponFor } from './combat'
 
 // -- Sanctuary actions -------------------------------------------------
@@ -33,127 +33,179 @@ export function pickBoon(state, boonId) {
   )
 }
 
-export function openForgeAction(state, action) {
-  if (state.phase !== 'sanctuary') return state
-  if (!state.forgeOpen || state.forgeUsed) return state
-  return { ...state, forgeView: action }
+// -- Forge: kit editing ------------------------------------------------
+//
+// Each sanctuary visit grants a batch of edits whose types are chosen for the
+// player (state.forgeGrants). The player works through them one at a time
+// (state.forgeGrantIndex), and each edit is a "pick one of a few cards" screen
+// (state.forgeChoices). Inscribe adds the chosen tool; Upgrade bumps it +2;
+// Remove drops it. Inscribe is weighted high so growth is never starved.
+
+export const UPGRADE_BONUS = 2
+export const UPGRADE_RANK_CAP = 10
+
+// How many edits a visit grants: 2 through Tier 1-3, 3 from Tier 4 (sigils 5+).
+function editsPerVisit(sigils) {
+  return (sigils || 0) >= 5 ? 3 : 2
 }
 
-export function closeForgeView(state) {
-  return { ...state, forgeView: null }
+// Kit cards that can still take an Upgrade (+2 within the rank cap).
+function upgradeCandidates(kit) {
+  return (kit || []).filter(
+    c => (isWeapon(c) || isPotion(c)) && c.rank + UPGRADE_BONUS <= UPGRADE_RANK_CAP
+  )
 }
 
-// Skip the forge for this visit without applying any edit. Marks the
-// forge as used so the sequencing in the UI knows the player is done
-// with this stage.
-export function skipForge(state) {
-  if (state.phase !== 'sanctuary' || !state.forgeOpen || state.forgeUsed) return state
-  return {
-    ...state,
-    forgeUsed: true,
-    forgeView: null,
-    log: [...state.log, 'You step away from the forge.'],
+// Pull up to n random items from arr (partial Fisher-Yates).
+function sampleN(arr, n, rng) {
+  const a = arr.slice()
+  for (let i = a.length - 1; i > 0; i--) {
+    const j = Math.floor(rng() * (i + 1))
+    ;[a[i], a[j]] = [a[j], a[i]]
   }
+  return a.slice(0, n)
 }
 
-// Strike's offering may match the monster's rank or fall up to this many
-// ranks below it. A lighter blade can still balance the carving, within
-// reason. K and A monsters are effectively immune since no offering reaches
-// their weight (rank ≤ 10 cap on hearts and diamonds).
-export const STRIKE_OFFERING_RANGE = 2
+// Tool/neutral inscribe frames the kit can still take (monster frames excluded;
+// oncePerRun frames already in the kit excluded).
+function inscribeFramePool(kit) {
+  return INSCRIBED_FRAME_IDS.map(id => INSCRIBED_FRAMES[id]).filter(frame => {
+    if (isMonster({ suit: frame.suit })) return false
+    if (frame.oncePerRun && (kit || []).some(c => c.inscribed === frame.id)) return false
+    return true
+  })
+}
 
-export function applyStrike(state, monsterId, offeringId) {
-  if (state.phase !== 'sanctuary' || !state.forgeOpen || state.forgeUsed) return state
-  const current = computeCurrentDeck(state)
-  const monster = current.find(c => c.id === monsterId)
-  const offering = current.find(c => c.id === offeringId)
-  if (!monster || !offering) return state
-  if (!isMonster(monster)) return state
-  if (!(isWeapon(offering) || isPotion(offering))) return state
-  const diff = monster.rank - offering.rank
-  if (diff < 0 || diff > STRIKE_OFFERING_RANGE) return state
+// Roll the 4 candidate cards an Inscribe grant offers: plain weapons/potions at
+// the progress rank cap (4 + sigils, max 10), with up to one special frame mixed
+// in when custom cards are enabled. Each candidate is a kit-ready card.
+function rollInscribeChoices(kit, sigils, rng) {
+  const cap = Math.min(10, 4 + (sigils || 0))
+  const choices = []
+  for (let i = 0; i < 4; i++) {
+    const suit = rng() < 0.5 ? DIAMOND : HEART
+    const rank = 2 + Math.floor(rng() * (cap - 1))
+    choices.push(makeKitCard(suit, rank))
+  }
+  if (isFlagEnabled('customCards')) {
+    const frames = inscribeFramePool(kit)
+    if (frames.length > 0 && rng() < 0.5) {
+      const frame = frames[Math.floor(rng() * frames.length)]
+      const rank = frame.rankMin + Math.floor(rng() * (frame.rankMax - frame.rankMin + 1))
+      choices[Math.floor(rng() * choices.length)] = makeInscribedCard(frame.id, rank)
+    }
+  }
+  return choices
+}
 
-  const mGlyph = SUIT_GLYPH[monster.suit]
-  const oGlyph = SUIT_GLYPH[offering.suit]
-  return appendLog(
-    {
-      ...state,
-      strikes: state.strikes.concat([monsterId, offeringId]),
-      forgeUsed: true,
-      forgeView: null,
-    },
-    `Carved ${rankLabel(monster.rank)}${mGlyph} into the threshold; ${rankLabel(offering.rank)}${oGlyph} offered to the kindling.`
+// Roll the candidate cards (up to 4) an edit grant offers, given its type and
+// the current kit. Inscribe rolls fresh tool cards; Upgrade and Remove sample
+// existing kit cards.
+export function rollForgeChoices(type, kit, sigils, rng) {
+  if (type === 'inscribe') return rollInscribeChoices(kit, sigils, rng)
+  if (type === 'upgrade') return sampleN(upgradeCandidates(kit), 4, rng)
+  if (type === 'remove') return sampleN((kit || []).slice(), 4, rng)
+  return []
+}
+
+// Roll the ordered batch of edit types for a visit. Inscribe is weighted high
+// so growth is never starved; Upgrade and Remove fall back to Inscribe when
+// unavailable; at most one Remove per visit.
+export function rollForgeGrants(kit, sigils, rng) {
+  const n = editsPerVisit(sigils)
+  const grants = []
+  let removeUsed = false
+  for (let i = 0; i < n; i++) {
+    const canUpgrade = upgradeCandidates(kit).length > 0
+    const canRemove = !removeUsed && (kit || []).length > 1
+    const r = rng()
+    let type
+    if (r < 0.45) type = 'inscribe'
+    else if (r < 0.8) type = canUpgrade ? 'upgrade' : 'inscribe'
+    else type = canRemove ? 'remove' : 'inscribe'
+    if (type === 'remove') removeUsed = true
+    grants.push(type)
+  }
+  return grants
+}
+
+// Find the first grant (from `from`) with non-empty choices, rolling each
+// against the current kit. Empty grants (e.g. an Upgrade with nothing left to
+// upgrade) are skipped. Returns { forgeGrantIndex, forgeChoices }.
+export function initForgeBatch(grants, kit, sigils, rng, from = 0) {
+  let index = from
+  while (index < grants.length) {
+    const choices = rollForgeChoices(grants[index], kit, sigils, rng)
+    if (choices.length > 0) return { forgeGrantIndex: index, forgeChoices: choices }
+    index += 1
+  }
+  return { forgeGrantIndex: index, forgeChoices: [] }
+}
+
+// Whether the player still has edits to resolve this visit.
+export function forgeActive(state) {
+  return !!state.forgeOpen && (state.forgeGrantIndex || 0) < (state.forgeGrants || []).length
+}
+
+// Advance to the next non-empty grant in the batch (rolling its choices against
+// the just-edited kit), or close the forge stage when the batch is done.
+function advanceForgeGrant(state) {
+  const { forgeGrantIndex, forgeChoices } = initForgeBatch(
+    state.forgeGrants || [], state.kit, state.sigilsEarned || 0, state.rng,
+    (state.forgeGrantIndex || 0) + 1
   )
+  return { ...state, forgeGrantIndex, forgeChoices }
 }
 
-export function applyTransmute(state, cardId, newSuit) {
-  if (state.phase !== 'sanctuary' || !state.forgeOpen || state.forgeUsed) return state
-  const current = computeCurrentDeck(state)
-  const card = current.find(c => c.id === cardId)
+// Apply the current grant to the chosen card (one of state.forgeChoices), then
+// advance the batch. cardId must be in the current offer.
+export function applyForgeEdit(state, cardId) {
+  if (state.phase !== 'sanctuary' || !forgeActive(state)) return state
+  const type = state.forgeGrants[state.forgeGrantIndex]
+  const card = (state.forgeChoices || []).find(c => c.id === cardId)
   if (!card) return state
-  if (card.suit === newSuit) return state
-  // Color-locked: ♥↔♦ and ♣↔♠ only. The threshold won't accept a
-  // cross-color carving (too far a reshape for the rite to hold).
-  if (suitColor(card.suit) !== suitColor(newSuit)) return state
+  const kit = state.kit || []
+  let next
 
-  return appendLog(
-    {
-      ...state,
-      transmutes: { ...state.transmutes, [cardId]: newSuit },
-      forgeUsed: true,
-      forgeView: null,
-    },
-    `Transmuted ${rankLabel(card.rank)}${SUIT_GLYPH[card.suit]} → ${rankLabel(card.rank)}${SUIT_GLYPH[newSuit]}.`
-  )
+  if (type === 'inscribe') {
+    if (card.inscribed) {
+      const frame = INSCRIBED_FRAMES[card.inscribed]
+      if (frame?.oncePerRun && kit.some(c => c.inscribed === card.inscribed)) return state
+    }
+    next = appendLog(
+      { ...state, kit: [...kit, card], kitEdits: (state.kitEdits || 0) + 1 },
+      card.inscribed
+        ? `Inscribed ${INSCRIBED_FRAMES[card.inscribed]?.name || 'a tool'}${card.rank > 0 ? ` (${rankLabel(card.rank)})` : ''} into the kit.`
+        : `Added ${rankLabel(card.rank)}${SUIT_GLYPH[card.suit]} to the kit.`
+    )
+  } else if (type === 'upgrade') {
+    if (!(isWeapon(card) || isPotion(card)) || card.rank + UPGRADE_BONUS > UPGRADE_RANK_CAP) return state
+    const newKit = kit.map(c =>
+      c.id === cardId
+        ? { ...c, rank: c.rank + UPGRADE_BONUS, upgraded: true, upgradeBonus: (c.upgradeBonus || 0) + UPGRADE_BONUS }
+        : c
+    )
+    next = appendLog(
+      { ...state, kit: newKit, kitEdits: (state.kitEdits || 0) + 1 },
+      `Upgraded ${rankLabel(card.rank)}${SUIT_GLYPH[card.suit]} → ${rankLabel(card.rank + UPGRADE_BONUS)}${SUIT_GLYPH[card.suit]}.`
+    )
+  } else if (type === 'remove') {
+    if (kit.length <= 1) return state
+    next = appendLog(
+      { ...state, kit: kit.filter(c => c.id !== cardId), kitEdits: (state.kitEdits || 0) + 1 },
+      `Removed ${rankLabel(card.rank)}${SUIT_GLYPH[card.suit]} from the kit.`
+    )
+  } else {
+    return state
+  }
+
+  return advanceForgeGrant(next)
 }
 
-export const HEFT_BONUS = 2
-export const HEFT_RANK_CAP = 10
-
-export function applyHeft(state, cardId) {
-  if (state.phase !== 'sanctuary' || !state.forgeOpen || state.forgeUsed) return state
-  const current = computeCurrentDeck(state)
-  const card = current.find(c => c.id === cardId)
-  if (!card) return state
-  if (!(isWeapon(card) || isPotion(card))) return state
-  if (card.rank + HEFT_BONUS > HEFT_RANK_CAP) return state
-  // Stack with any prior heft on this card (still capped).
-  const prior = state.hefts?.[cardId] || 0
-  const next = prior + HEFT_BONUS
-
-  return appendLog(
-    {
-      ...state,
-      hefts: { ...(state.hefts || {}), [cardId]: next },
-      forgeUsed: true,
-      forgeView: null,
-    },
-    `Hefted ${rankLabel(card.rank)}${SUIT_GLYPH[card.suit]} → ${rankLabel(card.rank + HEFT_BONUS)}${SUIT_GLYPH[card.suit]}.`
-  )
-}
-
-// Inscribe: add a player-authored card to state.inscribed. The card joins
-// the deck on the next descent and persists for the rest of the run.
-// Frames with `oncePerRun: true` (e.g. Skeleton Key) are blocked when one
-// is already in the inscribed list. Rank is clamped to the frame's range.
-export function applyInscribe(state, frameId, rank) {
-  if (state.phase !== 'sanctuary' || !state.forgeOpen || state.forgeUsed) return state
-  const frame = INSCRIBED_FRAMES[frameId]
-  if (!frame) return state
-  const inscribed = state.inscribed || []
-  if (frame.oncePerRun && inscribed.some(c => c.inscribed === frameId)) return state
-  const card = makeInscribedCard(frameId, rank)
-  if (!card) return state
-
-  return appendLog(
-    {
-      ...state,
-      inscribed: inscribed.concat(card),
-      forgeUsed: true,
-      forgeView: null,
-    },
-    `Inscribed ${frame.name}${card.rank > 0 ? ` (${rankLabel(card.rank)})` : ''} into the deck.`
-  )
+// Skip the current grant without applying it, then advance the batch.
+export function skipForgeEdit(state) {
+  if (state.phase !== 'sanctuary' || !forgeActive(state)) return state
+  return advanceForgeGrant(appendLog(state, 'You leave the coals for now.'))
 }
 
 // Clear the Map peek snapshot. Called when the player closes the modal
@@ -161,47 +213,6 @@ export function applyInscribe(state, frameId, rank) {
 export function dismissMapPeek(state) {
   if (!state.mapPeek) return state
   return { ...state, mapPeek: null }
-}
-
-// What frames can the player inscribe right now? Removes any frame that's
-// already at its per-run cap (Skeleton Key).
-export function getInscribeOptions(state) {
-  if (state.phase !== 'sanctuary' || !state.forgeOpen) return []
-  const inscribed = state.inscribed || []
-  return INSCRIBED_FRAME_IDS.map(id => INSCRIBED_FRAMES[id]).filter(frame => {
-    if (frame.oncePerRun && inscribed.some(c => c.inscribed === frame.id)) return false
-    return true
-  })
-}
-
-// -- Convenience inspection (used by UI) -------------------------------
-
-export function getStrikeOptions(state) {
-  if (state.phase !== 'sanctuary' || !state.forgeOpen) return { monsters: [], byRank: {} }
-  const current = computeCurrentDeck(state)
-  const monsters = current.filter(c => isMonster(c))
-  const byRank = {}
-  for (const c of current) {
-    if (isWeapon(c) || isPotion(c)) {
-      if (!byRank[c.rank]) byRank[c.rank] = []
-      byRank[c.rank].push(c)
-    }
-  }
-  return { monsters, byRank }
-}
-
-export function getTransmuteOptions(state) {
-  if (state.phase !== 'sanctuary' || !state.forgeOpen) return []
-  return computeCurrentDeck(state)
-}
-
-// Heft can target any weapon or potion whose rank, after the +2 bonus,
-// still respects the lore cap (no king-grade weapons or potions).
-export function getHeftOptions(state) {
-  if (state.phase !== 'sanctuary' || !state.forgeOpen) return []
-  return computeCurrentDeck(state).filter(
-    c => (isWeapon(c) || isPotion(c)) && c.rank + HEFT_BONUS <= HEFT_RANK_CAP
-  )
 }
 
 export function isWeaponUsableFor(state, card) {

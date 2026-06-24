@@ -10,7 +10,8 @@ import {
   hasBoon,
   markTutorialLesson,
 } from './helpers'
-import { buildDescentDeck, buildTutorialDeck } from './deck'
+import { buildDescentDeck, buildTutorialDeck, buildStartingKit } from './deck'
+import { rollForgeGrants, initForgeBatch } from './sanctuary'
 import { applyRoomEntryEffects } from './combat'
 
 // -- Run lifecycle ------------------------------------------------------
@@ -58,10 +59,13 @@ export function createRun(rng = Math.random, options = {}) {
     // 'replace', 'barehands', 'flee'.
     tutorialLessons: [],
     boons: [],
-    strikes: [],
-    transmutes: {},
-    hefts: {},
-    inscribed: [],
+    // The player's kit: weapons and potions they own and edit across the run.
+    // Seeded as the low ten (diamonds 2-6, hearts 2-6). Persists across descents
+    // (never in a reset list, so the { ...state } spreads carry it forward).
+    kit: buildStartingKit(),
+    // Count of kit edits applied this run (Inscribe / Upgrade / Remove).
+    // Run-level, surfaced in the run summary.
+    kitEdits: 0,
     carriedWeapon: null,
     carriedSpareWeapon: null,
     rng,
@@ -70,9 +74,13 @@ export function createRun(rng = Math.random, options = {}) {
     nextTheme,
     nextThemeChildren: null,
     forgeOpen: false,
-    forgeUsed: false,
     boonChosen: true, // no Boon to pick on the opening visit
-    forgeView: null,
+    // The Forge's granted edit batch for the visit: the ordered edit types, the
+    // index of the active edit, and the cards offered for it. Rolled when the
+    // forge opens (see endDescentVictory); empty on the opening visit.
+    forgeGrants: [],
+    forgeGrantIndex: 0,
+    forgeChoices: [],
 
     hp: 0,
     maxHp: 0,
@@ -228,7 +236,10 @@ export function descend(state) {
     // real run leg). Run-level, so it accumulates across the whole run.
     themesFaced: state.tutorial ? (state.themesFaced || []) : [...(state.themesFaced || []), themeId],
     mutedBoon,
-    forgeView: null,
+    forgeOpen: false,
+    forgeGrants: [],
+    forgeGrantIndex: 0,
+    forgeChoices: [],
     riposteCharge: 0,
     secondWindUsed: false,
     cloakUsed: false,
@@ -256,9 +267,29 @@ export function descend(state) {
 
 // -- Run end states -----------------------------------------------------
 
-export function endDescentDeath(state) {
+// Record where and how the run ended. `cause` carries the killing-blow detail
+// the combat code knows (source, card, weapon); the situational context
+// (which descent, theme, how deep) is derived from state here so call sites
+// stay lean. Snapshotted into the stored record by buildRunRecord, then
+// flattened into the run_ended analytics event.
+export function endDescentDeath(state, cause = null) {
+  const deathContext = {
+    source: cause?.source || 'unknown',
+    card: cause?.card || null,            // { suit, rank, effRank, boss }
+    barehanded: cause?.barehanded ?? null,
+    weaponRank: cause?.weaponRank ?? null,
+    damage: cause?.damage ?? null,
+    hpBefore: cause?.hpBefore ?? null,
+    descent: (state.sigilsEarned || 0) + 1,
+    theme: state.theme || null,
+    themeChildren: state.themeChildren || null,
+    roomsThisDescent: state.roomsEntered || 0,
+    runRoomsEntered: state.runRoomsEntered || 0,
+    monstersSlain: state.monstersSlain || 0,
+    deckRemaining: (state.deck || []).length,
+  }
   return appendLog(
-    { ...state, phase: 'gameover' },
+    { ...state, phase: 'gameover', deathContext },
     'You fall in the dark. The hall above forgets you.'
   )
 }
@@ -293,8 +324,9 @@ export function endDescentVictory(state) {
         boonOffers: [],
         boonChosen: true,
         forgeOpen: false,
-        forgeUsed: false,
-        forgeView: null,
+        forgeGrants: [],
+        forgeGrantIndex: 0,
+        forgeChoices: [],
         deck: [],
         room: [],
         theme: null,
@@ -331,7 +363,7 @@ export function endDescentVictory(state) {
       carriedSpareWeapon,
       unlockedBoons: nextLibrary,
     }
-    won = appendLog(won, 'The seventh sigil is set in the threshold. The high gate opens.')
+    won = appendLog(won, 'The final sigil is set in the threshold. The high gate opens.')
     if (discoveredBoonId) {
       const boon = BOONS[discoveredBoonId]
       won = appendLog(won, `Discovered a new Boon: ${boon?.name || discoveredBoonId}.`)
@@ -349,7 +381,7 @@ export function endDescentVictory(state) {
   //
   // Mode hooks: lockTheme overrides the rolled theme; noBoons skips the
   // offer roll; noForge keeps the forge closed regardless of sigil count.
-  const nextTheme = mode.lockTheme || pickThemeId(rng, newSigils + asc.themeTierOffset)
+  const nextTheme = mode.lockTheme || pickThemeId(rng, newSigils + asc.themeTierOffset, state.theme)
   const nextThemeChildren = resolveThemeChildren(nextTheme, rng)
   // Library flag off: every Boon is available, the per-player unlocked set
   // is ignored. Discoveries still get appended to state (cheap, and the
@@ -358,6 +390,12 @@ export function endDescentVictory(state) {
   const boonOffers = mode.noBoons ? [] : pickBoonOffers(state.boons, asc.boonOfferCount, rng, offerPool)
   const boonChosen = mode.noBoons // no boon to pick in modes that skip offers
   const forgeOpen = !mode.noForge && forgeSigilSet.has(newSigils)
+  // When the forge opens, roll the visit's granted edit batch and the first
+  // edit's card choices. Empty when the forge is closed.
+  const forgeGrants = forgeOpen ? rollForgeGrants(state.kit, newSigils, rng) : []
+  const { forgeGrantIndex, forgeChoices } = forgeGrants.length > 0
+    ? initForgeBatch(forgeGrants, state.kit, newSigils, rng)
+    : { forgeGrantIndex: 0, forgeChoices: [] }
 
   let returned = {
     ...state,
@@ -369,9 +407,10 @@ export function endDescentVictory(state) {
     nextThemeChildren,
     boonOffers,
     forgeOpen,
-    forgeUsed: false,
     boonChosen,
-    forgeView: null,
+    forgeGrants,
+    forgeGrantIndex,
+    forgeChoices,
     unlockedBoons: nextLibrary,
 
     // Wipe descent-only state
@@ -439,6 +478,8 @@ function pickPocketTarget(room) {
 export function fleeRoom(state) {
   if (state.phase !== 'descent') return state
   if (!state.canFlee) return state
+  // A warded monster pins you in the room.
+  if ((state.room || []).some(c => c && c.warded)) return state
   const themes = themesFor(state.theme, state.themeChildren)
   if (themeFlagAny(themes, 'cannotFlee')) return state
 

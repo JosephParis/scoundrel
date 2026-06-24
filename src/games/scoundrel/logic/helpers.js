@@ -48,6 +48,14 @@ export function getRoomSize(themes) {
   return size
 }
 
+// Whether the player may flee the current room. state.canFlee is the
+// descent-level gate (cleared by Hungry Dark, refreshed by Scoundrel's Cloak);
+// a warded monster in the room blocks fleeing on top of that.
+export function canFleeRoom(state) {
+  if (!state.canFlee) return false
+  return !(state.room || []).some(c => c && c.warded)
+}
+
 export function effectiveMonsterRank(state, card) {
   const themes = activeThemes(state)
   let bonus = 0

@@ -5,12 +5,14 @@
  * screen or the history modal.
  */
 
-import { getMode, INSCRIBED_FRAMES } from './constants'
+import { getMode } from './constants'
 import { getAscension } from './ascensions'
 import { BOONS } from './boons'
 import { getTheme } from './themes'
 
-const RECORD_VERSION = 1
+// v2 added `death` (where/how the run ended). v1 records simply lack it;
+// readers treat a missing `death` as null.
+const RECORD_VERSION = 2
 const GUEST_ID = 'guest'
 
 function outcomeOf(state) {
@@ -19,21 +21,18 @@ function outcomeOf(state) {
   return 'death'
 }
 
-// Forge edits, collapsed to the parts worth showing in a summary: the list of
-// inscribed cards (frame name + rank) plus counts of the other three edits.
-function deckChangesOf(state) {
-  const inscribed = (state.inscribed || []).map(card => {
-    const frame = INSCRIBED_FRAMES[card.inscribed]
-    return { frame: card.inscribed, name: frame?.name || card.inscribed, rank: card.rank }
-  })
-  // strikes stores a flat [monsterId, offeringId] pair per removal.
-  const struck = Math.floor((state.strikes || []).length / 2)
-  return {
-    inscribed,
-    transmuted: Object.keys(state.transmutes || {}).length,
-    hefted: Object.keys(state.hefts || {}).length,
-    struck,
-  }
+// The kit as it stood when the run ended, serialized down to the fields the
+// card fan needs to render. Lets the summary show the final deck the same way
+// the rest of the game does, rather than a text list of edits.
+function endingDeckOf(state) {
+  return (state.kit || []).map((card, i) => ({
+    id: card.id ?? `deck_${i}`,
+    suit: card.suit,
+    rank: card.rank,
+    upgraded: card.upgraded || false,
+    upgradeBonus: card.upgradeBonus || 0,
+    inscribed: card.inscribed || null,
+  }))
 }
 
 function namedThemes(state) {
@@ -73,13 +72,16 @@ export function buildRunRecord(state, user) {
     ascension: state.ascension || 0,
     ascensionName: getAscension(state.ascension)?.name || null,
     boons: namedBoons(state),
-    deckChanges: deckChangesOf(state),
+    endingDeck: endingDeckOf(state),
     themesFaced: namedThemes(state),
     bossesDefeated: state.bossesDefeated || [],
     roomsEntered: state.runRoomsEntered || 0,
     monstersSlain: state.monstersSlain || 0,
     biggestKill: state.biggestKill || 0,
     finalWeapon: finalWeaponOf(state),
+    // Where and how the run ended. Only populated on death; victory and
+    // retire leave it null.
+    death: outcomeOf(state) === 'death' ? (state.deathContext || null) : null,
   }
 }
 

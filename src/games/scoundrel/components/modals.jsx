@@ -1,6 +1,7 @@
 import { useEffect, useMemo, useState } from 'react'
 import {
-  THEMES, BOONS, FORGE_SIGILS, getTheme,
+  THEMES, BOONS, getTheme,
+  rollForgeGrants, initForgeBatch,
   FLAG_IDS, FLAG_META, getFlags, setFlag, resetAllFlags,
 } from '../logic'
 
@@ -59,14 +60,14 @@ export function CreditsModal({ open, onClose }) {
 // -- Dev modal ---------------------------------------------------------
 
 export function DevModal({ open, onClose, game, setGame }) {
-  const tier2Ids = useMemo(
-    () => Object.values(THEMES).filter(t => t.tier === 2).map(t => t.id),
+  const tier3Ids = useMemo(
+    () => Object.values(THEMES).filter(t => t.tier === 3).map(t => t.id),
     []
   )
   const [sigils, setSigils] = useState(game.sigilsEarned)
   const [themeId, setThemeId] = useState(game.nextTheme || 'the_quiet')
-  const [child1, setChild1] = useState(() => game.nextThemeChildren?.[0] || tier2Ids[0] || '')
-  const [child2, setChild2] = useState(() => game.nextThemeChildren?.[1] || tier2Ids[1] || '')
+  const [child1, setChild1] = useState(() => game.nextThemeChildren?.[0] || tier3Ids[0] || '')
+  const [child2, setChild2] = useState(() => game.nextThemeChildren?.[1] || tier3Ids[1] || '')
   const [selectedBoons, setSelectedBoons] = useState(() => new Set(game.boons))
 
   // When the modal re-opens, seed local form state from current game state
@@ -75,10 +76,10 @@ export function DevModal({ open, onClose, game, setGame }) {
     if (!open) return
     setSigils(game.sigilsEarned)
     setThemeId(game.nextTheme || 'the_quiet')
-    setChild1(game.nextThemeChildren?.[0] || tier2Ids[0] || '')
-    setChild2(game.nextThemeChildren?.[1] || tier2Ids[1] || '')
+    setChild1(game.nextThemeChildren?.[0] || tier3Ids[0] || '')
+    setChild2(game.nextThemeChildren?.[1] || tier3Ids[1] || '')
     setSelectedBoons(new Set(game.boons))
-  }, [open, game.sigilsEarned, game.nextTheme, game.nextThemeChildren, game.boons, tier2Ids])
+  }, [open, game.sigilsEarned, game.nextTheme, game.nextThemeChildren, game.boons, tier3Ids])
 
   if (!open) return null
 
@@ -96,22 +97,31 @@ export function DevModal({ open, onClose, game, setGame }) {
   }
 
   const apply = () => {
-    setGame(g => ({
-      ...g,
-      sigilsEarned: sigils,
-      nextTheme: themeId,
-      nextThemeChildren: isCompound
-        ? [child1, child2].filter(Boolean)
-        : null,
-      boons: Array.from(selectedBoons),
-      boonChosen: true,
-      boonOffers: [],
-      forgeOpen: FORGE_SIGILS.has(sigils),
-      forgeUsed: false,
-      forgeView: null,
-      mutedBoon: null,
-      log: [...g.log, `[dev] overrides applied: sigils ${sigils}, theme "${themeObj?.name || themeId}".`],
-    }))
+    setGame(g => {
+      // The Forge opens after every descent (any non-opening, non-final sigil).
+      const forgeOpen = sigils >= 1 && sigils < g.sigilTarget
+      const forgeGrants = forgeOpen ? rollForgeGrants(g.kit, sigils, Math.random) : []
+      const batch = forgeGrants.length > 0
+        ? initForgeBatch(forgeGrants, g.kit, sigils, Math.random)
+        : { forgeGrantIndex: 0, forgeChoices: [] }
+      return {
+        ...g,
+        sigilsEarned: sigils,
+        nextTheme: themeId,
+        nextThemeChildren: isCompound
+          ? [child1, child2].filter(Boolean)
+          : null,
+        boons: Array.from(selectedBoons),
+        boonChosen: true,
+        boonOffers: [],
+        forgeOpen,
+        forgeGrants,
+        forgeGrantIndex: batch.forgeGrantIndex,
+        forgeChoices: batch.forgeChoices,
+        mutedBoon: null,
+        log: [...g.log, `[dev] overrides applied: sigils ${sigils}, theme "${themeObj?.name || themeId}".`],
+      }
+    })
     onClose()
   }
 
@@ -151,7 +161,7 @@ export function DevModal({ open, onClose, game, setGame }) {
               className="w-16 bg-stone-900 border border-stone-700 rounded px-2 py-1 text-parchment font-mono"
             />
             <span className="text-slate-500">/ {game.sigilTarget}</span>
-            {FORGE_SIGILS.has(sigils) && (
+            {sigils >= 1 && sigils < game.sigilTarget && (
               <span className="text-amber-300/70 text-[10px] uppercase tracking-wider">Forge opens</span>
             )}
           </div>
@@ -178,13 +188,13 @@ export function DevModal({ open, onClose, game, setGame }) {
               { label: 'Child B', value: child2, set: setChild2 },
             ].map(({ label, value, set }) => (
               <div key={label}>
-                <div className="text-[10px] uppercase tracking-wider text-slate-500 mb-1">{label} (T2)</div>
+                <div className="text-[10px] uppercase tracking-wider text-slate-500 mb-1">{label} (T3)</div>
                 <select
                   value={value}
                   onChange={(e) => set(e.target.value)}
                   className="block w-full bg-stone-900 border border-stone-700 rounded px-2 py-1 text-parchment"
                 >
-                  {tier2Ids.map(id => (
+                  {tier3Ids.map(id => (
                     <option key={id} value={id}>{THEMES[id].name}</option>
                   ))}
                 </select>

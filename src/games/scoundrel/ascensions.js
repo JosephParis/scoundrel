@@ -29,13 +29,13 @@ export const ASCENSIONS = [
   {
     level: 3,
     name: 'Quickening Halls',
-    description: 'The dungeon escalates one sigil earlier. Tier 2 starts at sigil 2, Tier 3 at sigil 4.',
+    description: 'Theme tiers arrive one sigil earlier, so harder themes show up sooner.',
     themeTierOffset: 1,
   },
   {
     level: 4,
     name: 'Cold Coals',
-    description: 'The Forge opens at sigils 3 and 5 only. One fewer chance to edit the deck.',
+    description: 'The Forge opens only at sigils 3 and 5, not after every descent.',
     forgeSigils: [3, 5],
   },
   {
@@ -59,12 +59,15 @@ export function getAscension(level) {
 }
 
 // Default (level 0) effects — equivalent to the base game with no ascension.
+// forgeSigils lists every sigil at which the Forge opens; the default covers
+// all of them, so the Forge opens after every descent. Harder ascensions
+// (Cold Coals) restrict this to fewer visits.
 const DEFAULTS = Object.freeze({
   level: 0,
   sanctuaryHealMultiplier: 1,
   boonOfferCount: 3,
   themeTierOffset: 0,
-  forgeSigils: [2, 4, 6],
+  forgeSigils: [1, 2, 3, 4, 5, 6, 7],
   maxHpBonus: 0,
   faceCardRankBonus: 0,
 })
