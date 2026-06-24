@@ -142,6 +142,48 @@ function DescentFunnel({ rows }) {
   )
 }
 
+// Chance of beating a theme: from the per-descent timeline, clear vs death
+// when the theme was actually faced. Beat rate excludes retires (a voluntary
+// quit isn't the theme winning). Unbiased by run depth, unlike run-winrate.
+function ThemeSurvival({ rows, minN }) {
+  const shown = useMemo(() => {
+    const beat = r => num(r.cleared) / Math.max(1, num(r.cleared) + num(r.died))
+    return rows
+      .filter(r => num(r.faced) >= minN)
+      .sort((a, b) => beat(b) - beat(a) || num(b.faced) - num(a.faced))
+  }, [rows, minN])
+
+  return (
+    <Section title="Theme survival (chance of beating)" count={shown.length} className="lg:col-span-2">
+      <table className="w-full text-sm">
+        <thead>
+          <tr className="text-left text-stone-400 border-b border-stone-700">
+            <th className="py-1 pr-2 font-medium">Theme</th>
+            <th className="py-1 px-2 font-medium text-right">Faced</th>
+            <th className="py-1 px-2 font-medium text-right">Cleared</th>
+            <th className="py-1 px-2 font-medium text-right">Died</th>
+            <th className="py-1 px-2 font-medium text-right">Retired</th>
+            <th className="py-1 pl-2 font-medium text-right">Beat rate</th>
+          </tr>
+        </thead>
+        <tbody>
+          {shown.map((r, i) => (
+            <tr key={i} className="border-b border-stone-800/60">
+              <td className="py-1 pr-2">{themeName(r.theme)}</td>
+              <td className="py-1 px-2 text-right tabular-nums text-stone-400">{num(r.faced)}</td>
+              <td className="py-1 px-2 text-right tabular-nums text-stone-400">{num(r.cleared)}</td>
+              <td className="py-1 px-2 text-right tabular-nums text-red-400">{num(r.died)}</td>
+              <td className="py-1 px-2 text-right tabular-nums text-stone-500">{num(r.retired)}</td>
+              <td className="py-1 pl-2 text-right tabular-nums text-amber-300">{pct(r.cleared, num(r.cleared) + num(r.died))}</td>
+            </tr>
+          ))}
+          {shown.length === 0 && <EmptyRow cols={6} />}
+        </tbody>
+      </table>
+    </Section>
+  )
+}
+
 function RunShape({ rows }) {
   return (
     <Section title="Run shape by outcome" count={rows.length} className="lg:col-span-2">
@@ -371,6 +413,7 @@ export default function AdminDashboard() {
                 value: `${fmtDuration(r.avg_seconds)} · ${num(r.n)}`,
               }))}
             />
+            <ThemeSurvival rows={data.themeSurvival || []} minN={minN} />
             <DescentFunnel rows={data.descentFunnel || []} />
             <RunShape rows={data.runShapeByOutcome || []} />
           </div>
