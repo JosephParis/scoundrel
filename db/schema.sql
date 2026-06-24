@@ -61,3 +61,33 @@ create index if not exists runs_ended_idx   on runs (ended_at);
 --          count(*) as n
 --   from runs r, jsonb_array_elements(r.record->'themesFaced') t
 --   group by 1 having count(*) >= 20 order by winrate desc;
+
+-- --- Decision funnels (record v3+) -----------------------------------------
+
+-- Boon pick rate: how often a boon is taken when it shows up in an offer.
+-- Pairs with the winrate-per-boon query above to separate "good" from
+-- "frequently offered".
+--   select boon,
+--          sum(picked) as times_picked,
+--          count(*)    as times_offered,
+--          round(sum(picked)::numeric / count(*), 3) as pick_rate
+--   from (
+--     select o.v as boon, (o.v = (p->>'picked'))::int as picked
+--     from runs r,
+--          jsonb_array_elements(r.record->'boonPicks') p,
+--          jsonb_array_elements_text(p->'offered') o(v)
+--   ) x
+--   group by boon having count(*) >= 20 order by pick_rate desc;
+
+-- Forge edit skip rate by type (inscribe / upgrade / remove):
+--   select e->>'type' as type,
+--          round(avg((e->>'skipped')::boolean::int), 3) as skip_rate,
+--          count(*) as n
+--   from runs r, jsonb_array_elements(r.record->'forgeEdits') e
+--   group by 1 order by 1;
+
+-- Most-chosen inscribe frames (what players actually inscribe):
+--   select e->'chosen'->>'inscribed' as frame, count(*) as n
+--   from runs r, jsonb_array_elements(r.record->'forgeEdits') e
+--   where e->>'type' = 'inscribe' and e->'chosen'->>'inscribed' is not null
+--   group by 1 order by n desc;

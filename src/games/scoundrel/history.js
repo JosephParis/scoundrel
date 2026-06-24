@@ -10,9 +10,10 @@ import { getAscension } from './ascensions'
 import { BOONS } from './boons'
 import { getTheme } from './themes'
 
-// v2 added `death` (where/how the run ended). v1 records simply lack it;
-// readers treat a missing `death` as null.
-const RECORD_VERSION = 2
+// v2 added `death` (where/how the run ended). v3 added the decision funnels
+// `boonPicks` and `forgeEdits` (offered-vs-chosen). Older records simply lack
+// the newer fields; readers treat them as null/[].
+const RECORD_VERSION = 3
 const GUEST_ID = 'guest'
 
 function outcomeOf(state) {
@@ -82,6 +83,10 @@ export function buildRunRecord(state, user) {
     // Where and how the run ended. Only populated on death; victory and
     // retire leave it null.
     death: outcomeOf(state) === 'death' ? (state.deathContext || null) : null,
+    // Decision funnels: every boon pick and forge edit this run, offered vs
+    // chosen. Analytics-only; not shown in-app.
+    boonPicks: state.boonPicks || [],
+    forgeEdits: state.forgeEdits || [],
   }
 }
 

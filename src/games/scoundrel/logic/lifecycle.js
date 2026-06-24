@@ -109,6 +109,12 @@ export function createRun(rng = Math.random, options = {}) {
     monstersSlain: 0,
     biggestKill: 0,
     bossesDefeated: [],
+    // Decision funnels: per-sanctuary choices recorded for analytics. Like the
+    // tallies above, they persist across descents and are snapshotted at run
+    // end. boonPicks: { descent, offered[], picked }. forgeEdits:
+    // { descent, type, offered[], chosen, skipped }.
+    boonPicks: [],
+    forgeEdits: [],
 
     // Per-descent transient charges (reset at descent start)
     riposteCharge: 0,

@@ -22,12 +22,21 @@ export function pickBoon(state, boonId) {
   if (state.phase !== 'sanctuary') return state
   if (state.boonChosen) return state
   if (!state.boonOffers.includes(boonId)) return state
+  // Decision-funnel (analytics only): what was offered vs what was taken,
+  // keyed by the descent this pick precedes. Run-level, carried across
+  // descents and snapshotted by buildRunRecord. See [[project_history_storage]].
+  const pick = {
+    descent: (state.sigilsEarned || 0) + 1,
+    offered: state.boonOffers.slice(),
+    picked: boonId,
+  }
   return appendLog(
     {
       ...state,
       boons: state.boons.concat(boonId),
       boonChosen: true,
       boonOffers: [],
+      boonPicks: [...(state.boonPicks || []), pick],
     },
     `Took the ${BOONS[boonId]?.name}.`
   )
@@ -157,6 +166,27 @@ function advanceForgeGrant(state) {
   return { ...state, forgeGrantIndex, forgeChoices }
 }
 
+// Compact card descriptor for the decision-funnel record (analytics only):
+// just the dimensions worth grouping on, never the full card object.
+function cardBrief(c) {
+  if (!c) return null
+  return { suit: c.suit, rank: c.rank, inscribed: c.inscribed || null, upgraded: !!c.upgraded }
+}
+
+// One resolved forge edit for the decision funnel: the grant type, the cards
+// offered, and the one chosen (null when skipped). Keyed by the descent the
+// edit precedes. Run-level, carried across descents, snapshotted by
+// buildRunRecord. See [[project_history_storage]].
+function forgeEditEntry(state, type, chosen, skipped) {
+  return {
+    descent: (state.sigilsEarned || 0) + 1,
+    type,
+    offered: (state.forgeChoices || []).map(cardBrief),
+    chosen: cardBrief(chosen),
+    skipped,
+  }
+}
+
 // Apply the current grant to the chosen card (one of state.forgeChoices), then
 // advance the batch. cardId must be in the current offer.
 export function applyForgeEdit(state, cardId) {
@@ -199,13 +229,19 @@ export function applyForgeEdit(state, cardId) {
     return state
   }
 
+  next = { ...next, forgeEdits: [...(state.forgeEdits || []), forgeEditEntry(state, type, card, false)] }
   return advanceForgeGrant(next)
 }
 
 // Skip the current grant without applying it, then advance the batch.
 export function skipForgeEdit(state) {
   if (state.phase !== 'sanctuary' || !forgeActive(state)) return state
-  return advanceForgeGrant(appendLog(state, 'You leave the coals for now.'))
+  const type = state.forgeGrants[state.forgeGrantIndex]
+  const next = {
+    ...appendLog(state, 'You leave the coals for now.'),
+    forgeEdits: [...(state.forgeEdits || []), forgeEditEntry(state, type, null, true)],
+  }
+  return advanceForgeGrant(next)
 }
 
 // Clear the Map peek snapshot. Called when the player closes the modal
