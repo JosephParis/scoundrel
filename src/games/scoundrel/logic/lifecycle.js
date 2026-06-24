@@ -381,7 +381,7 @@ export function endDescentVictory(state) {
   //
   // Mode hooks: lockTheme overrides the rolled theme; noBoons skips the
   // offer roll; noForge keeps the forge closed regardless of sigil count.
-  const nextTheme = mode.lockTheme || pickThemeId(rng, newSigils + asc.themeTierOffset)
+  const nextTheme = mode.lockTheme || pickThemeId(rng, newSigils + asc.themeTierOffset, state.theme)
   const nextThemeChildren = resolveThemeChildren(nextTheme, rng)
   // Library flag off: every Boon is available, the per-player unlocked set
   // is ignored. Discoveries still get appended to state (cheap, and the

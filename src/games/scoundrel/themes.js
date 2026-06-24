@@ -358,9 +358,15 @@ function getThemePool(sigils) {
   return TIER_1_IDS
 }
 
-export function pickThemeId(rng, sigils = 0) {
-  const pool = getThemePool(sigils)
-  return pool[Math.floor(rng() * pool.length)]
+// excludeId drops the previous descent's theme so the dungeon never rolls
+// the same theme two descents in a row within a tier band (e.g. Tier 5
+// spans descents 8-10). Every tier pool has >=4 themes, so removing one is
+// always safe; the guard keeps a 1-theme pool from collapsing to nothing.
+export function pickThemeId(rng, sigils = 0, excludeId = null) {
+  const full = getThemePool(sigils)
+  const pool = excludeId ? full.filter(id => id !== excludeId) : full
+  const choices = pool.length > 0 ? pool : full
+  return choices[Math.floor(rng() * choices.length)]
 }
 
 // For compound themes (currently only The Long Night), pick two distinct
