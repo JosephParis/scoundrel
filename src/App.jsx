@@ -2,6 +2,7 @@ import { lazy, Suspense } from 'react'
 import { Routes, Route, Navigate } from 'react-router-dom'
 
 const Scoundrel = lazy(() => import('./games/scoundrel'))
+const AdminDashboard = lazy(() => import('./admin/AdminDashboard'))
 
 function App() {
   return (
@@ -9,6 +10,7 @@ function App() {
       <Suspense fallback={<PageLoading />}>
         <Routes>
           <Route path="/" element={<Scoundrel />} />
+          <Route path="/admin" element={<AdminDashboard />} />
           <Route path="*" element={<Navigate to="/" replace />} />
         </Routes>
       </Suspense>
