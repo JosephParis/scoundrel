@@ -115,6 +115,10 @@ export function createRun(rng = Math.random, options = {}) {
     // { descent, type, offered[], chosen, skipped }.
     boonPicks: [],
     forgeEdits: [],
+    // Per-descent timeline: one entry per descent, pushed at descend() and
+    // finalized at the descent's end. { descent, themes[], startHp, maxHp,
+    // endHp, roomsEntered, sigilEarned, outcome: 'cleared'|'died'|'retired' }.
+    descents: [],
 
     // Per-descent transient charges (reset at descent start)
     riposteCharge: 0,
@@ -241,6 +245,20 @@ export function descend(state) {
     // Record the theme of this descent (tutorial walk excluded; it isn't a
     // real run leg). Run-level, so it accumulates across the whole run.
     themesFaced: state.tutorial ? (state.themesFaced || []) : [...(state.themesFaced || []), themeId],
+    // Open a timeline entry for this descent (tutorial excluded, mirroring
+    // themesFaced). Finalized by the descent's end state.
+    descents: state.tutorial
+      ? (state.descents || [])
+      : [...(state.descents || []), {
+          descent: (state.sigilsEarned || 0) + 1,
+          themes: themes.map(t => t.id),
+          startHp,
+          maxHp,
+          endHp: null,
+          roomsEntered: 0,
+          sigilEarned: false,
+          outcome: null,
+        }],
     mutedBoon,
     forgeOpen: false,
     forgeGrants: [],
@@ -273,6 +291,14 @@ export function descend(state) {
 
 // -- Run end states -----------------------------------------------------
 
+// Patch the still-open (last) descent timeline entry with its outcome. No-op
+// when there is no open descent (e.g. retiring from the sanctuary).
+function finalizeDescent(descents, patch) {
+  const d = descents || []
+  if (d.length === 0) return d
+  return [...d.slice(0, -1), { ...d[d.length - 1], ...patch }]
+}
+
 // Record where and how the run ended. `cause` carries the killing-blow detail
 // the combat code knows (source, card, weapon); the situational context
 // (which descent, theme, how deep) is derived from state here so call sites
@@ -295,15 +321,47 @@ export function endDescentDeath(state, cause = null) {
     deckRemaining: (state.deck || []).length,
   }
   return appendLog(
-    { ...state, phase: 'gameover', deathContext },
+    {
+      ...state,
+      phase: 'gameover',
+      deathContext,
+      descents: finalizeDescent(state.descents, {
+        endHp: 0,
+        roomsEntered: state.roomsEntered || 0,
+        outcome: 'died',
+      }),
+    },
     'You fall in the dark. The hall above forgets you.'
   )
 }
 
 export function retireRun(state) {
   if (state.phase !== 'sanctuary' && state.phase !== 'descent') return state
+  // Where the player chose to quit: a soft-death signal parallel to
+  // deathContext. `phase` distinguishes giving up between descents (sanctuary)
+  // from bailing mid-descent (descent). Snapshotted into the record as `retire`.
+  const retireContext = {
+    phase: state.phase,
+    descent: (state.sigilsEarned || 0) + 1,
+    sigilsEarned: state.sigilsEarned || 0,
+    hp: state.hp || 0,
+    maxHp: state.maxHp || 0,
+    theme: state.theme || null,
+    roomsThisDescent: state.roomsEntered || 0,
+    runRoomsEntered: state.runRoomsEntered || 0,
+    deckRemaining: (state.deck || []).length,
+  }
+  // Close the open descent only when quitting from within one; a sanctuary
+  // retire has no open descent (the prior one cleared on return).
+  const descents = state.phase === 'descent'
+    ? finalizeDescent(state.descents, {
+        endHp: state.hp || 0,
+        roomsEntered: state.roomsEntered || 0,
+        outcome: 'retired',
+      })
+    : (state.descents || [])
   return appendLog(
-    { ...state, phase: 'gameover', retired: true },
+    { ...state, phase: 'gameover', retired: true, retireContext, descents },
     'You lay down your blade and walk back into the light.'
   )
 }
@@ -343,6 +401,15 @@ export function endDescentVictory(state) {
     )
   }
 
+  // The descent just cleared: close its timeline entry. Shared by both the
+  // winning-sigil (victory) and the normal sanctuary-return paths below.
+  const clearedDescents = finalizeDescent(state.descents, {
+    endHp: state.hp,
+    roomsEntered: state.roomsEntered || 0,
+    sigilEarned: true,
+    outcome: 'cleared',
+  })
+
   const newSigils = state.sigilsEarned + 1
 
   const rng = state.rng
@@ -368,6 +435,7 @@ export function endDescentVictory(state) {
       carriedWeapon,
       carriedSpareWeapon,
       unlockedBoons: nextLibrary,
+      descents: clearedDescents,
     }
     won = appendLog(won, 'The final sigil is set in the threshold. The high gate opens.')
     if (discoveredBoonId) {
@@ -409,6 +477,7 @@ export function endDescentVictory(state) {
     phase: 'sanctuary',
     carriedWeapon,
     carriedSpareWeapon,
+    descents: clearedDescents,
     nextTheme,
     nextThemeChildren,
     boonOffers,

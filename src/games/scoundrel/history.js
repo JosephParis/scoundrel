@@ -11,9 +11,11 @@ import { BOONS } from './boons'
 import { getTheme } from './themes'
 
 // v2 added `death` (where/how the run ended). v3 added the decision funnels
-// `boonPicks` and `forgeEdits` (offered-vs-chosen). Older records simply lack
-// the newer fields; readers treat them as null/[].
-const RECORD_VERSION = 3
+// `boonPicks` and `forgeEdits` (offered-vs-chosen). v4 added `retire` (soft
+// death), the per-descent `descents` timeline, and denormalized run-shape
+// counts. Older records simply lack the newer fields; readers treat them as
+// null/[]/0.
+const RECORD_VERSION = 4
 const GUEST_ID = 'guest'
 
 function outcomeOf(state) {
@@ -59,6 +61,8 @@ function finalWeaponOf(state) {
 export function buildRunRecord(state, user) {
   const now = Date.now()
   const startedAt = state.runStartedAt || now
+  const outcome = outcomeOf(state)
+  const endingDeck = endingDeckOf(state)
   return {
     v: RECORD_VERSION,
     id: `run_${startedAt}_${Math.random().toString(36).slice(2, 8)}`,
@@ -66,27 +70,36 @@ export function buildRunRecord(state, user) {
     startedAt,
     endedAt: now,
     durationMs: Math.max(0, now - startedAt),
-    outcome: outcomeOf(state),
+    outcome,
     sigilsEarned: state.sigilsEarned || 0,
     sigilTarget: state.sigilTarget || 0,
     mode: { id: state.mode, name: getMode(state.mode)?.name || state.mode },
     ascension: state.ascension || 0,
     ascensionName: getAscension(state.ascension)?.name || null,
     boons: namedBoons(state),
-    endingDeck: endingDeckOf(state),
+    endingDeck,
     themesFaced: namedThemes(state),
     bossesDefeated: state.bossesDefeated || [],
     roomsEntered: state.runRoomsEntered || 0,
     monstersSlain: state.monstersSlain || 0,
     biggestKill: state.biggestKill || 0,
     finalWeapon: finalWeaponOf(state),
-    // Where and how the run ended. Only populated on death; victory and
-    // retire leave it null.
-    death: outcomeOf(state) === 'death' ? (state.deathContext || null) : null,
+    // Where and how the run ended. Only the matching outcome is populated.
+    death: outcome === 'death' ? (state.deathContext || null) : null,
+    retire: outcome === 'retired' ? (state.retireContext || null) : null,
+    // Per-descent timeline: one entry per descent (theme, HP arc, outcome).
+    descents: state.descents || [],
     // Decision funnels: every boon pick and forge edit this run, offered vs
     // chosen. Analytics-only; not shown in-app.
     boonPicks: state.boonPicks || [],
     forgeEdits: state.forgeEdits || [],
+    // Denormalized run-shape counts, promoted to top-level so common queries
+    // don't dig through endingDeck. Derivable from the arrays above.
+    kitEdits: state.kitEdits || 0,
+    boonCount: (state.boons || []).length,
+    kitSize: endingDeck.length,
+    inscribedCount: endingDeck.filter(c => c.inscribed).length,
+    upgradedCount: endingDeck.filter(c => c.upgraded).length,
   }
 }
 

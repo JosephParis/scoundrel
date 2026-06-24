@@ -91,3 +91,27 @@ create index if not exists runs_ended_idx   on runs (ended_at);
 --   from runs r, jsonb_array_elements(r.record->'forgeEdits') e
 --   where e->>'type' = 'inscribe' and e->'chosen'->>'inscribed' is not null
 --   group by 1 order by n desc;
+
+-- --- Timeline / soft-death / run-shape (record v4+) ------------------------
+
+-- Per-descent funnel (the difficulty wall): clear/death/retire counts by
+-- descent number.
+--   select (d->>'descent')::int as descent,
+--          count(*) as entered,
+--          count(*) filter (where d->>'outcome' = 'cleared') as cleared,
+--          count(*) filter (where d->>'outcome' = 'died') as died,
+--          count(*) filter (where d->>'outcome' = 'retired') as retired
+--   from runs r, jsonb_array_elements(r.record->'descents') d
+--   group by 1 order by descent;
+
+-- Where players quit (soft death): sanctuary (between descents) vs mid-descent.
+--   select record->'retire'->>'phase' as phase, count(*) as n
+--   from runs where outcome = 'retired' and record->'retire' is not null
+--   group by 1 order by n desc;
+
+-- Run shape by outcome (uses the denormalized top-level counts):
+--   select outcome, count(*) n,
+--          round(avg((record->>'kitEdits')::numeric), 1) avg_kit_edits,
+--          round(avg((record->>'boonCount')::numeric), 1) avg_boons,
+--          round(avg((record->>'inscribedCount')::numeric), 1) avg_inscribed
+--   from runs group by 1 order by 1;

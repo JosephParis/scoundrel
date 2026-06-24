@@ -2,7 +2,7 @@ import { useCallback, useEffect, useMemo, useState } from 'react'
 import { BOONS } from '../games/scoundrel/boons'
 import { getTheme } from '../games/scoundrel/themes'
 import { getBoss } from '../games/scoundrel/bosses'
-import { INSCRIBED_FRAMES, SUIT_GLYPH, rankLabel } from '../games/scoundrel/constants'
+import { INSCRIBED_FRAMES, SUIT_GLYPH, rankLabel, getMode } from '../games/scoundrel/constants'
 
 /**
  * Admin-only analytics dashboard (route: /admin). Reads pre-aggregated stats
@@ -22,8 +22,15 @@ const pct = (wins, n) => (n > 0 ? `${Math.round((num(wins) / num(n)) * 100)}%` :
 const boonName = id => BOONS[id]?.name || id
 const themeName = id => getTheme(id)?.name || id
 const frameName = id => INSCRIBED_FRAMES[id]?.name || id
+const modeName = id => getMode(id)?.name || id
 const cardLabel = (suit, rank, boss) =>
   boss ? (getBoss(boss)?.name || boss) : `${rankLabel(num(rank))}${SUIT_GLYPH[suit] || suit || ''}`
+const fmtDuration = (sec) => {
+  const s = num(sec)
+  if (s <= 0) return '–'
+  const m = Math.floor(s / 60)
+  return m > 0 ? `${m}m ${s % 60}s` : `${s}s`
+}
 
 // A winrate table: rows normalized to { label, n, wins }. Filtered by the
 // shared min-sample threshold, then sorted by winrate (n as tie-break).
@@ -90,14 +97,80 @@ function CountTable({ title, rows, extra }) {
   )
 }
 
-function Section({ title, count, children }) {
+function Section({ title, count, className = '', children }) {
   return (
-    <section className="rounded-lg border border-stone-700 bg-stone-900/60 p-4">
+    <section className={`rounded-lg border border-stone-700 bg-stone-900/60 p-4 ${className}`}>
       <h2 className="mb-2 text-xs font-semibold uppercase tracking-wider text-stone-400">
         {title} {count != null && <span className="text-stone-600">({count})</span>}
       </h2>
       {children}
     </section>
+  )
+}
+
+// Bespoke multi-column tables for the per-descent funnel and run-shape data,
+// which don't fit the simple winrate/count shapes.
+function DescentFunnel({ rows }) {
+  return (
+    <Section title="Per-descent funnel" count={rows.length} className="lg:col-span-2">
+      <table className="w-full text-sm">
+        <thead>
+          <tr className="text-left text-stone-400 border-b border-stone-700">
+            <th className="py-1 pr-2 font-medium">Descent</th>
+            <th className="py-1 px-2 font-medium text-right">Entered</th>
+            <th className="py-1 px-2 font-medium text-right">Cleared</th>
+            <th className="py-1 px-2 font-medium text-right">Died</th>
+            <th className="py-1 px-2 font-medium text-right">Retired</th>
+            <th className="py-1 pl-2 font-medium text-right">Clear rate</th>
+          </tr>
+        </thead>
+        <tbody>
+          {rows.map((r, i) => (
+            <tr key={i} className="border-b border-stone-800/60">
+              <td className="py-1 pr-2">Descent {num(r.descent)}</td>
+              <td className="py-1 px-2 text-right tabular-nums text-stone-400">{num(r.entered)}</td>
+              <td className="py-1 px-2 text-right tabular-nums text-stone-400">{num(r.cleared)}</td>
+              <td className="py-1 px-2 text-right tabular-nums text-red-400">{num(r.died)}</td>
+              <td className="py-1 px-2 text-right tabular-nums text-stone-500">{num(r.retired)}</td>
+              <td className="py-1 pl-2 text-right tabular-nums text-amber-300">{pct(r.cleared, r.entered)}</td>
+            </tr>
+          ))}
+          {rows.length === 0 && <EmptyRow cols={6} />}
+        </tbody>
+      </table>
+    </Section>
+  )
+}
+
+function RunShape({ rows }) {
+  return (
+    <Section title="Run shape by outcome" count={rows.length} className="lg:col-span-2">
+      <table className="w-full text-sm">
+        <thead>
+          <tr className="text-left text-stone-400 border-b border-stone-700">
+            <th className="py-1 pr-2 font-medium">Outcome</th>
+            <th className="py-1 px-2 font-medium text-right">Runs</th>
+            <th className="py-1 px-2 font-medium text-right">Kit edits</th>
+            <th className="py-1 px-2 font-medium text-right">Boons</th>
+            <th className="py-1 px-2 font-medium text-right">Inscribed</th>
+            <th className="py-1 pl-2 font-medium text-right">Upgraded</th>
+          </tr>
+        </thead>
+        <tbody>
+          {rows.map((r, i) => (
+            <tr key={i} className="border-b border-stone-800/60">
+              <td className="py-1 pr-2 capitalize">{r.outcome}</td>
+              <td className="py-1 px-2 text-right tabular-nums text-stone-400">{num(r.n)}</td>
+              <td className="py-1 px-2 text-right tabular-nums">{num(r.avg_kit_edits)}</td>
+              <td className="py-1 px-2 text-right tabular-nums">{num(r.avg_boons)}</td>
+              <td className="py-1 px-2 text-right tabular-nums">{num(r.avg_inscribed)}</td>
+              <td className="py-1 pl-2 text-right tabular-nums">{num(r.avg_upgraded)}</td>
+            </tr>
+          ))}
+          {rows.length === 0 && <EmptyRow cols={6} />}
+        </tbody>
+      </table>
+    </Section>
   )
 }
 
@@ -277,6 +350,29 @@ export default function AdminDashboard() {
                 value: `${num(r.skips)} / ${num(r.n)} (${pct(r.skips, r.n)} skip)`,
               }))}
             />
+            <WinrateTable
+              title="Winrate by mode"
+              minN={minN}
+              rows={(data.winrateByMode || []).map(r => ({ label: modeName(r.mode), n: r.n, wins: r.wins }))}
+            />
+            <CountTable
+              title="Retires by phase"
+              extra={{ label: 'Quit from', col: 'Count' }}
+              rows={(data.retireByPhase || []).map(r => ({
+                label: r.phase === 'descent' ? 'Mid-descent' : 'Sanctuary',
+                value: num(r.n),
+              }))}
+            />
+            <CountTable
+              title="Avg run length by outcome"
+              extra={{ label: 'Outcome', col: 'Avg time · runs' }}
+              rows={(data.durationByOutcome || []).map(r => ({
+                label: r.outcome,
+                value: `${fmtDuration(r.avg_seconds)} · ${num(r.n)}`,
+              }))}
+            />
+            <DescentFunnel rows={data.descentFunnel || []} />
+            <RunShape rows={data.runShapeByOutcome || []} />
           </div>
         )}
       </div>
