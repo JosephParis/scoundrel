@@ -115,3 +115,19 @@ create index if not exists runs_ended_idx   on runs (ended_at);
 --          round(avg((record->>'boonCount')::numeric), 1) avg_boons,
 --          round(avg((record->>'inscribedCount')::numeric), 1) avg_inscribed
 --   from runs group by 1 order by 1;
+
+-- Theme survival ("chance of beating that theme"): clear vs death when the
+-- theme was actually faced, from the per-descent timeline. Unbiased by run
+-- depth, unlike winrate-by-theme. Beat rate excludes retires.
+--   select th.v as theme,
+--          count(*) as faced,
+--          count(*) filter (where d->>'outcome' = 'cleared') as cleared,
+--          count(*) filter (where d->>'outcome' = 'died') as died,
+--          round(
+--            count(*) filter (where d->>'outcome' = 'cleared')::numeric
+--            / nullif(count(*) filter (where d->>'outcome' in ('cleared','died')), 0), 3
+--          ) as beat_rate
+--   from runs r,
+--        jsonb_array_elements(r.record->'descents') d,
+--        jsonb_array_elements_text(d->'themes') th(v)
+--   group by 1 order by beat_rate desc;

@@ -51,6 +51,7 @@ export default async function handler(req, res) {
       runShapeByOutcome,
       descentFunnel,
       retireByPhase,
+      themeSurvival,
     ] = await Promise.all([
       sql`
         select count(*) n,
@@ -165,6 +166,17 @@ export default async function handler(req, res) {
         where outcome = 'retired' and record->'retire' is not null
         group by 1 order by n desc
       `,
+      sql`
+        select th.v theme,
+               count(*) faced,
+               count(*) filter (where d->>'outcome' = 'cleared') cleared,
+               count(*) filter (where d->>'outcome' = 'died') died,
+               count(*) filter (where d->>'outcome' = 'retired') retired
+        from runs r,
+             jsonb_array_elements(r.record->'descents') d,
+             jsonb_array_elements_text(d->'themes') th(v)
+        group by 1 order by faced desc
+      `,
     ])
 
     return res.status(200).json({
@@ -185,6 +197,7 @@ export default async function handler(req, res) {
       runShapeByOutcome,
       descentFunnel,
       retireByPhase,
+      themeSurvival,
     })
   } catch {
     return res.status(500).json({ error: 'query_failed' })
