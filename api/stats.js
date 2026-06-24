@@ -46,6 +46,11 @@ export default async function handler(req, res) {
       deathByKillingCard,
       boonPickRate,
       forgeByType,
+      winrateByMode,
+      durationByOutcome,
+      runShapeByOutcome,
+      descentFunnel,
+      retireByPhase,
     ] = await Promise.all([
       sql`
         select count(*) n,
@@ -125,6 +130,41 @@ export default async function handler(req, res) {
         from runs r, jsonb_array_elements(r.record->'forgeEdits') e
         group by 1 order by 1
       `,
+      sql`
+        select coalesce(mode, 'default') mode, count(*) n,
+               count(*) filter (where outcome = 'victory') wins
+        from runs group by 1 order by n desc
+      `,
+      sql`
+        select outcome, count(*) n,
+               round(avg(duration_ms) / 1000.0)::int avg_seconds
+        from runs where duration_ms is not null group by 1 order by 1
+      `,
+      sql`
+        select outcome, count(*) n,
+               round(avg((record->>'kitEdits')::numeric), 1) avg_kit_edits,
+               round(avg((record->>'boonCount')::numeric), 1) avg_boons,
+               round(avg((record->>'inscribedCount')::numeric), 1) avg_inscribed,
+               round(avg((record->>'upgradedCount')::numeric), 1) avg_upgraded
+        from runs where record->>'kitEdits' is not null
+        group by 1 order by 1
+      `,
+      sql`
+        select (d->>'descent')::int descent,
+               count(*) entered,
+               count(*) filter (where d->>'outcome' = 'cleared') cleared,
+               count(*) filter (where d->>'outcome' = 'died') died,
+               count(*) filter (where d->>'outcome' = 'retired') retired
+        from runs r, jsonb_array_elements(r.record->'descents') d
+        where d->>'descent' is not null
+        group by 1 order by descent
+      `,
+      sql`
+        select record->'retire'->>'phase' phase, count(*) n
+        from runs
+        where outcome = 'retired' and record->'retire' is not null
+        group by 1 order by n desc
+      `,
     ])
 
     return res.status(200).json({
@@ -140,6 +180,11 @@ export default async function handler(req, res) {
       deathByKillingCard,
       boonPickRate,
       forgeByType,
+      winrateByMode,
+      durationByOutcome,
+      runShapeByOutcome,
+      descentFunnel,
+      retireByPhase,
     })
   } catch {
     return res.status(500).json({ error: 'query_failed' })

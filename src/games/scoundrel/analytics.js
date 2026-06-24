@@ -72,6 +72,17 @@ export function useRunAnalytics(game, user) {
   const lastDescentKey = useRef(null)
   const endedRuns = useRef(new Set())
   const identified = useRef(null)
+  const abandonedRuns = useRef(new Set())
+
+  // Latest game/client, read by the visibility listener (which is registered
+  // once and must not close over a stale render). Kept current via the effect
+  // below rather than mutated during render.
+  const gameRef = useRef(game)
+  const posthogRef = useRef(posthog)
+  useEffect(() => {
+    gameRef.current = game
+    posthogRef.current = posthog
+  })
 
   // Send now, or buffer until the deferred client loads.
   const capture = (event, props) => {
@@ -91,6 +102,38 @@ export function useRunAnalytics(game, user) {
       try { posthog.capture(event, props) } catch { /* ignore */ }
     }
   }, [posthog])
+
+  // Mid-run abandon: when the tab is hidden during a live run (not terminal,
+  // not the tutorial), record it once as a behavioral signal. PostHog-only by
+  // design: a tab-close run can be resumed later from the save, so it must not
+  // be written as a finished run record (that would collide with the eventual
+  // real outcome in the runs table).
+  useEffect(() => {
+    const onHidden = () => {
+      if (document.visibilityState !== 'hidden') return
+      const g = gameRef.current
+      if (!g || g.tutorial) return
+      if (g.phase === 'gameover' || g.phase === 'victory') return
+      const runStart = g.runStartedAt
+      if (!runStart || abandonedRuns.current.has(runStart)) return
+      abandonedRuns.current.add(runStart)
+      const ph = posthogRef.current
+      if (!ph) return
+      try {
+        ph.capture('run_abandoned', {
+          phase: g.phase,
+          descent: (g.sigilsEarned || 0) + 1,
+          sigils_earned: g.sigilsEarned || 0,
+          hp: g.hp || 0,
+          theme: g.theme || null,
+          rooms_this_descent: g.roomsEntered || 0,
+          boon_count: (g.boons || []).length,
+        })
+      } catch { /* never break play */ }
+    }
+    document.addEventListener('visibilitychange', onHidden)
+    return () => document.removeEventListener('visibilitychange', onHidden)
+  }, [])
 
   // Tie a signed-in player's events to one person profile; reset on sign-out.
   useEffect(() => {
