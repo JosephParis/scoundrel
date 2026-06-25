@@ -6,6 +6,7 @@ import { BrowserRouter } from 'react-router-dom'
 import { PostHogContext } from '@posthog/react'
 import './index.css'
 import App from './App.jsx'
+import VersionBadge from './VersionBadge.jsx'
 
 // PostHog SDK is heavy. Defer its import past window.load + idle so it doesn't
 // compete with LCP. Children mount immediately; usePostHog consumers no-op
@@ -63,6 +64,7 @@ function Root() {
       <BrowserRouter>
         <App />
       </BrowserRouter>
+      <VersionBadge />
       <Analytics />
       <SpeedInsights />
     </PostHogContext.Provider>
