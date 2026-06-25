@@ -137,7 +137,7 @@ export const BOONS = {
   // ---- Economy ---------------------------------------------------------
   sip_of_lethe: {
     id: 'sip_of_lethe',
-    name: 'Sip of Lethe',
+    name: 'Deep Draught',
     description: 'Drink up to 2 potions per room.',
     example: 'A room with an 8♥ and a 6♥ heals you 14 HP total.',
     tag: 'economy',
@@ -146,10 +146,10 @@ export const BOONS = {
   alchemist: {
     id: 'alchemist',
     name: 'Alchemist',
-    description: 'A potion drunk past the per-room limit still heals half its rank.',
-    example: 'A second 8♥ drunk in one room heals 4 HP.',
+    description: 'Every potion you drink heals 2 extra HP.',
+    example: 'A 6♥ heals 8 instead of 6; a 9♥ heals 11.',
     tag: 'economy',
-    alchemist: true,
+    potionHealBonus: 2,
   },
   pickpocket: {
     id: 'pickpocket',
@@ -159,13 +159,13 @@ export const BOONS = {
     tag: 'economy',
     pickpocket: true,
   },
-  field_surgeon: {
-    id: 'field_surgeon',
-    name: 'Field Surgeon',
-    description: 'Hearts drunk past the per-room limit heal 1 HP.',
-    example: 'A second heart drunk in a room heals 1 HP.',
+  temperance: {
+    id: 'temperance',
+    name: 'Temperance',
+    description: 'Clear a room without drinking a potion and heal 3 HP.',
+    example: 'Finish a room having drunk no potion: heal 3 HP as it clears.',
     tag: 'economy',
-    fieldSurgeon: true,
+    temperance: true,
   },
   cowards_reward: {
     id: 'cowards_reward',
@@ -197,10 +197,10 @@ export const BOONS = {
   stoic: {
     id: 'stoic',
     name: 'Stoic',
-    description: "You can't drink potions. Max HP +10.",
-    example: 'Hearts pass straight to the discard.',
+    description: "You don't heal between descents. Max HP +10.",
+    example: 'End a descent at 12 HP and the next begins at 12, not full.',
     tag: 'build',
-    stoic: true,
+    noSanctuaryHeal: true,
     maxHpBonus: 10,
   },
   twin_souls: {

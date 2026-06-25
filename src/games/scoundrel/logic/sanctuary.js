@@ -12,7 +12,7 @@ import {
   activeBoons, hasBoon, minMaxHpOverride,
   bonusVsSuitFor,
   computePotionsPerRoomLimit,
-  sumParts,
+  sumParts, sumBoonField,
 } from './helpers'
 import { isWeaponUsable, pickBestWeaponFor } from './combat'
 
@@ -440,23 +440,19 @@ export function describeDamage(state, card, weaponUsed) {
 //   { mode: 'heal',     value, parts }
 //   { mode: 'damage',   value, parts }   // Apothecary sour draught
 //   { mode: 'strength', value, parts }   // Potion of Strength (inscribed)
-//   { mode: 'skip',     note }            // Stoic refusal or wasted overflow
+//   { mode: 'skip',     note }            // wasted overflow
 export function describePotion(state, card) {
   if (!card || !isPotion(card)) return null
 
   // Potion of Strength: never heals, never counts as a potion, so it
-  // bypasses Stoic / Apothecary / Bitter Brew entirely. Preview is the
-  // strength bump it'll add to the descent's weapon-strength bonus.
+  // bypasses Apothecary / Bitter Brew entirely. Preview is the strength
+  // bump it'll add to the descent's weapon-strength bonus.
   if (card.inscribed === 'potion_of_strength') {
     return {
       mode: 'strength',
       value: card.rank,
       parts: [{ label: 'strength', value: card.rank, op: '+' }],
     }
-  }
-
-  if (hasBoon(state, 'stoic')) {
-    return { mode: 'skip', note: 'Stoic, set aside' }
   }
 
   const themes = activeThemes(state)
@@ -476,18 +472,10 @@ export function describePotion(state, card) {
       const lost = card.rank - Math.floor(card.rank / 2)
       if (lost > 0) parts.push({ label: 'Bitter Brew', value: lost, op: '-' })
     }
+    const potionBonus = sumBoonField(activeBoons(state), 'potionHealBonus')
+    if (potionBonus) parts.push({ label: 'Alchemist', value: potionBonus, op: '+' })
     return { mode: 'heal', value: Math.max(0, sumParts(parts)), parts }
   }
 
-  const parts = []
-  if (hasBoon(state, 'alchemist')) {
-    parts.push({ label: 'Alchemist', value: Math.ceil(card.rank / 2), op: '+' })
-  }
-  if (hasBoon(state, 'field_surgeon')) {
-    parts.push({ label: 'Field Surgeon', value: 1, op: '+' })
-  }
-  if (parts.length === 0) {
-    return { mode: 'skip', note: 'No thirst left' }
-  }
-  return { mode: 'heal', value: Math.max(0, sumParts(parts)), parts }
+  return { mode: 'skip', note: 'No thirst left' }
 }

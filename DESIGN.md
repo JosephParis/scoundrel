@@ -130,7 +130,7 @@ Tier 2 effects pair up; weirder rules.
 
 From descent 2 onward, the dungeon escalates. Descents 2–3 always pick a Tier 1 theme; the tier ceiling rises with sigils earned. The player sees the upcoming theme in the sanctuary and can spend their Boon choice as counterplay (e.g., "I see Bitter Brew next, take the Alchemist Boon").
 
-Design rule: **every theme should have at least one Boon that *wants* it.** A theme without counterplay isn't a challenge, it's a tax. Iron Bones wants Quartermaster (two weapons). Hungry Dark wants Cartographer (foresight). Cramped Halls wants Vanguard (first-hit shield). Bitter Brew wants Alchemist (passive potion healing). When we add a theme, we either find or invent its counterplay Boon.
+Design rule: **every theme should have at least one Boon that *wants* it.** A theme without counterplay isn't a challenge, it's a tax. Iron Bones wants Quartermaster (two weapons). Hungry Dark wants Cartographer (foresight). Cramped Halls wants Vanguard (first-hit shield). Bitter Brew wants Alchemist (+2 HP per potion, softening the halved heals). When we add a theme, we either find or invent its counterplay Boon.
 
 ## 4. Boons (the player's voice)
 
@@ -150,8 +150,9 @@ Three offered each sanctuary visit. All permanent for the rest of the run.
 - **Soothsayer**: see the top card of the deck at all times.
 
 ### Economy
-- **Sip of Lethe**: two potions per room instead of one.
-- **Alchemist**: discarded potions heal half their rank passively at end of room.
+- **Deep Draught**: two potions per room instead of one.
+- **Alchemist**: every potion you drink heals 2 extra HP.
+- **Temperance**: clear a room without drinking a potion and heal 3 HP.
 - **Pickpocket**: fleeing keeps one card from the room.
 
 ### Build-defining (rarer)
@@ -234,7 +235,7 @@ No persistent stat boosts. No "+5 HP at run start forever." Each run is a fresh 
 Each step is shippable; the game stays playable at every stage.
 
 1. **Sanctuary scaffolding**: wrap the current single-deck game in a run loop. After death-or-victory, show the sanctuary screen, refill HP, descend again. Award one sigil per completed descent; run wins at seven sigils. No Themes or Boons yet, just multi-descent.
-2. **Boons (hardcoded set of 4)**: Whetstone, Iron Will, Sip of Lethe, Vanguard. Pure functions over game state. Apply them at descent start.
+2. **Boons (hardcoded set of 4)**: Whetstone, Iron Will, Deep Draught, Vanguard. Pure functions over game state. Apply them at descent start.
 3. **Theme system (Tier 1 only)**: pick a theme each descent and apply its deck/rule mutation. Show it on the sanctuary screen for next-descent preview.
 4. **Theme pool expansion**: fill out Tier 2 and Tier 3.
 5. **Boon pool expansion**: fill out the rest of §4.

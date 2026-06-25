@@ -205,7 +205,12 @@ export function descend(state) {
   // the sanctuary stops being a free top-up; other levels' effects flow
   // through computeMaxHp / damage / picker code paths instead of here.
   const asc = getAscensionEffectsForState(state)
-  const startHp = Math.max(1, Math.floor(maxHp * asc.sanctuaryHealMultiplier))
+  const fullHeal = Math.max(1, Math.floor(maxHp * asc.sanctuaryHealMultiplier))
+  // Stoic forgoes the sanctuary's heal: wounds carry from the previous descent
+  // (capped at the new max). The opening descent has no prior HP, so it starts
+  // full. Read through muteState so a Wormwood-muted Stoic heals normally.
+  const carriesWounds = hasBoon(muteState, 'stoic') && (state.sigilsEarned || 0) > 0
+  const startHp = carriesWounds ? Math.min(state.hp, maxHp) : fullHeal
 
   // Carried weapons arrive rested (lastSlain cleared). DESIGN.md §2.
   const weapon = state.carriedWeapon

@@ -10,7 +10,7 @@ import {
   appendLog, fmt,
   activeThemes, themesFor, themeFieldSum, themeFlagAny, getRoomSize,
   effectiveMonsterRank,
-  activeBoons, hasBoon, maxBoonField,
+  activeBoons, hasBoon, maxBoonField, sumBoonField,
   computePotionsPerRoomLimit, effectiveWeaponRank, bonusVsSuitFor,
   markTutorialLesson,
 } from './helpers'
@@ -425,16 +425,6 @@ function playPotion(state, index, card) {
   const bitterBrew = themeFlagAny(themes, 'potionHealHalf')
   const playedNow = state.potionsUsedThisRoom
 
-  // Stoic: hearts pass straight to the discard, no heal, no apothecary bite,
-  // no alchemist dregs. The +10 max HP is the entire compensation.
-  if (hasBoon(state, 'stoic')) {
-    const next = appendLog(
-      { ...state, room, discard: state.discard.concat(card) },
-      `Set aside ${fmt(card)}. Stoic. No draught passes your lips.`
-    )
-    return checkRefillAndComplete(next)
-  }
-
   let next = {
     ...state,
     room,
@@ -454,29 +444,19 @@ function playPotion(state, index, card) {
     return checkRefillAndComplete(result.state)
   }
 
-  // Normal heal path: first potion always, plus extras up to Sip's limit.
+  // Normal heal path: first potion always, plus extras up to Deep Draught's
+  // limit. Alchemist adds a flat bonus on top of each draught (Bitter Brew
+  // halves the rank first, then Alchemist is added).
   if (playedNow < limit) {
-    const healAmount = bitterBrew ? Math.floor(card.rank / 2) : card.rank
+    const base = bitterBrew ? Math.floor(card.rank / 2) : card.rank
+    const healAmount = base + sumBoonField(activeBoons(next), 'potionHealBonus')
     const healed = Math.min(next.maxHp, next.hp + healAmount) - next.hp
     next.hp = next.hp + healed
     const note = bitterBrew ? 'bitter, ' : ''
     next = appendLog(next, `Drank ${fmt(card)}, ${note}restored ${healed} HP.`)
     next = markTutorialLesson(next, 'potion')
   } else {
-    // Overflow path: Alchemist and Field Surgeon stack, each adds its bit.
-    const alchAmt = hasBoon(next, 'alchemist') ? Math.ceil(card.rank / 2) : 0
-    const surgAmt = hasBoon(next, 'field_surgeon') ? 1 : 0
-    const totalHeal = alchAmt + surgAmt
-    if (totalHeal > 0) {
-      const healed = Math.min(next.maxHp, next.hp + totalHeal) - next.hp
-      next.hp = next.hp + healed
-      const reasons = []
-      if (alchAmt) reasons.push('Alchemist')
-      if (surgAmt) reasons.push('Field Surgeon')
-      next = appendLog(next, `Overflow ${fmt(card)}: ${reasons.join(' and ')} drew ${healed} HP from the dregs.`)
-    } else {
-      next = appendLog(next, `Potion ${fmt(card)} wasted. No thirst left.`)
-    }
+    next = appendLog(next, `Potion ${fmt(card)} wasted. No thirst left.`)
   }
 
   // Lucky Coin: after the heal, refill the slot the coin just left with a
@@ -726,13 +706,22 @@ export function checkRefillAndComplete(state) {
       }
     }
 
-    const next = {
+    let next = {
       ...state,
       deck,
       room: newRoom,
       potionsUsedThisRoom: 0,
       canFlee: !themeFlagAny(themes, 'cannotFlee'),
       monstersFoughtThisRoom: 0,
+    }
+
+    // Temperance: clearing a room without drinking a potion heals 3 HP.
+    if (hasBoon(state, 'temperance') && (state.potionsUsedThisRoom || 0) === 0) {
+      const healed = Math.min(next.maxHp, next.hp + 3) - next.hp
+      if (healed > 0) {
+        next.hp = next.hp + healed
+        next = appendLog(next, `Temperance: a clear room steadies you for ${healed} HP.`)
+      }
     }
 
     const entry = applyRoomEntryEffects(next, next.room, firstNewIdx)
