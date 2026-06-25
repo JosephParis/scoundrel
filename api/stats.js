@@ -52,6 +52,7 @@ export default async function handler(req, res) {
       descentFunnel,
       retireByPhase,
       themeSurvival,
+      playerActivity,
     ] = await Promise.all([
       sql`
         select count(*) n,
@@ -177,6 +178,16 @@ export default async function handler(req, res) {
              jsonb_array_elements_text(d->'themes') th(v)
         group by 1 order by faced desc
       `,
+      sql`
+        select account_id,
+               count(*) n,
+               count(*) filter (where outcome = 'victory') wins,
+               max(ended_at) last_seen,
+               min(started_at) first_seen,
+               max(ascension) best_ascension
+        from runs
+        group by 1 order by last_seen desc nulls last limit 200
+      `,
     ])
 
     return res.status(200).json({
@@ -198,6 +209,7 @@ export default async function handler(req, res) {
       descentFunnel,
       retireByPhase,
       themeSurvival,
+      playerActivity,
     })
   } catch {
     return res.status(500).json({ error: 'query_failed' })

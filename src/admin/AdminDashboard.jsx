@@ -31,6 +31,21 @@ const fmtDuration = (sec) => {
   const m = Math.floor(s / 60)
   return m > 0 ? `${m}m ${s % 60}s` : `${s}s`
 }
+const fmtDate = (ms) => {
+  const n = num(ms)
+  if (n <= 0) return '–'
+  const days = Math.floor((Date.now() - n) / 86400000)
+  if (days <= 0) return 'today'
+  return days === 1 ? '1d ago' : `${days}d ago`
+}
+// account_id is the auth `sub` for signed-in players; every anonymous player
+// collapses into the single 'guest' bucket. Truncate signed-in ids to the
+// tail so full auth identifiers don't splash across the table.
+const shortId = (id) => {
+  if (id === 'guest') return 'Guests (all anonymous)'
+  const tail = id.includes('|') ? id.slice(id.indexOf('|') + 1) : id
+  return `…${tail.slice(-8)}`
+}
 
 // A winrate table: rows normalized to { label, n, wins }. Filtered by the
 // shared min-sample threshold, then sorted by winrate (n as tie-break).
@@ -177,6 +192,47 @@ function ThemeSurvival({ rows, minN }) {
               <td className="py-1 pl-2 text-right tabular-nums text-amber-300">{pct(r.cleared, num(r.cleared) + num(r.died))}</td>
             </tr>
           ))}
+          {shown.length === 0 && <EmptyRow cols={6} />}
+        </tbody>
+      </table>
+    </Section>
+  )
+}
+
+// Per-player activity. Guest runs are conflated into one row (a total, not a
+// person), so it's labelled and de-emphasized. Respects the min-runs filter.
+function PlayerTable({ rows, minN }) {
+  const shown = useMemo(() => rows.filter(r => num(r.n) >= minN), [rows, minN])
+
+  return (
+    <Section title="Players" count={shown.length} className="lg:col-span-2">
+      <table className="w-full text-sm">
+        <thead>
+          <tr className="text-left text-stone-400 border-b border-stone-700">
+            <th className="py-1 pr-2 font-medium">Player</th>
+            <th className="py-1 px-2 font-medium text-right">Runs</th>
+            <th className="py-1 px-2 font-medium text-right">Wins</th>
+            <th className="py-1 px-2 font-medium text-right">Winrate</th>
+            <th className="py-1 px-2 font-medium text-right">Best asc</th>
+            <th className="py-1 pl-2 font-medium text-right">Last seen</th>
+          </tr>
+        </thead>
+        <tbody>
+          {shown.map((r, i) => {
+            const guest = r.account_id === 'guest'
+            return (
+              <tr key={i} className="border-b border-stone-800/60">
+                <td className={`py-1 pr-2 font-mono text-xs ${guest ? 'text-stone-500 italic' : ''}`}>
+                  {shortId(r.account_id)}
+                </td>
+                <td className="py-1 px-2 text-right tabular-nums text-stone-400">{num(r.n)}</td>
+                <td className="py-1 px-2 text-right tabular-nums text-stone-400">{num(r.wins)}</td>
+                <td className="py-1 px-2 text-right tabular-nums text-amber-300">{pct(r.wins, r.n)}</td>
+                <td className="py-1 px-2 text-right tabular-nums text-stone-400">{num(r.best_ascension)}</td>
+                <td className="py-1 pl-2 text-right tabular-nums text-stone-500">{fmtDate(r.last_seen)}</td>
+              </tr>
+            )
+          })}
           {shown.length === 0 && <EmptyRow cols={6} />}
         </tbody>
       </table>
@@ -339,6 +395,7 @@ export default function AdminDashboard() {
 
         {data && (
           <div className="grid gap-4 lg:grid-cols-2">
+            <PlayerTable rows={data.playerActivity || []} minN={minN} />
             <WinrateTable
               title="Winrate by boon"
               minN={minN}
