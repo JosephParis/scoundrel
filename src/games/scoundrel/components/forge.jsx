@@ -108,7 +108,7 @@ function EditChoiceCard({ card, mode, selected, onPick }) {
       <div className="flex-1 min-h-0 flex items-center justify-center py-1">
         <SuitIcon suit={card.suit} inscribed={card.inscribed} className={`w-[55%] h-auto ${suitIconTone(card)}`} />
       </div>
-      <div className="text-center min-h-[28px] flex flex-col items-center justify-center gap-0.5 leading-tight">
+      <div className="text-center min-h-[28px] flex flex-col justify-center gap-0.5 leading-tight">
         {mode === 'upgrade' && (
           <span className="text-[11px] font-medium text-stone-800">
             +{UPGRADE_BONUS} → {rankLabel(newRank)}{SUIT_GLYPH[card.suit]}

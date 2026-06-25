@@ -269,7 +269,7 @@ export function CardSlot({ card, onClick, onBareHands, weaponDamage, bareDamage,
         <div className="flex-1 min-h-0 flex items-center justify-center py-1">
           <SuitIcon suit={card.suit} inscribed={card.inscribed} boss={card.boss} className={`w-[62%] h-auto ${suitIconTone(card)}`} />
         </div>
-        <div className="text-center flex flex-col items-center gap-0.5 min-h-[34px] justify-center">
+        <div className="text-center flex flex-col gap-0.5 min-h-[34px] justify-center">
           {monsterPreview ? (
             <>
               <span className="text-[12px] tracking-normal text-stone-800 font-medium">
@@ -335,7 +335,7 @@ export function CardSlot({ card, onClick, onBareHands, weaponDamage, bareDamage,
         <button
           onClick={(blocked || bareBlocked) ? undefined : onBareHands}
           disabled={blocked || bareBlocked}
-          className={`w-full py-2.5 px-3 rounded-md bg-stone-800 text-parchment text-sm font-medium border border-stone-700 transition flex flex-col items-center ${(blocked || bareBlocked) ? 'cursor-not-allowed opacity-40' : 'hover:bg-stone-700'} ${bareRecommended ? 'tutorial-recommended' : ''}`}
+          className={`w-full py-2.5 px-3 rounded-md bg-stone-800 text-parchment text-sm font-medium border border-stone-700 transition flex flex-col text-center ${(blocked || bareBlocked) ? 'cursor-not-allowed opacity-40' : 'hover:bg-stone-700'} ${bareRecommended ? 'tutorial-recommended' : ''}`}
         >
           <span>✊ Bare hands · take {bareDamage.value}</span>
           {bareDamage.parts.length > 1 && (
