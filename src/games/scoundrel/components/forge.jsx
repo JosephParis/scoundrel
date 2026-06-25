@@ -111,7 +111,7 @@ function EditChoiceCard({ card, mode, selected, onPick }) {
       <div className="text-center min-h-[28px] flex flex-col justify-center gap-0.5 leading-tight">
         {mode === 'upgrade' && (
           <span className="text-[11px] font-medium text-stone-800">
-            +{UPGRADE_BONUS} → {rankLabel(newRank)}{SUIT_GLYPH[card.suit]}
+            +{UPGRADE_BONUS} → {rankLabel(newRank)}
           </span>
         )}
         {frame && (

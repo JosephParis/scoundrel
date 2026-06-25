@@ -7,6 +7,7 @@ import {
 } from '../logic'
 import { Formula, formatFormula } from './atoms'
 import { SuitIcon, cardBorderTone, suitIconTone } from './SuitIcon'
+import { HelperIcon } from './HelperIcon'
 
 // -- HP bar ------------------------------------------------------------
 
@@ -213,7 +214,6 @@ export function CardSlot({ card, onClick, onBareHands, weaponDamage, bareDamage,
   const monster = isMonster(card)
   const willUseWeapon = monster && weaponDamage !== null
   const monsterPreview = !monster ? null : willUseWeapon ? weaponDamage : bareDamage
-  const monsterIcon = willUseWeapon ? '⚔' : '✊'
   const potionHeal = potionPreview && potionPreview.mode === 'heal' ? potionPreview : null
   const potionSour = potionPreview && potionPreview.mode === 'damage' ? potionPreview : null
   const potionStrength = potionPreview && potionPreview.mode === 'strength' ? potionPreview : null
@@ -272,8 +272,9 @@ export function CardSlot({ card, onClick, onBareHands, weaponDamage, bareDamage,
         <div className="text-center flex flex-col gap-0.5 min-h-[34px] justify-center">
           {monsterPreview ? (
             <>
-              <span className="text-[12px] tracking-normal text-stone-800 font-medium">
-                {monsterIcon} take {monsterPreview.value}{card.fast ? ' ×2' : ''}
+              <span className="text-[12px] tracking-normal text-stone-800 font-medium flex items-center justify-center gap-1">
+                <HelperIcon kind={willUseWeapon ? 'weapon' : 'bare'} />
+                take {monsterPreview.value}{card.fast ? ' ×2' : ''}
               </span>
               {monsterPreview.parts.length > 1 && (
                 <span className="text-[10px] tracking-normal text-stone-500 leading-tight">
@@ -283,8 +284,8 @@ export function CardSlot({ card, onClick, onBareHands, weaponDamage, bareDamage,
             </>
           ) : potionHeal ? (
             <>
-              <span className="text-[12px] tracking-normal text-stone-800 font-medium">
-                ♥ heal {potionHeal.value}
+              <span className="text-[12px] tracking-normal text-stone-800 font-medium flex items-center justify-center gap-1">
+                <HelperIcon kind="heal" /> heal {potionHeal.value}
               </span>
               {potionHeal.parts.length > 0 && (
                 <span className="text-[10px] tracking-normal text-stone-500 leading-tight">
@@ -294,8 +295,8 @@ export function CardSlot({ card, onClick, onBareHands, weaponDamage, bareDamage,
             </>
           ) : potionSour ? (
             <>
-              <span className="text-[12px] tracking-normal text-stone-800 font-medium">
-                ✸ take {potionSour.value}
+              <span className="text-[12px] tracking-normal text-stone-800 font-medium flex items-center justify-center gap-1">
+                <HelperIcon kind="sour" /> take {potionSour.value}
               </span>
               {potionSour.parts.length > 0 && (
                 <span className="text-[10px] tracking-normal text-stone-500 leading-tight">
@@ -304,8 +305,8 @@ export function CardSlot({ card, onClick, onBareHands, weaponDamage, bareDamage,
               )}
             </>
           ) : potionStrength ? (
-            <span className="text-[12px] tracking-normal text-stone-800 font-medium">
-              ⚒ strikes +{potionStrength.value}
+            <span className="text-[12px] tracking-normal text-stone-800 font-medium flex items-center justify-center gap-1">
+              <HelperIcon kind="strength" /> strikes +{potionStrength.value}
             </span>
           ) : potionSkip ? (
             <span className="text-[10px] uppercase tracking-[0.2em] text-stone-500">{potionSkip.note}</span>
@@ -337,7 +338,9 @@ export function CardSlot({ card, onClick, onBareHands, weaponDamage, bareDamage,
           disabled={blocked || bareBlocked}
           className={`w-full py-2.5 px-3 rounded-md bg-stone-800 text-parchment text-sm font-medium border border-stone-700 transition flex flex-col text-center ${(blocked || bareBlocked) ? 'cursor-not-allowed opacity-40' : 'hover:bg-stone-700'} ${bareRecommended ? 'tutorial-recommended' : ''}`}
         >
-          <span>✊ Bare hands · take {bareDamage.value}</span>
+          <span className="flex items-center justify-center gap-1">
+            <HelperIcon kind="bare" /> Bare hands · take {bareDamage.value}
+          </span>
           {bareDamage.parts.length > 1 && (
             <span className="text-[10px] text-stone-400 leading-tight">
               ({formatFormula(bareDamage.parts)})
