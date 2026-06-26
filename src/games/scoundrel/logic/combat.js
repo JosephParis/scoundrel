@@ -26,13 +26,14 @@ import { endDescentDeath, endDescentVictory } from './lifecycle'
 export function applyHpLoss(state, amount, cause = null) {
   const hpBefore = state.hp
   let next = { ...state }
-  // Numb soaks the first chunk of incoming damage each room (any source).
+  // Numb soaks up to 2 damage from the first hit that lands each room, then is
+  // spent for the rest of the room, even if that hit cost it less than 2.
   if (hasBoon(state, 'numb') && (state.numbRemaining || 0) > 0 && amount > 0) {
     const absorbed = Math.min(state.numbRemaining, amount)
     amount = amount - absorbed
     next = appendLog(
-      { ...next, numbRemaining: state.numbRemaining - absorbed },
-      `Numb absorbs ${absorbed}. The hurt slides off.`
+      { ...next, numbRemaining: 0 },
+      `Numb absorbs ${absorbed}. The hurt slides off, and the numbness fades.`
     )
   }
   next = { ...next, hp: next.hp - amount }

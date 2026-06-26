@@ -128,8 +128,8 @@ export const BOONS = {
   numb: {
     id: 'numb',
     name: 'Numb',
-    description: 'Ignore the first 2 damage you take each room, from any source.',
-    example: 'The first 2 damage taken each room slides off, from any source.',
+    description: 'The first damage you take each room, from any source, is reduced by up to 2.',
+    example: "Even a room's toll spends it: 1 HP at the threshold leaves the first monster unguarded.",
     tag: 'survival',
     numb: true,
   },
