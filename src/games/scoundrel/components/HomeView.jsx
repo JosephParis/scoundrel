@@ -7,7 +7,7 @@ export function HomeView({ open, onResume, onOpenRules, onOpenHistory, onOpenCar
 
   const items = [
     { label: 'Resume', hint: 'Back to your run', onClick: onResume, accent: true },
-    { label: 'How to play', hint: 'Rules, boons, themes', onClick: onOpenRules },
+    { label: 'How to play', hint: 'Rules, boons, trials', onClick: onOpenRules },
     { label: 'Run history', hint: 'Past descents', onClick: onOpenHistory },
     { label: 'Card library', hint: 'Every card in the deck', onClick: onOpenCardLibrary },
     { label: 'Tutorial', hint: 'A guided walkthrough', onClick: onReplayTutorial },

@@ -1,9 +1,10 @@
 import { createPortal } from 'react-dom'
 import {
-  HEART, DIAMOND, SUIT_GLYPH, rankLabel,
+  HEART, DIAMOND, SPADE, WOUND, KEY, MAP, STONE, TORCH, SUIT_GLYPH, rankLabel,
   BOSSES, BOSS_IDS, INSCRIBED_FRAMES, INSCRIBED_FRAME_IDS,
+  TRAITS, TRAIT_IDS,
 } from '../logic'
-import { SuitIcon, cardBorderTone, suitIconTone } from './SuitIcon'
+import { SuitIcon, TraitIcon, cardBorderTone, suitIconTone } from './SuitIcon'
 
 // Catalogue of every special card the run can produce: bosses (shuffled
 // into the descent deck) and forge inscriptions (added at sanctuary).
@@ -32,7 +33,7 @@ export function CardLibraryModal({ open, onClose }) {
           <div className="text-[10px] uppercase tracking-[0.3em] text-slate-500">The catalogue</div>
           <h2 className="font-display text-rune text-2xl mt-1">Special cards</h2>
           <p className="text-[11.5px] text-slate-500 mt-1 max-w-md">
-            Bosses appear in the descent deck. Forge inscriptions are added at the sanctuary and persist for the rest of the run.
+            Bosses appear in the descent deck. Forge inscriptions are added at the sanctuary and persist for the rest of the run. Monster traits are stamped onto some cards by certain trials.
           </p>
         </div>
 
@@ -45,6 +46,11 @@ export function CardLibraryModal({ open, onClose }) {
           <Section title="Forge inscriptions">
             <ul className="grid grid-cols-1 sm:grid-cols-2 gap-3">
               {INSCRIBED_FRAME_IDS.map(id => <InscribedEntry key={id} id={id} />)}
+            </ul>
+          </Section>
+          <Section title="Monster traits">
+            <ul className="grid grid-cols-1 sm:grid-cols-2 gap-3">
+              {TRAIT_IDS.map(id => <TraitEntry key={id} id={id} />)}
             </ul>
           </Section>
         </div>
@@ -107,27 +113,52 @@ function InscribedEntry({ id }) {
   )
 }
 
+function TraitEntry({ id }) {
+  const trait = TRAITS[id]
+  if (!trait) return null
+  // A representative mid-rank monster (spades are monsters) so the corner
+  // symbol shows on a normal-looking card face.
+  const card = { suit: SPADE, rank: 9, [id]: true }
+  return (
+    <li className="rounded-md border border-stone-700 bg-stone-900/40 p-3 flex gap-3">
+      <PreviewCard card={card} />
+      <div className="min-w-0 flex-1">
+        <div className="text-rune font-display text-sm">{trait.name}</div>
+        <div className="text-[10px] uppercase tracking-widest text-red-400/90 mt-0.5">Trait</div>
+        <div className="text-[12px] text-slate-300 mt-1 leading-snug">{trait.description}</div>
+      </div>
+    </li>
+  )
+}
+
 // Smaller, static cousin of CardSlot. No previews/interactions, just the
-// face: rank+glyph, sigil, kind label. Boss and inscribed bits flow
-// through the same border/tone helpers so the look stays consistent.
+// face: rank+glyph and sigil. Boss/inscribed type is named in the entry text
+// beside the card, so the face stays clean; only the trait symbol (the thing
+// being catalogued) shows in the corner. Border/tone helpers keep the look
+// consistent with the live card.
 function PreviewCard({ card }) {
   const red = card.suit === HEART || card.suit === DIAMOND
   const boss = !!card.boss
   const inscribed = !!card.inscribed
+  // Synthetic-suit tools and rank-0 inscriptions carry no rank, so the face
+  // shows the bare suit glyph (matches the live card).
+  const synthetic = [WOUND, KEY, MAP, STONE, TORCH].includes(card.suit)
+  const noRank = synthetic || (inscribed && card.rank === 0)
+  const traitLabel = card.armored ? 'armored'
+    : card.relentless ? 'relentless'
+    : card.warded ? 'warded'
+    : card.shrouded ? 'shrouded'
+    : card.vengeful ? 'vengeful'
+    : card.swelling ? 'swelling'
+    : card.cursed ? 'cursed'
+    : null
   return (
     <div className={`relative shrink-0 aspect-[2/3] w-20 rounded-md border-2 ${cardBorderTone(card)} card-face text-stone-900 p-2 flex flex-col`}>
       <div className={`text-sm font-bold leading-none ${red ? 'text-blood' : 'text-stone-900'}`}>
-        {rankLabel(card.rank)}{SUIT_GLYPH[card.suit]}
+        {noRank ? SUIT_GLYPH[card.suit] : `${rankLabel(card.rank)}${SUIT_GLYPH[card.suit]}`}
       </div>
-      {inscribed && (
-        <div className="absolute top-1 right-1 text-[7px] uppercase tracking-widest text-amber-700/80 font-semibold">
-          inscribed
-        </div>
-      )}
-      {boss && (
-        <div className="absolute top-1 right-1 text-[7px] uppercase tracking-widest text-rune font-semibold drop-shadow-[0_0_3px_rgba(251,191,36,0.7)]">
-          boss
-        </div>
+      {traitLabel && !boss && !inscribed && (
+        <TraitIcon trait={traitLabel} className="absolute top-2 right-2 w-3.5 h-3.5 text-red-800" />
       )}
       <div className="flex-1 min-h-0 flex items-center justify-center">
         <SuitIcon suit={card.suit} inscribed={card.inscribed} boss={card.boss} className={`w-[68%] h-auto ${suitIconTone(card)}`} />

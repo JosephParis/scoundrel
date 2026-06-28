@@ -113,12 +113,23 @@ export function buildDefaultMonsters(sigils = 0) {
 }
 
 // Stamp at most one trait on a sampled monster per the spec's `traits`
-// probabilities (armored / fast / warded). Mutates and returns the card.
+// probabilities (armored / relentless / warded / shrouded / vengeful /
+// swelling). Mutates and returns the card.
 function applyMonsterTraits(card, traits, rng) {
   if (!traits) return card
   if (rng() < (traits.armored ?? 0)) card.armored = true
-  else if (rng() < (traits.fast ?? 0)) card.fast = true
+  else if (rng() < (traits.relentless ?? 0)) card.relentless = true
   else if (rng() < (traits.warded ?? 0)) card.warded = true
+  else if (rng() < (traits.shrouded ?? 0)) card.shrouded = true
+  else if (rng() < (traits.vengeful ?? 0)) card.vengeful = true
+  else if (rng() < (traits.swelling ?? 0)) card.swelling = true
+  // Cursed carries a payload `{ chance, inflicts, rooms }` rather than a bare
+  // probability: the boolean flag drives the card UI, `afflicts` the on-kill
+  // effect (applyMonsterFight).
+  else if (traits.cursed && rng() < (traits.cursed.chance ?? 0)) {
+    card.cursed = true
+    card.afflicts = { id: traits.cursed.inflicts, rooms: traits.cursed.rooms }
+  }
   return card
 }
 
@@ -128,7 +139,9 @@ function applyMonsterTraits(card, traits, rng) {
 //   remove:    { count, band }                drop N monsters from a band
 //   add:       { count, band }                add N monsters in a band
 //   suitShift: { to, fraction }               convert a fraction of the other suit
-//   traits:    { armored?, fast?, warded? }   stamp on the monsters
+//   traits:    { armored?, relentless?, warded?,    stamp on the monsters
+//                shrouded?, vengeful?, swelling?,
+//                cursed?: { chance, inflicts, rooms } }
 export function applyMonsterMods(monsters, mods, ceiling, rng) {
   if (!mods) return monsters
   let out = monsters.slice()

@@ -9,11 +9,45 @@ import { getActiveThemes } from '../themes'
 import { BOONS } from '../boons'
 import { getAscensionEffectsForState } from '../ascensions'
 import { devourerEffectiveRank, roomBossAuraBonus } from '../bosses'
+import { AFFLICTIONS, hasAffliction } from '../afflictions'
 
 // -- Log ---------------------------------------------------------------
 
 export function appendLog(state, line) {
   return { ...state, log: [...(state.log || []), line].slice(-14) }
+}
+
+// -- Afflictions -------------------------------------------------------
+
+// Apply an affliction for `rooms` upcoming room thresholds. A repeat hit
+// refreshes the timer (takes the longer of the two) rather than stacking.
+export function inflictAffliction(state, id, rooms) {
+  if (!AFFLICTIONS[id] || rooms <= 0) return state
+  const current = state.afflictions?.[id] || 0
+  const afflictions = { ...(state.afflictions || {}), [id]: Math.max(current, rooms) }
+  return appendLog({ ...state, afflictions },
+    `Afflicted: ${AFFLICTIONS[id].name}. ${AFFLICTIONS[id].description}`)
+}
+
+// Tick every active affliction down by one room and drop any that reach 0.
+// Called once per new room from applyRoomEntryEffects.
+export function tickAfflictions(state) {
+  if (!state.afflictions) return state
+  const next = {}
+  for (const [id, rooms] of Object.entries(state.afflictions)) {
+    if (rooms - 1 > 0) next[id] = rooms - 1
+  }
+  return { ...state, afflictions: next }
+}
+
+// Apply healing, honoring the Sealed affliction (which blocks all recovery)
+// and the maxHp cap. Returns { state, healed } so callers can log the amount
+// actually restored; a sealed or already-full heal returns the state untouched.
+export function applyHeal(state, amount) {
+  if (amount <= 0 || hasAffliction(state, 'sealed')) return { state, healed: 0 }
+  const healed = Math.min(state.maxHp, state.hp + amount) - state.hp
+  if (healed <= 0) return { state, healed: 0 }
+  return { state: { ...state, hp: state.hp + healed }, healed }
 }
 
 // -- Formatting --------------------------------------------------------
@@ -77,6 +111,11 @@ export function effectiveMonsterRank(state, card) {
   // The Warden (and any future room-aura boss) adds a flat bonus to every
   // other monster sharing its room.
   bonus += roomBossAuraBonus(state, card)
+  // Swelling: each monster already slain this room makes it hit harder.
+  if (card.swelling) bonus += (state.monstersFoughtThisRoom || 0)
+  // Vengeful deaths leave a lingering +1 on every monster in the room (set in
+  // applyMonsterFight, cleared on each new room by applyRoomEntryEffects).
+  bonus += (state.vengefulBonus || 0)
   return baseRank + bonus
 }
 

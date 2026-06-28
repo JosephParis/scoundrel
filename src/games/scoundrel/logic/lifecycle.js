@@ -97,6 +97,7 @@ export function createRun(rng = Math.random, options = {}) {
     monstersFoughtThisRoom: 0,
     lastMonsterSuit: null,
     roomsEntered: 0,
+    afflictions: {},
     mutedBoon: null,
 
     // Run-level history accumulators. Unlike the per-descent fields below,
@@ -247,6 +248,9 @@ export function descend(state) {
     monstersFoughtThisRoom: 0,
     lastMonsterSuit: null,
     roomsEntered: 0,
+    // Afflictions are per-descent; the sanctuary always wipes them clean.
+    afflictions: {},
+    vengefulBonus: 0,
     // Record the theme of this descent (tutorial walk excluded; it isn't a
     // real run leg). Run-level, so it accumulates across the whole run.
     themesFaced: state.tutorial ? (state.themesFaced || []) : [...(state.themesFaced || []), themeId],
@@ -506,6 +510,7 @@ export function endDescentVictory(state) {
     monstersFoughtThisRoom: 0,
     lastMonsterSuit: null,
     roomsEntered: 0,
+    afflictions: {},
     mutedBoon: null,
     riposteCharge: 0,
     secondWindUsed: false,

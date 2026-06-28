@@ -15,8 +15,11 @@ export const MAP = 'M'
 // Whetstone: same tool-suit pattern. A separate synthetic suit so the
 // deck fan keeps it out of the real-weapon (DIAMOND) row.
 export const STONE = 'O'
+// Torch: a trigger-on-draw tool, same synthetic-suit pattern as KEY/MAP/STONE.
+// isTorch() is the explicit gate.
+export const TORCH = 'T'
 
-export const SUIT_GLYPH = { H: '♥', D: '♦', C: '♣', S: '♠', W: '✕', K: '⚷', M: '⌖', O: '◈' }
+export const SUIT_GLYPH = { H: '♥', D: '♦', C: '♣', S: '♠', W: '✕', K: '⚷', M: '⌖', O: '◈', T: '✦' }
 export const RANK_LABEL = { 11: 'J', 12: 'Q', 13: 'K', 14: 'A' }
 
 export const BASE_MAX_HP = 20
@@ -71,12 +74,14 @@ export function isKitCard(c) { return !!c && !isMonster(c) && !isWound(c) }
 export function isSkeletonKey(c) { return !!c && c.suit === KEY }
 export function isMap(c) { return !!c && c.suit === MAP }
 export function isWhetstone(c) { return !!c && c.suit === STONE }
+export function isTorch(c) { return !!c && c.suit === TORCH }
 export function rankLabel(r) { return RANK_LABEL[r] ?? String(r) }
 export function suitColor(suit) {
   if (suit === WOUND) return 'wound'
   if (suit === KEY) return 'key'
   if (suit === MAP) return 'map'
   if (suit === STONE) return 'stone'
+  if (suit === TORCH) return 'torch'
   return (suit === HEART || suit === DIAMOND) ? 'red' : 'black'
 }
 
@@ -169,6 +174,61 @@ export const INSCRIBED_FRAMES = {
     rankMax: 4,
     playEffect: 'strength',
   },
+  vampiric_edge: {
+    id: 'vampiric_edge',
+    name: 'Vampiric Edge',
+    description: 'A weapon. Each monster you strike with it restores 2 HP. Bare-handed kills do not heal.',
+    suit: DIAMOND,
+    rankMin: 2,
+    rankMax: 8,
+    playEffect: 'lifesteal',
+  },
+  wildedge: {
+    id: 'wildedge',
+    name: "Gambler's Flail",
+    description: 'A weapon whose strike value rerolls to a random 2 to 10 after every swing against a monster.',
+    suit: DIAMOND,
+    rankMin: 2,
+    rankMax: 8,
+    playEffect: 'reroll',
+  },
+  brittle_fang: {
+    id: 'brittle_fang',
+    name: 'Brittle Fang',
+    description: 'The ace of diamonds. Strikes at rank 14, then shatters after a single kill.',
+    suit: DIAMOND,
+    rankMin: 14,
+    rankMax: 14,
+    playEffect: 'shatterAfterKill',
+  },
+  panacea: {
+    id: 'panacea',
+    name: 'Elixir of Life',
+    description: 'When drunk, restores HP to full. One per run.',
+    suit: HEART,
+    rankMin: 0,
+    rankMax: 0,
+    playEffect: 'fullHeal',
+    oncePerRun: true,
+  },
+  draught_of_vigor: {
+    id: 'draught_of_vigor',
+    name: 'Draught of Vigor',
+    description: 'Heals its rank and raises max HP by 2 for the rest of the descent.',
+    suit: HEART,
+    rankMin: 2,
+    rankMax: 6,
+    playEffect: 'vigor',
+  },
+  torch: {
+    id: 'torch',
+    name: 'Torch',
+    description: 'When drawn, burns the strongest non-boss monster out of the room without a fight, then discards.',
+    suit: TORCH,
+    rankMin: 0,
+    rankMax: 0,
+    playEffect: 'burn',
+  },
   whetstone: {
     id: 'whetstone',
     name: 'Whetstone',
@@ -181,6 +241,50 @@ export const INSCRIBED_FRAMES = {
 }
 
 export const INSCRIBED_FRAME_IDS = Object.keys(INSCRIBED_FRAMES)
+
+// Monster traits: per-monster modifiers that certain themes stamp onto a
+// fraction of the descent deck. Each shows as a corner symbol on the card and
+// is catalogued in the card library so the symbol is legible. The per-theme
+// odds live on the theme, not here.
+export const TRAITS = {
+  armored: {
+    id: 'armored',
+    name: 'Armored',
+    description: 'Weapons do nothing against it. You must fight it bare-handed.',
+  },
+  warded: {
+    id: 'warded',
+    name: 'Warded',
+    description: 'You cannot flee a room while a warded monster is present.',
+  },
+  relentless: {
+    id: 'relentless',
+    name: 'Relentless',
+    description: 'It strikes twice, dealing its damage a second time.',
+  },
+  shrouded: {
+    id: 'shrouded',
+    name: 'Shrouded',
+    description: 'It sits face-down. You fight it without seeing its rank.',
+  },
+  vengeful: {
+    id: 'vengeful',
+    name: 'Vengeful',
+    description: 'When it dies, every other monster in the room hits at +1 for the rest of the room.',
+  },
+  swelling: {
+    id: 'swelling',
+    name: 'Swelling',
+    description: 'It hits at +1 for every monster already slain in the room.',
+  },
+  cursed: {
+    id: 'cursed',
+    name: 'Cursed',
+    description: 'When you slay it, it leaves an affliction on you for a few rooms.',
+  },
+}
+
+export const TRAIT_IDS = Object.keys(TRAITS)
 
 let inscribedCounter = 0
 export function makeInscribedCard(frameId, rank) {

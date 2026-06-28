@@ -288,9 +288,25 @@ export const THEMES = {
   the_frenzy: {
     id: 'the_frenzy',
     name: 'The Frenzy',
-    description: 'About 2 in 5 monsters are fast: they strike twice.',
+    description: 'About 2 in 5 monsters are relentless: they hit you twice, dealing their damage a second time.',
     tier: 4,
-    monsterMods: { traits: { fast: 0.4 } },
+    monsterMods: { traits: { relentless: 0.4 } },
+  },
+
+  the_veil: {
+    id: 'the_veil',
+    name: 'The Veil',
+    description: 'About 3 in 10 monsters are shrouded: they sit face-down, and you fight them without seeing their rank.',
+    tier: 4,
+    monsterMods: { traits: { shrouded: 0.3 } },
+  },
+
+  the_murk: {
+    id: 'the_murk',
+    name: 'The Murk',
+    description: 'The whole hall is Obscured: card ranks stay hidden, so you see each card\'s kind but never how strong it is.',
+    tier: 4,
+    ambientAffliction: { id: 'obscured', rooms: 1 },
   },
 
   // ---- Compounding and climax effects (tier 5) -------------------------
@@ -301,6 +317,46 @@ export const THEMES = {
     description: 'About 3 in 10 monsters are warded: you cannot flee a room while one is present.',
     tier: 5,
     monsterMods: { traits: { warded: 0.3 } },
+  },
+
+  the_grudge: {
+    id: 'the_grudge',
+    name: 'The Grudge',
+    description: 'About 3 in 10 monsters are vengeful: when one dies, every other monster in the room hits at +1 for the rest of the room.',
+    tier: 5,
+    monsterMods: { traits: { vengeful: 0.3 } },
+  },
+
+  the_glut: {
+    id: 'the_glut',
+    name: 'The Glut',
+    description: 'About 1 in 4 monsters are swelling: each hits at +1 for every monster already slain in the room.',
+    tier: 5,
+    monsterMods: { traits: { swelling: 0.25 } },
+  },
+
+  the_gloom: {
+    id: 'the_gloom',
+    name: 'The Gloom',
+    description: 'About 3 in 10 monsters are cursed: slaying one leaves you Blind, so the next room shows only card backs.',
+    tier: 5,
+    monsterMods: { traits: { cursed: { chance: 0.3, inflicts: 'blind', rooms: 1 } } },
+  },
+
+  the_hex: {
+    id: 'the_hex',
+    name: 'The Hex',
+    description: 'About 3 in 10 monsters are cursed: slaying one Seals your wounds, so healing restores nothing for 2 rooms.',
+    tier: 5,
+    monsterMods: { traits: { cursed: { chance: 0.3, inflicts: 'sealed', rooms: 2 } } },
+  },
+
+  the_leech: {
+    id: 'the_leech',
+    name: 'The Leech',
+    description: 'About 1 in 4 monsters are cursed: slaying one leaves you Bleeding, costing 2 HP at each threshold for 2 rooms.',
+    tier: 5,
+    monsterMods: { traits: { cursed: { chance: 0.25, inflicts: 'bleeding', rooms: 2 } } },
   },
 
   echo: {

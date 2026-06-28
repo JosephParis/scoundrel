@@ -39,7 +39,7 @@ export function RulesInlinePanel() {
 const RULES_TABS = [
   { id: 'rules', label: 'How to play' },
   { id: 'boons', label: 'Boons' },
-  { id: 'themes', label: 'Themes' },
+  { id: 'themes', label: 'Trials' },
 ]
 
 function RulesTabBar({ tab, setTab }) {
@@ -242,7 +242,7 @@ function RulesContentFull() {
       <RuleSection title="Between descents: the Sanctuary">
         <RuleRow term="HP">Refills to full.</RuleRow>
         <RuleRow term="Boon">Pick 1 of 3. Permanent for the run.</RuleRow>
-        <RuleRow term="Theme">Next descent's rules previewed before you commit.</RuleRow>
+        <RuleRow term="Trial">Next descent's rules previewed before you commit.</RuleRow>
         <RuleRow term="Forge">After each descent: Inscribe, Upgrade, or Remove a kit card. The offer varies. Permanent.</RuleRow>
         <RuleRow term="Weapon">Carries over, arrives rested (binding cleared).</RuleRow>
       </RuleSection>
@@ -323,7 +323,7 @@ function ThemesGlossary() {
   return (
     <div className="space-y-5 text-[13px] leading-snug">
       <p className="text-slate-400">
-        One Theme per descent: a deck or rule mutation just for that descent.
+        One Trial per descent: a deck or rule mutation just for that descent.
         You see it before you descend, so spend your Boon as counterplay.
       </p>
 

@@ -18,7 +18,7 @@ const DEFAULTS = {
   library: false,
   ascensions: false,
   wounds: false,
-  customCards: false,
+  customCards: true,
   bosses: false,
 }
 

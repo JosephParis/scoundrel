@@ -119,7 +119,7 @@ export function DevModal({ open, onClose, game, setGame }) {
         forgeGrantIndex: batch.forgeGrantIndex,
         forgeChoices: batch.forgeChoices,
         mutedBoon: null,
-        log: [...g.log, `[dev] overrides applied: sigils ${sigils}, theme "${themeObj?.name || themeId}".`],
+        log: [...g.log, `[dev] overrides applied: sigils ${sigils}, trial "${themeObj?.name || themeId}".`],
       }
     })
     onClose()
@@ -168,7 +168,7 @@ export function DevModal({ open, onClose, game, setGame }) {
         </div>
 
         <div>
-          <div className="text-[10px] uppercase tracking-wider text-slate-500 mb-1">Next theme</div>
+          <div className="text-[10px] uppercase tracking-wider text-slate-500 mb-1">Next trial</div>
           <select
             value={themeId}
             onChange={(e) => setThemeId(e.target.value)}

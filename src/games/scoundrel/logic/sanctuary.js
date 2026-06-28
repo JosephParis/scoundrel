@@ -59,10 +59,15 @@ function editsPerVisit(sigils) {
 }
 
 // Kit cards that can still take an Upgrade (+2 within the rank cap).
+// Fixed-rank inscriptions (Elixir of Life, Brittle Fang) don't scale with rank, so
+// they stay out of the Upgrade pool.
 function upgradeCandidates(kit) {
-  return (kit || []).filter(
-    c => (isWeapon(c) || isPotion(c)) && c.rank + UPGRADE_BONUS <= UPGRADE_RANK_CAP
-  )
+  return (kit || []).filter(c => {
+    if (!(isWeapon(c) || isPotion(c))) return false
+    const frame = c.inscribed ? INSCRIBED_FRAMES[c.inscribed] : null
+    if (frame && frame.rankMin === frame.rankMax) return false
+    return c.rank + UPGRADE_BONUS <= UPGRADE_RANK_CAP
+  })
 }
 
 // Pull up to n random items from arr (partial Fisher-Yates).
@@ -453,6 +458,17 @@ export function describePotion(state, card) {
       value: card.rank,
       parts: [{ label: 'strength', value: card.rank, op: '+' }],
     }
+  }
+
+  // Elixir of Life: heals whatever is missing, straight to full.
+  if (card.inscribed === 'panacea') {
+    return { mode: 'heal', value: Math.max(0, state.maxHp - state.hp), parts: [] }
+  }
+
+  // Draught of Vigor: rank heal against the raised (+2) max HP.
+  if (card.inscribed === 'draught_of_vigor') {
+    const newMax = state.maxHp + 2
+    return { mode: 'heal', value: Math.min(newMax, state.hp + card.rank) - state.hp, parts: [] }
   }
 
   const themes = activeThemes(state)

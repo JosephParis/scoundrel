@@ -1,11 +1,12 @@
 import {
-  SUIT_GLYPH, isMonster, isWeapon, isPotion, isWound, isSkeletonKey, isMap, isWhetstone, rankLabel,
+  SUIT_GLYPH, isMonster, isWeapon, isPotion, isWound, isSkeletonKey, isMap, isWhetstone, isTorch, rankLabel,
   WOUND_DAMAGE_THRESHOLD, WOUND_CAP_PER_DESCENT, makeWoundCard,
   MAP_PEEK_COUNT,
 } from '../constants'
 import { BOONS } from '../boons'
 import { isEnabled as isFlagEnabled } from '../flags'
 import { isBoss, makeBroodSpawn, getBoss, BOSSES } from '../bosses'
+import { hasAffliction, BLEEDING_DAMAGE } from '../afflictions'
 import {
   appendLog, fmt,
   activeThemes, themesFor, themeFieldSum, themeFlagAny, getRoomSize,
@@ -13,6 +14,7 @@ import {
   activeBoons, hasBoon, maxBoonField, sumBoonField,
   computePotionsPerRoomLimit, effectiveWeaponRank, bonusVsSuitFor,
   markTutorialLesson,
+  inflictAffliction, tickAfflictions, applyHeal,
 } from './helpers'
 import { endDescentDeath, endDescentVictory } from './lifecycle'
 
@@ -122,7 +124,8 @@ export function applyRoomEntryEffects(state, room, firstNewIdx) {
   const roomsEntered = (state.roomsEntered || 0) + 1
   // Run-level tally (persists across descents) for the run-history record.
   const runRoomsEntered = (state.runRoomsEntered || 0) + 1
-  let next = { ...state, roomsEntered, runRoomsEntered }
+  // Vengeful's room-wide +1 is per-room; clear it as the new room is presented.
+  let next = { ...state, roomsEntered, runRoomsEntered, vengefulBonus: 0 }
   // Refresh Numb's per-room shield before any room-entry damage (Tithe).
   if (hasBoon(next, 'numb')) {
     next = { ...next, numbRemaining: 2 }
@@ -169,12 +172,33 @@ export function applyRoomEntryEffects(state, room, firstNewIdx) {
     next = appendLog(next, `${getBoss(mimic.boss).name} shifts. The room takes its shape.`)
   }
 
-  // Tithe: lose HP per room entered. Can kill (honors Twin Souls / Second Wind).
+  // Threshold HP losses: Tithe (theme) then Bleeding (affliction). Both honor
+  // Twin Souls / Second Wind via applyHpLoss and can be lethal. Bleeding reads
+  // the pre-tick counter so an N-room bleed lands on each of its N thresholds.
   const titheLoss = themeFieldSum(themes, 'tithe')
   if (titheLoss > 0) {
     next = appendLog(next, `Tithe: the hall takes ${titheLoss} HP at the threshold.`)
     const result = applyHpLoss(next, titheLoss, { source: 'tithe' })
-    return { state: result.state, room: nextRoom, dead: result.dead }
+    if (result.dead) return { state: result.state, room: nextRoom, dead: true }
+    next = result.state
+  }
+  if (hasAffliction(next, 'bleeding')) {
+    next = appendLog(next, `Bleeding: the wound costs ${BLEEDING_DAMAGE} HP at the threshold.`)
+    const result = applyHpLoss(next, BLEEDING_DAMAGE, { source: 'bleeding' })
+    if (result.dead) return { state: result.state, room: nextRoom, dead: true }
+    next = result.state
+  }
+
+  // Advance every affliction one room, dropping any that expire.
+  next = tickAfflictions(next)
+
+  // Theme ambient afflictions: a standing status re-applied each room so it
+  // holds for the whole descent the theme is active. Runs after the tick so
+  // the freshly-applied counter isn't immediately decremented away.
+  for (const t of themes) {
+    if (t.ambientAffliction) {
+      next = inflictAffliction(next, t.ambientAffliction.id, t.ambientAffliction.rooms)
+    }
   }
 
   return { state: next, room: nextRoom, dead: false }
@@ -257,8 +281,13 @@ function applyMonsterFight(state, monsterCard, index, useWeapon) {
   // Crushing Blow: if the kill cost you no HP (weapon, Hunter, Vanguard,
   // Riposte, whatever brought it to 0), the binding is untouched.
   let weaponShattered = false
+  // Brittle Fang (the ace of diamonds) breaks itself after one kill,
+  // regardless of the kill's rank or the Cracked Blade theme.
+  let brittleShatter = false
   if (chosen) {
-    const shatters = themeFlagAny(themes, 'crackedBlade') && monsterCard.rank > weaponUsed.rank
+    brittleShatter = weaponUsed.inscribed === 'brittle_fang'
+    const shatters = brittleShatter ||
+      (themeFlagAny(themes, 'crackedBlade') && monsterCard.rank > weaponUsed.rank)
     if (shatters) {
       weaponShattered = true
       if (chosen.slot === 'primary') next.weapon = null
@@ -316,6 +345,22 @@ function applyMonsterFight(state, monsterCard, index, useWeapon) {
     }
   }
 
+  // Vengeful: this kill leaves a lasting +1 on every other monster still in
+  // the room. Stacks if several vengeful monsters fall. Cleared when the next
+  // room is presented (applyRoomEntryEffects).
+  if (monsterCard.vengeful) {
+    next = appendLog(
+      { ...next, vengefulBonus: (next.vengefulBonus || 0) + 1 },
+      `Vengeful: ${fmt(monsterCard)} dies cursing. Every other monster hits at +1.`
+    )
+  }
+
+  // Cursed: slaying it lands an affliction on you. The payload (which status,
+  // how many rooms) is stamped on the card at deck-build.
+  if (monsterCard.afflicts?.id) {
+    next = inflictAffliction(next, monsterCard.afflicts.id, monsterCard.afflicts.rooms)
+  }
+
   const glyph = SUIT_GLYPH[monsterCard.suit]
   const how = weaponUsed
     ? `with the ${rankLabel(weaponUsed.rank)}♦`
@@ -330,7 +375,23 @@ function applyMonsterFight(state, monsterCard, index, useWeapon) {
   }
 
   if (weaponShattered) {
-    next = appendLog(next, 'The blade shatters under the strain. Cracked Blade claims it.')
+    next = appendLog(next, brittleShatter
+      ? 'Brittle Fang strikes once and breaks. The ace is spent.'
+      : 'The blade shatters under the strain. Cracked Blade claims it.')
+  }
+
+  // Gambler's Flail (inscribed 'wildedge'): its edge never settles. After the
+  // swing, reroll the strike value to a fresh 2-10. Skip if it just shattered.
+  if (chosen && weaponUsed.inscribed === 'wildedge') {
+    const slotKey = chosen.slot === 'primary' ? 'weapon' : 'spareWeapon'
+    const w = next[slotKey]
+    if (w) {
+      const newRank = 2 + Math.floor(state.rng() * 9)
+      next = appendLog(
+        { ...next, [slotKey]: { ...w, rank: newRank } },
+        `Gambler's Flail rolls anew: resets to a ${rankLabel(newRank)}♦.`
+      )
+    }
   }
 
   // Riposte: bank half this fight's actual damage (rounded down).
@@ -343,7 +404,7 @@ function applyMonsterFight(state, monsterCard, index, useWeapon) {
   }
 
   // Killing-blow detail for death analytics, shared by the main hit and the
-  // fast monster's second strike.
+  // relentless monster's second strike.
   const monsterCause = {
     source: monsterCard.boss ? 'boss' : 'monster',
     card: {
@@ -360,23 +421,31 @@ function applyMonsterFight(state, monsterCard, index, useWeapon) {
   if (dmgResult.dead) return dmgResult.state
   next = dmgResult.state
 
-  // Fast monsters strike a second time. Each hit is a real applyHpLoss so
+  // Relentless monsters strike a second time. Each hit is a real applyHpLoss so
   // Numb, wound-bleed, and death all evaluate per hit.
-  if (monsterCard.fast) {
+  if (monsterCard.relentless) {
     const second = applyHpLoss(next, damage, monsterCause)
     if (second.dead) return second.state
     next = appendLog(second.state, `${fmt(monsterCard)} strikes twice.`)
   }
 
+  // Vampiric Edge: striking a monster with the blade returns 2 HP, capped
+  // at maxHp. Bare-handed fights (weaponUsed null) never trigger it. Sealed
+  // (via applyHeal) blocks the lifesteal entirely.
+  if (weaponUsed && weaponUsed.inscribed === 'vampiric_edge') {
+    const heal = applyHeal(next, 2)
+    if (heal.healed > 0) {
+      next = appendLog(heal.state, `Vampiric Edge drinks deep: heal ${heal.healed} HP.`)
+    }
+  }
+
   // Cursed Idol gift: a prior idol play left a pending heal that applies
-  // on the next real monster kill. Drains and clears here, capped at maxHp.
+  // on the next real monster kill. Drains and clears here (Sealed blocks it).
   if ((next.pendingCursedHeal || 0) > 0) {
-    const heal = Math.min(next.maxHp - next.hp, next.pendingCursedHeal)
-    if (heal > 0) {
-      next = appendLog(
-        { ...next, hp: next.hp + heal, pendingCursedHeal: 0 },
-        `Cursed Idol's gift: heal ${heal} HP.`
-      )
+    const heal = applyHeal(next, next.pendingCursedHeal)
+    if (heal.healed > 0) {
+      next = appendLog({ ...heal.state, pendingCursedHeal: 0 },
+        `Cursed Idol's gift: heal ${heal.healed} HP.`)
     } else {
       next = { ...next, pendingCursedHeal: 0 }
     }
@@ -451,10 +520,16 @@ function playPotion(state, index, card) {
   if (playedNow < limit) {
     const base = bitterBrew ? Math.floor(card.rank / 2) : card.rank
     const healAmount = base + sumBoonField(activeBoons(next), 'potionHealBonus')
-    const healed = Math.min(next.maxHp, next.hp + healAmount) - next.hp
-    next.hp = next.hp + healed
-    const note = bitterBrew ? 'bitter, ' : ''
-    next = appendLog(next, `Drank ${fmt(card)}, ${note}restored ${healed} HP.`)
+    const heal = applyHeal(next, healAmount)
+    next = heal.state
+    if (heal.healed > 0) {
+      const note = bitterBrew ? 'bitter, ' : ''
+      next = appendLog(next, `Drank ${fmt(card)}, ${note}restored ${heal.healed} HP.`)
+    } else if (hasAffliction(next, 'sealed')) {
+      next = appendLog(next, `Drank ${fmt(card)}, but the Sealed wound takes nothing.`)
+    } else {
+      next = appendLog(next, `Drank ${fmt(card)}, but you're already whole.`)
+    }
     next = markTutorialLesson(next, 'potion')
   } else {
     next = appendLog(next, `Potion ${fmt(card)} wasted. No thirst left.`)
@@ -484,7 +559,14 @@ function playWeapon(state, index, card) {
   const rusty = themeFieldSum(themes, 'weaponRankModifier')
   const effectiveRank = Math.max(2, card.rank + rusty)
 
-  const newWeapon = { rank: effectiveRank, originalRank: card.rank, lastSlain: null }
+  // Inscribed weapons (Vampiric Edge, Gambler's Flail) carry their tag onto the
+  // equipped object so combat can read the effect when you swing.
+  const newWeapon = {
+    rank: effectiveRank,
+    originalRank: card.rank,
+    lastSlain: null,
+    ...(card.inscribed ? { inscribed: card.inscribed } : null),
+  }
 
   let nextWeapon, nextSpare, swapNote
   if (hasBoon(state, 'quartermaster')) {
@@ -537,6 +619,9 @@ export function playCard(state, index) {
   // away from their natural-suit handlers entirely.
   if (card.inscribed === 'cursed_idol') return playCursedIdol(state, index, card)
   if (card.inscribed === 'potion_of_strength') return playPotionOfStrength(state, index, card)
+  if (card.inscribed === 'panacea') return playPanacea(state, index, card)
+  if (card.inscribed === 'draught_of_vigor') return playDraughtOfVigor(state, index, card)
+  if (isTorch(card)) return playTorch(state, index, card)
   if (isSkeletonKey(card)) return playSkeletonKey(state, index, card)
   if (isMap(card)) return playMap(state, index, card)
   if (isWhetstone(card)) return playWhetstone(state, index, card)
@@ -629,6 +714,38 @@ function playWhetstone(state, index, card) {
   return checkRefillAndComplete(next)
 }
 
+// Torch: burns the strongest non-boss monster out of the room without a fight.
+// No HP cost, no weapon binding. Bosses are immune (the fire won't take them);
+// if nothing in the room qualifies, the torch simply gutters out.
+function playTorch(state, index, card) {
+  const room = state.room.slice()
+  room[index] = null
+  let targetIdx = -1
+  let best = -Infinity
+  for (let i = 0; i < room.length; i++) {
+    const c = room[i]
+    if (c && isMonster(c) && !c.boss) {
+      const r = effectiveMonsterRank(state, c)
+      if (r > best) { best = r; targetIdx = i }
+    }
+  }
+  let next
+  if (targetIdx >= 0) {
+    const burned = room[targetIdx]
+    room[targetIdx] = null
+    next = appendLog(
+      { ...state, room, discard: state.discard.concat(card, burned) },
+      `Torch flares. ${fmt(burned)} burns away, unfought.`
+    )
+  } else {
+    next = appendLog(
+      { ...state, room, discard: state.discard.concat(card) },
+      'Torch flares, but nothing in the room will catch.'
+    )
+  }
+  return checkRefillAndComplete(next)
+}
+
 // Potion of Strength: a heart that doesn't heal and doesn't count as a
 // potion. Banks its rank as a persistent weapon-strength bonus for the
 // rest of the descent (state.strengthBonus, read by effectiveWeaponRank).
@@ -645,6 +762,41 @@ function playPotionOfStrength(state, index, card) {
       strengthBonus: (state.strengthBonus || 0) + card.rank,
     },
     `Potion of Strength: weapon strikes harder by ${card.rank}.`
+  )
+  return checkRefillAndComplete(next)
+}
+
+// Elixir of Life (inscribed 'panacea'): a once-per-run heart that restores HP
+// to full regardless of rank. Bypasses the potion economy (no Apothecary /
+// Bitter Brew / per-room limit), like Potion of Strength. Consumed even at full HP.
+function playPanacea(state, index, card) {
+  const room = state.room.slice()
+  room[index] = null
+  const base = { ...state, room, discard: state.discard.concat(card) }
+  const heal = applyHeal(base, base.maxHp - base.hp)
+  const next = appendLog(
+    heal.state,
+    heal.healed > 0
+      ? `Elixir of Life: every ill mends. Healed ${heal.healed} HP to full.`
+      : hasAffliction(base, 'sealed')
+        ? 'Elixir of Life: the Sealed wound spurns it. Nothing mends.'
+        : 'Elixir of Life: already whole. The draught spills.'
+  )
+  return checkRefillAndComplete(next)
+}
+
+// Draught of Vigor: a heart that heals its rank and lifts max HP by 2 for the
+// rest of the descent. maxHp is recomputed fresh on each descend, so the bump
+// naturally clears at the next sanctuary.
+function playDraughtOfVigor(state, index, card) {
+  const room = state.room.slice()
+  room[index] = null
+  // The max HP lift still lands while Sealed; only the immediate heal is blocked.
+  const base = { ...state, room, discard: state.discard.concat(card), maxHp: state.maxHp + 2 }
+  const heal = applyHeal(base, card.rank)
+  const next = appendLog(
+    heal.state,
+    `Draught of Vigor: max HP +2, restored ${heal.healed} HP.`
   )
   return checkRefillAndComplete(next)
 }
@@ -716,12 +868,12 @@ export function checkRefillAndComplete(state) {
       monstersFoughtThisRoom: 0,
     }
 
-    // Temperance: clearing a room without drinking a potion heals 3 HP.
+    // Temperance: clearing a room without drinking a potion heals 3 HP
+    // (blocked while Sealed, via applyHeal).
     if (hasBoon(state, 'temperance') && (state.potionsUsedThisRoom || 0) === 0) {
-      const healed = Math.min(next.maxHp, next.hp + 3) - next.hp
-      if (healed > 0) {
-        next.hp = next.hp + healed
-        next = appendLog(next, `Temperance: a clear room steadies you for ${healed} HP.`)
+      const heal = applyHeal(next, 3)
+      if (heal.healed > 0) {
+        next = appendLog(heal.state, `Temperance: a clear room steadies you for ${heal.healed} HP.`)
       }
     }
 

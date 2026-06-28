@@ -1,4 +1,4 @@
-import { useCallback, useEffect, useMemo, useState } from 'react'
+import { useCallback, useEffect, useMemo, useRef, useState } from 'react'
 import {
   playCard, playCardBare, fleeRoom,
   dismissMapPeek,
@@ -10,14 +10,35 @@ import {
   tutorialAllLessonsDone,
   devourerEffectiveRank,
   HEART, DIAMOND, SUIT_GLYPH, rankLabel,
+  BOSSES, TRAITS, TRAIT_IDS,
+  hasAffliction,
 } from '../logic'
 import { PhaseRail, LogPanel } from './atoms'
 import { ModeBadge } from './modes'
 import { AscensionBadge } from './ascensions'
-import { CardSlot, HpBar, WeaponPanel, ConditionsPanel, ForesightPanel } from './cards'
+import { CardSlot, HpBar, AfflictionBadges, WeaponPanel, ConditionsPanel, ForesightPanel } from './cards'
 import { MapPeekModal } from './boons'
-import { SuitIcon, cardBorderTone, suitIconTone } from './SuitIcon'
+import { SuitIcon, TraitIcon, cardBorderTone, suitIconTone } from './SuitIcon'
+import { getSeenSpecials, markSpecialsSeen } from '../seenSpecials'
 import { audio } from '../audio'
+
+// Scan the descent-start deck (deck + dealt room) for special monster cards:
+// each boss present, and each trait stamped on a monster. Returns a deduped
+// list of { kind, id } in encounter-namespace order so the intro can explain
+// any the player hasn't seen before.
+function collectPresentSpecials(game) {
+  const seen = new Set()
+  const out = []
+  const cards = [...(game.deck || []), ...(game.room || [])]
+  for (const c of cards) {
+    if (!c) continue
+    if (c.boss && !seen.has(c.boss)) { seen.add(c.boss); out.push({ kind: 'boss', id: c.boss }) }
+    for (const t of TRAIT_IDS) {
+      if (c[t] && !seen.has(t)) { seen.add(t); out.push({ kind: 'trait', id: t }) }
+    }
+  }
+  return out
+}
 
 // Which SFX a played card should fire. Weapons clang, monsters hit, an
 // effective potion glugs; anything else (a wasted potion, a key/map/whetstone)
@@ -43,26 +64,45 @@ export function DescentView({ game, setGame }) {
   // player can tap to skip ahead. Themes that show a deck-changes animation
   // need a longer window so the last card finishes flipping before dismissal.
   const [introOpen, setIntroOpen] = useState(true)
+  // First-encounter explainers: bosses/traits in this descent the player has
+  // never had explained. Computed once at mount from the descent-start deck;
+  // marked seen when the intro is dismissed so each fires exactly once ever.
+  const newSpecialsRef = useRef(null)
+  if (newSpecialsRef.current === null) {
+    const seen = new Set(getSeenSpecials())
+    newSpecialsRef.current = collectPresentSpecials(game).filter(s => !seen.has(s.id))
+  }
+  const newSpecials = newSpecialsRef.current
+  const dismissIntro = useCallback(() => {
+    setIntroOpen(false)
+    markSpecialsSeen(newSpecials.map(s => s.id))
+  }, [newSpecials])
+
   const introDeckChangeCount = (game.themeDeckChanges || []).reduce(
     (n, c) => n + c.additions.length + c.removals.length, 0
   )
   const introDurationMs = introDeckChangeCount > 0 ? 6200 : 4200
   useEffect(() => {
     if (!introOpen) return
-    const t = setTimeout(() => setIntroOpen(false), introDurationMs)
+    // First-encounter explainers must be read, so require a manual tap when
+    // present; otherwise auto-dismiss after the usual window.
+    if (newSpecials.length > 0) return
+    const t = setTimeout(dismissIntro, introDurationMs)
     return () => clearTimeout(t)
-  }, [introOpen, introDurationMs])
+  }, [introOpen, introDurationMs, newSpecials.length, dismissIntro])
   useEffect(() => {
     if (!introOpen) return
-    const onKey = (e) => { if (e.key === 'Escape' || e.key === ' ' || e.key === 'Enter') setIntroOpen(false) }
+    const onKey = (e) => { if (e.key === 'Escape' || e.key === ' ' || e.key === 'Enter') dismissIntro() }
     window.addEventListener('keydown', onKey)
     return () => window.removeEventListener('keydown', onKey)
-  }, [introOpen])
+  }, [introOpen, dismissIntro])
 
   const onCard = useCallback((i) => {
     if (revealing != null) return
     const card = game.room[i]
-    if (card?.faceDown) {
+    // Oath (faceDown), Shrouded monsters, and any card while Blind all flip
+    // before they resolve, so the player sees what they committed to.
+    if (card?.faceDown || card?.shrouded || hasAffliction(game, 'blind')) {
       audio.sfx('cardFlip')
       setRevealing(i)
       return
@@ -135,7 +175,8 @@ export function DescentView({ game, setGame }) {
           theme={theme}
           themeChildren={game.themeChildren}
           deckChanges={game.themeDeckChanges}
-          onDismiss={() => setIntroOpen(false)}
+          newSpecials={newSpecials}
+          onDismiss={dismissIntro}
         />
       )}
 
@@ -148,6 +189,7 @@ export function DescentView({ game, setGame }) {
         sigilTarget={game.sigilTarget}
       >
         <HpBar hp={game.hp} maxHp={game.maxHp} />
+        <AfflictionBadges game={game} />
         <WeaponPanel game={game} />
         <ConditionsPanel game={game} theme={theme} />
         <AscensionBadge level={game.ascension} />
@@ -182,18 +224,20 @@ export function DescentView({ game, setGame }) {
             )
           )}
           <div className="grid grid-cols-2 sm:grid-cols-4 gap-4 justify-items-center">
-            {game.room.map((c, i) => {
+            {(() => { const blind = hasAffliction(game, 'blind'); const obscured = hasAffliction(game, 'obscured'); return game.room.map((c, i) => {
               let weaponDamage = null
               let bareDamage = null
               let potionPreview = null
-              if (c && isMonster(c)) {
+              // Obscured hides ranks, so no damage/heal preview can be shown.
+              // Blind hides the whole card (rendered as a back), so likewise.
+              if (!obscured && !blind && c && isMonster(c)) {
                 // During the Oath reveal animation, peek the damage of the
                 // card that's flipping so the player can see what they're in for.
                 const previewCard = (revealing === i && c.faceDown) ? { ...c, faceDown: false } : c
                 const preview = previewMonsterDamage(game, previewCard)
                 weaponDamage = preview.weapon
                 bareDamage = preview.bare
-              } else if (c && isPotion(c) && !c.faceDown) {
+              } else if (!obscured && !blind && c && isPotion(c) && !c.faceDown) {
                 potionPreview = describePotion(game, c)
               }
               // The player has already committed once the reveal starts, so
@@ -229,9 +273,11 @@ export function DescentView({ game, setGame }) {
                   bareBlocked={bareBlocked}
                   bareRecommended={bareRecommended}
                   displayRank={displayRank}
+                  forceBack={blind}
+                  obscured={obscured}
                 />
               )
-            })}
+            }) })()}
           </div>
 
           <div className="mt-4 flex justify-center">
@@ -271,18 +317,19 @@ export function DescentView({ game, setGame }) {
 
 // -- Theme intro overlay -----------------------------------------------
 
-function ThemeIntroOverlay({ theme, themeChildren, deckChanges, onDismiss }) {
+function ThemeIntroOverlay({ theme, themeChildren, deckChanges, newSpecials, onDismiss }) {
   const childThemes = (themeChildren || []).map(id => getTheme(id)).filter(Boolean)
   if (!theme) return null
   const allAdds = (deckChanges || []).flatMap(c => c.additions)
   const allRemoves = (deckChanges || []).flatMap(c => c.removals)
   const hasDeckChanges = allAdds.length > 0 || allRemoves.length > 0
+  const specials = newSpecials || []
   return (
     <div
       onClick={onDismiss}
       role="button"
       tabIndex={-1}
-      aria-label="Dismiss theme intro"
+      aria-label="Dismiss trial intro"
       className="fixed inset-0 z-40 flex items-center justify-center px-6 bg-dungeon/90 backdrop-blur-md cursor-pointer animate-fade-in"
     >
       <div className="max-w-lg text-center">
@@ -306,6 +353,9 @@ function ThemeIntroOverlay({ theme, themeChildren, deckChanges, onDismiss }) {
         )}
         {hasDeckChanges && (
           <DeckChangesPreview additions={allAdds} removals={allRemoves} />
+        )}
+        {specials.length > 0 && (
+          <NewSpecialsPreview specials={specials} />
         )}
         <div className="mt-8 text-[11px] uppercase tracking-[0.3em] text-slate-500 animate-theme-intro-children">
           Tap anywhere to begin
@@ -389,6 +439,43 @@ function IntroCard({ card, delay, removed }) {
           ✕
         </div>
       )}
+    </div>
+  )
+}
+
+// First-encounter teaching: explains each boss/trait the player meets for the
+// first time. Each row mirrors the real card (parchment face, matching border
+// and symbol) next to its name and effect, so the corner symbol is legible the
+// first time it ever appears. Only shown once per special (see seenSpecials).
+function NewSpecialsPreview({ specials }) {
+  return (
+    <div className="mt-6 pt-4 border-t border-stone-800/80 text-left animate-theme-intro-children">
+      <div className="text-[10px] uppercase tracking-[0.3em] text-rune/70 mb-3 text-center">
+        New this descent
+      </div>
+      <ul className="space-y-3">
+        {specials.map(s => {
+          const isBoss = s.kind === 'boss'
+          const info = isBoss ? BOSSES[s.id] : TRAITS[s.id]
+          if (!info) return null
+          return (
+            <li key={s.id} className="flex items-center gap-3">
+              <div className={`shrink-0 w-12 aspect-[2/3] rounded-md border-2 ${isBoss ? 'border-rune' : 'border-green-700'} card-face flex items-center justify-center`}>
+                {isBoss
+                  ? <SuitIcon suit={info.suit} boss={s.id} className="w-[62%] h-auto text-rune" />
+                  : <TraitIcon trait={s.id} className="w-7 h-7 text-red-800" />}
+              </div>
+              <div className="min-w-0">
+                <div className="flex items-baseline gap-2">
+                  <span className={`font-display text-sm ${isBoss ? 'text-rune' : 'text-red-300'}`}>{info.name}</span>
+                  <span className="text-[9px] uppercase tracking-widest text-slate-500">{isBoss ? 'Boss' : 'Trait'}</span>
+                </div>
+                <div className="text-[12.5px] text-slate-300 leading-snug">{info.description}</div>
+              </div>
+            </li>
+          )
+        })}
+      </ul>
     </div>
   )
 }

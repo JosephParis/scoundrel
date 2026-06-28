@@ -110,7 +110,7 @@ export function RunSummary({ record, showDeck = true }) {
       </div>
 
       {themesFaced?.length > 0 && (
-        <Section title="Themes faced">
+        <Section title="Trials faced">
           <RuneList items={themesFaced.map(t => t.name)} />
         </Section>
       )}

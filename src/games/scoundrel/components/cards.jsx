@@ -1,12 +1,13 @@
 import { useState } from 'react'
 import {
   HEART, DIAMOND, SUIT_GLYPH, rankLabel,
-  isMonster, isWeapon, isPotion, isWound, isSkeletonKey, isMap, isWhetstone, isBoss,
+  isMonster, isWeapon, isPotion, isWound, isSkeletonKey, isMap, isWhetstone, isTorch, isBoss,
   describeMaxHp, describeWeaponStrength,
-  getTheme, BOONS, INSCRIBED_FRAMES, BOSSES,
+  getTheme, BOONS, INSCRIBED_FRAMES, BOSSES, TRAITS,
+  AFFLICTIONS, activeAfflictionIds, afflictionRoomsLeft,
 } from '../logic'
 import { Formula, formatFormula } from './atoms'
-import { SuitIcon, cardBorderTone, suitIconTone } from './SuitIcon'
+import { SuitIcon, TraitIcon, AfflictionIcon, cardBorderTone, suitIconTone } from './SuitIcon'
 import { HelperIcon } from './HelperIcon'
 
 // -- HP bar ------------------------------------------------------------
@@ -54,6 +55,46 @@ export function HpBar({ hp, maxHp }) {
   )
 }
 
+// -- Affliction badges -------------------------------------------------
+
+// Compact status chips shown directly under the HP bar so active afflictions
+// are impossible to miss. Each chip is an icon + rooms-left count, with a
+// hover card spelling out the effect. Renders nothing when you're clean.
+export function AfflictionBadges({ game }) {
+  const ids = activeAfflictionIds(game)
+  if (ids.length === 0) return null
+  return (
+    <div className="flex flex-wrap gap-1.5">
+      {ids.map(id => {
+        const a = AFFLICTIONS[id]
+        const rooms = afflictionRoomsLeft(game, id)
+        return (
+          <div key={id} className="group relative">
+            <div className="flex items-center gap-1 rounded-md border border-red-800/70 bg-red-950/40 pl-1.5 pr-2 py-1">
+              <AfflictionIcon id={id} className="w-3.5 h-3.5 text-red-400 shrink-0" />
+              <span className="text-red-300/90 text-[11px] font-semibold leading-none">{a.name}</span>
+              <span className="text-red-400/60 font-mono text-[10px] leading-none">{rooms}</span>
+            </div>
+            <div
+              role="tooltip"
+              className="pointer-events-none absolute left-0 top-full mt-1 z-40 w-56 rounded-md border border-red-700/60 bg-stone-950/95 p-2.5 text-left opacity-0 group-hover:opacity-100 transition"
+            >
+              <div className="flex items-center gap-1.5 mb-1">
+                <AfflictionIcon id={id} className="w-4 h-4 text-red-400 shrink-0" />
+                <span className="font-display text-red-300 text-[13px]">{a.name}</span>
+                <span className="ml-auto text-red-400/60 font-mono text-[10px] shrink-0">
+                  {rooms} room{rooms === 1 ? '' : 's'}
+                </span>
+              </div>
+              <div className="text-slate-300 text-[11.5px] leading-snug">{a.description}</div>
+            </div>
+          </div>
+        )
+      })}
+    </div>
+  )
+}
+
 // -- Conditions panel --------------------------------------------------
 
 export function ConditionsPanel({ game, theme }) {
@@ -74,7 +115,7 @@ export function ConditionsPanel({ game, theme }) {
 
       {theme && (
         <div>
-          <div className="text-slate-500 text-[10px] uppercase tracking-wider mb-0.5">Theme</div>
+          <div className="text-slate-500 text-[10px] uppercase tracking-wider mb-0.5">Trial</div>
           <div className="text-rune font-semibold">{theme.name}</div>
           <div className="text-slate-400 text-[11px] mt-0.5 leading-snug">{theme.description}</div>
           {game.themeChildren && (
@@ -171,7 +212,7 @@ export function ConditionsPanel({ game, theme }) {
 
 // -- Card slot ---------------------------------------------------------
 
-export function CardSlot({ card, onClick, onBareHands, weaponDamage, bareDamage, potionPreview, reveal, recommended, tutorialTip, blocked, bareBlocked, bareRecommended, displayRank, dealIndex }) {
+export function CardSlot({ card, onClick, onBareHands, weaponDamage, bareDamage, potionPreview, reveal, recommended, tutorialTip, blocked, bareBlocked, bareRecommended, displayRank, dealIndex, forceBack, obscured }) {
   // Slight per-slot delay so a refill of several cards cascades in.
   const dealStyle = dealIndex != null ? { animationDelay: `${dealIndex * 0.04}s` } : undefined
   if (!card) {
@@ -179,7 +220,9 @@ export function CardSlot({ card, onClick, onBareHands, weaponDamage, bareDamage,
       <div className="aspect-[2/3] w-full max-w-[240px] rounded-lg border border-dashed border-stone-800 bg-stone-900/30" />
     )
   }
-  if (card.faceDown && !reveal) {
+  // Shrouded monsters (and any card while Blind, via forceBack) render
+  // face-down like an Oath card: hidden, no preview, until the commit reveal.
+  if ((card.faceDown || card.shrouded || forceBack) && !reveal) {
     return <FaceDownCardSlot onClick={blocked ? undefined : onClick} blocked={blocked} dealStyle={dealStyle} />
   }
   const red = card.suit === HEART || card.suit === DIAMOND
@@ -187,10 +230,21 @@ export function CardSlot({ card, onClick, onBareHands, weaponDamage, bareDamage,
   const key = isSkeletonKey(card)
   const map = isMap(card)
   const stone = isWhetstone(card)
+  const torch = isTorch(card)
   const inscribed = !!card.inscribed
+  // Rank-0 inscriptions (e.g. Elixir of Life) carry no meaningful rank, so the
+  // face shows the bare suit glyph like the synthetic-suit tools do.
+  const noRank = inscribed && card.rank === 0
   const boss = isBoss(card)
   const bossDef = boss ? BOSSES[card.boss] : null
-  const traitLabel = card.armored ? 'armored' : card.fast ? 'fast' : card.warded ? 'warded' : null
+  const traitLabel = card.armored ? 'armored'
+    : card.relentless ? 'relentless'
+    : card.warded ? 'warded'
+    : card.shrouded ? 'shrouded'
+    : card.vengeful ? 'vengeful'
+    : card.swelling ? 'swelling'
+    : card.cursed ? 'cursed'
+    : null
   const frame = card.inscribed ? INSCRIBED_FRAMES[card.inscribed] : null
   const kind = bossDef
     ? bossDef.name
@@ -207,6 +261,10 @@ export function CardSlot({ card, onClick, onBareHands, weaponDamage, bareDamage,
               : key
                 ? 'Skeleton Key'
                 : ''
+  // The mid-card label already names inscribed cards, so the small footer
+  // shows the plain category instead of repeating the name (inscribed
+  // weapons are the only inscribed cards that fall through to the footer).
+  const footerKind = inscribed && !boss && isWeapon(card) ? 'Weapon' : kind
   // Devourer's printed rank is 3 but its live rank scales; DescentView
   // hands us the resolved value when needed. Anything else falls back to
   // the card's rank.
@@ -230,6 +288,10 @@ export function CardSlot({ card, onClick, onBareHands, weaponDamage, bareDamage,
     : (blocked || cardLockedForBare)
       ? 'cursor-not-allowed grayscale opacity-40'
       : 'hover:-translate-y-1 hover:shadow-[0_8px_24px_-6px_rgba(0,0,0,0.6)]'
+  // Interactive cards rise on hover (the branch above). The info overlays are
+  // anchored to the (non-rising) root, so they must rise in lockstep or the
+  // lifted card peeks out above them. Match the lift only when the card lifts.
+  const overlayLift = !reveal && !blocked && !cardLockedForBare ? 'group-hover:-translate-y-1' : ''
 
   return (
     <div className="group relative w-full max-w-[240px] flex flex-col animate-card-deal" style={dealStyle}>
@@ -247,34 +309,24 @@ export function CardSlot({ card, onClick, onBareHands, weaponDamage, bareDamage,
         className={`aspect-[2/3] rounded-lg border-2 ${cardBorderTone(card)} card-face ${boss ? 'is-boss' : ''} text-stone-900 p-3 flex flex-col text-left transition-all ${cardInteractive} ${(recommended && !bareRecommended) ? 'tutorial-recommended' : ''}`}
       >
         <div className={`text-2xl font-bold leading-none ${
-          red ? 'text-blood' : wound ? 'text-red-900' : key ? 'text-amber-700' : map ? 'text-sky-800' : stone ? 'text-slate-700' : 'text-stone-900'
+          red ? 'text-blood' : wound ? 'text-red-900' : key ? 'text-amber-700' : map ? 'text-sky-800' : stone ? 'text-slate-700' : torch ? 'text-orange-700' : 'text-stone-900'
         }`}>
-          {(wound || key || map || stone) ? SUIT_GLYPH[card.suit] : `${rankLabel(shownRank)}${SUIT_GLYPH[card.suit]}`}
+          {(wound || key || map || stone || torch || noRank || obscured) ? SUIT_GLYPH[card.suit] : `${rankLabel(shownRank)}${SUIT_GLYPH[card.suit]}`}
         </div>
-        {inscribed && (
-          <div className="absolute top-1.5 right-1.5 text-[9px] uppercase tracking-widest text-amber-700/80 font-semibold">
-            inscribed
-          </div>
-        )}
-        {boss && (
-          <div className="absolute top-1.5 right-1.5 text-[9px] uppercase tracking-widest text-rune font-semibold drop-shadow-[0_0_4px_rgba(251,191,36,0.7)]">
-            boss
-          </div>
-        )}
-        {traitLabel && !boss && !inscribed && (
-          <div className="absolute top-1.5 right-1.5 text-[9px] uppercase tracking-widest text-red-800 font-semibold">
-            {traitLabel}
-          </div>
-        )}
         <div className="flex-1 min-h-0 flex items-center justify-center py-1">
           <SuitIcon suit={card.suit} inscribed={card.inscribed} boss={card.boss} className={`w-[62%] h-auto ${suitIconTone(card)}`} />
         </div>
+        {(boss ? bossDef : inscribed ? frame : null) && (
+          <div className="-mt-2 text-center text-[12px] uppercase tracking-[0.12em] font-semibold leading-tight px-1 truncate text-stone-900">
+            {boss ? bossDef.name : frame.name}
+          </div>
+        )}
         <div className="text-center flex flex-col gap-0.5 min-h-[34px] justify-center">
           {monsterPreview ? (
             <>
               <span className="text-[12px] tracking-normal text-stone-800 font-medium flex items-center justify-center gap-1">
                 <HelperIcon kind={willUseWeapon ? 'weapon' : 'bare'} />
-                take {monsterPreview.value}{card.fast ? ' ×2' : ''}
+                take {monsterPreview.value}{card.relentless ? ' ×2' : ''}
               </span>
               {monsterPreview.parts.length > 1 && (
                 <span className="text-[10px] tracking-normal text-stone-500 leading-tight">
@@ -318,11 +370,18 @@ export function CardSlot({ card, onClick, onBareHands, weaponDamage, bareDamage,
             <span className="text-[11px] tracking-normal text-sky-800 font-medium">Read the map</span>
           ) : stone ? (
             <span className="text-[11px] tracking-normal text-slate-700 font-medium">Hone the blade</span>
+          ) : torch ? (
+            <span className="text-[11px] tracking-normal text-orange-700 font-medium">Burn a foe</span>
           ) : (
-            <span className="text-[10px] uppercase tracking-[0.2em] text-stone-500">{kind}</span>
+            <span className="text-[10px] uppercase tracking-[0.2em] text-stone-500">{footerKind}</span>
           )}
         </div>
       </button>
+      {/* top-3/right-3 mirrors the button's p-3 so the icon lines up with
+          the rank+suit in the top-left corner. */}
+      {traitLabel && !boss && !inscribed && (
+        <TraitIcon trait={traitLabel} className="absolute top-3 right-3 z-20 w-6 h-6 text-red-800" />
+      )}
       {onBareHands && (
         <div className="relative mt-2">
           {bareRecommended && (
@@ -355,6 +414,34 @@ export function CardSlot({ card, onClick, onBareHands, weaponDamage, bareDamage,
           role="tooltip"
         >
           {tutorialTip}
+        </div>
+      )}
+      {/* Boss effects are too long for the card face, so reveal them on hover
+          as an overlay over the card itself. Hover lives on the root (group),
+          not the inner button: a disabled <button> swallows hover on its own
+          children, but the parent's :hover still fires. Overlaying the face
+          (rather than a floating tooltip) avoids clipping at the top row and
+          never covers the action buttons below. pointer-events-none keeps the
+          card clickable through it. */}
+      {boss && bossDef && (
+        <div
+          role="tooltip"
+          className={`pointer-events-none absolute inset-x-0 top-0 aspect-[2/3] z-40 rounded-lg border-2 border-rune/60 bg-stone-950/95 p-3 flex flex-col items-center justify-center text-center opacity-0 group-hover:opacity-100 transition ${overlayLift}`}
+        >
+          <span className="font-display text-rune text-base mb-1.5">{bossDef.name}</span>
+          <span className="text-[12.5px] leading-relaxed text-slate-200">{bossDef.description}</span>
+        </div>
+      )}
+      {/* Same hover-overlay for monster traits, so the corner symbol is
+          self-explanatory. Tinted red to match the trait icon. */}
+      {traitLabel && !boss && !inscribed && TRAITS[traitLabel] && (
+        <div
+          role="tooltip"
+          className={`pointer-events-none absolute inset-x-0 top-0 aspect-[2/3] z-40 rounded-lg border-2 border-red-700/60 bg-stone-950/95 p-3 flex flex-col items-center justify-center text-center opacity-0 group-hover:opacity-100 transition ${overlayLift}`}
+        >
+          <TraitIcon trait={traitLabel} className="w-7 h-7 text-red-400 mb-2" />
+          <span className="font-display text-red-300 text-base mb-1.5">{TRAITS[traitLabel].name}</span>
+          <span className="text-[12.5px] leading-relaxed text-slate-200">{TRAITS[traitLabel].description}</span>
         </div>
       )}
     </div>
