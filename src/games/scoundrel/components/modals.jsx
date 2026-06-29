@@ -4,6 +4,82 @@ import {
   rollForgeGrants, initForgeBatch,
   FLAG_IDS, FLAG_META, getFlags, setFlag, resetAllFlags,
 } from '../logic'
+import { settings, useCardLayout } from '../settings'
+
+// -- Settings modal ----------------------------------------------------
+
+const CARD_LAYOUT_OPTIONS = [
+  {
+    id: 'modern',
+    name: 'Modern',
+    blurb: 'Art at the top, name below it, and rules text on the face of bosses, inscribed cards, and trait monsters.',
+  },
+  {
+    id: 'classic',
+    name: 'Classic',
+    blurb: 'Art centered with just the name and category. Rules text shows on hover only.',
+  },
+]
+
+export function SettingsModal({ open, onClose }) {
+  const layout = useCardLayout()
+  if (!open) return null
+  return (
+    <div
+      className="fixed inset-0 z-50 bg-black/80 backdrop-blur-sm flex items-start sm:items-center justify-center p-4 overflow-y-auto"
+      onClick={onClose}
+    >
+      <div
+        className="panel max-w-md w-full p-6 sm:p-8 my-4 sm:my-auto relative shadow-2xl"
+        onClick={e => e.stopPropagation()}
+      >
+        <button
+          onClick={onClose}
+          className="absolute top-3 right-3 w-9 h-9 rounded-full bg-stone-800 hover:bg-stone-700 text-parchment text-xl leading-none flex items-center justify-center border border-stone-700"
+          aria-label="Close settings"
+        >
+          ×
+        </button>
+        <h2 className="font-display text-rune text-2xl mb-1">Settings</h2>
+        <p className="text-[12px] text-slate-500 mb-5">
+          Press <span className="font-mono text-slate-300">Esc</span> or click outside to close.
+        </p>
+        <section>
+          <div className="text-[10px] uppercase tracking-[0.3em] text-slate-500 mb-3">
+            Card layout
+          </div>
+          <div className="space-y-2">
+            {CARD_LAYOUT_OPTIONS.map(opt => {
+              const active = layout === opt.id
+              return (
+                <button
+                  key={opt.id}
+                  onClick={() => settings.setCardLayout(opt.id)}
+                  aria-pressed={active}
+                  className={`w-full text-left rounded-md border p-3 transition ${
+                    active
+                      ? 'border-rune bg-stone-800/60'
+                      : 'border-stone-700 hover:border-rune/60 hover:bg-stone-800/40'
+                  }`}
+                >
+                  <div className="flex items-center justify-between gap-2">
+                    <span className={`font-display text-base ${active ? 'text-rune' : 'text-parchment'}`}>
+                      {opt.name}
+                    </span>
+                    {active && (
+                      <span className="text-[10px] uppercase tracking-widest text-rune">Active</span>
+                    )}
+                  </div>
+                  <p className="text-[11.5px] text-slate-400 leading-snug mt-1">{opt.blurb}</p>
+                </button>
+              )
+            })}
+          </div>
+        </section>
+      </div>
+    </div>
+  )
+}
 
 // -- Credits modal -----------------------------------------------------
 

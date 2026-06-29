@@ -1,7 +1,7 @@
 import { useCallback, useEffect, useRef, useState } from 'react'
 import { createRun, retireRun, STARTER_BOON_IDS, UNLOCKABLE_BOON_IDS, ASCENSION_MAX } from './logic'
 import { TopBar, RetireModal, TutorialReplayModal } from './components/TopBar'
-import { CreditsModal, DevModal } from './components/modals'
+import { CreditsModal, DevModal, SettingsModal } from './components/modals'
 import { CardLibraryModal } from './components/cardLibrary'
 import { RulesModal } from './components/rules'
 import { SanctuaryView } from './components/SanctuaryView'
@@ -160,6 +160,7 @@ export default function Scoundrel() {
   const [cardLibraryOpen, setCardLibraryOpen] = useState(false)
   const [historyOpen, setHistoryOpen] = useState(false)
   const [homeOpen, setHomeOpen] = useState(false)
+  const [settingsOpen, setSettingsOpen] = useState(false)
 
   const handleLogin = useCallback((u) => {
     setUser(u)
@@ -255,11 +256,12 @@ export default function Scoundrel() {
   }, [game.tutorial, game.phase])
 
   useEffect(() => {
-    const anyOpen = rulesOpen || retireOpen || creditsOpen || devOpen || tutorialReplayOpen || loginOpen || cardLibraryOpen || historyOpen || homeOpen
+    const anyOpen = rulesOpen || retireOpen || creditsOpen || devOpen || tutorialReplayOpen || loginOpen || cardLibraryOpen || historyOpen || homeOpen || settingsOpen
     if (!anyOpen) return
     const onKey = (e) => {
       if (e.key !== 'Escape') return
       if (devOpen) setDevOpen(false)
+      else if (settingsOpen) setSettingsOpen(false)
       else if (creditsOpen) setCreditsOpen(false)
       else if (cardLibraryOpen) setCardLibraryOpen(false)
       else if (historyOpen) setHistoryOpen(false)
@@ -271,7 +273,7 @@ export default function Scoundrel() {
     }
     window.addEventListener('keydown', onKey)
     return () => window.removeEventListener('keydown', onKey)
-  }, [rulesOpen, retireOpen, creditsOpen, devOpen, tutorialReplayOpen, loginOpen, cardLibraryOpen, historyOpen, homeOpen])
+  }, [rulesOpen, retireOpen, creditsOpen, devOpen, tutorialReplayOpen, loginOpen, cardLibraryOpen, historyOpen, homeOpen, settingsOpen])
 
   const confirmReplayTutorial = () => {
     setGame(createRun(Math.random, { tutorial: true, unlockedBoons: loadLibrary() }))
@@ -307,6 +309,7 @@ export default function Scoundrel() {
         onOpenCardLibrary={() => setCardLibraryOpen(true)}
         onOpenHistory={() => setHistoryOpen(true)}
         onOpenHome={() => setHomeOpen(true)}
+        onOpenSettings={() => setSettingsOpen(true)}
       />
       <RulesModal open={rulesOpen} onClose={() => setRulesOpen(false)} />
       <RetireModal
@@ -317,6 +320,7 @@ export default function Scoundrel() {
         onCancel={() => setRetireOpen(false)}
       />
       <CreditsModal open={creditsOpen} onClose={() => setCreditsOpen(false)} />
+      <SettingsModal open={settingsOpen} onClose={() => setSettingsOpen(false)} />
       <CardLibraryModal open={cardLibraryOpen} onClose={() => setCardLibraryOpen(false)} />
       <DevModal open={devOpen} onClose={() => setDevOpen(false)} game={game} setGame={setGame} />
       <TutorialReplayModal

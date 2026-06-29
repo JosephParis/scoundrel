@@ -1,4 +1,5 @@
 import { useState } from 'react'
+import { createPortal } from 'react-dom'
 import {
   UPGRADE_BONUS,
   rankLabel, INSCRIBED_FRAMES,
@@ -6,6 +7,7 @@ import {
 } from '../logic'
 import { ConfirmButton } from './atoms'
 import { SuitIcon, cardBorderTone, suitIconTone } from './SuitIcon'
+import { useCardLayout } from '../settings'
 
 // -- Edit offer --------------------------------------------------------
 
@@ -92,36 +94,60 @@ function EditChoiceCard({ card, mode, selected, onPick }) {
   const neutral = isSkeletonKey(card) || isMap(card) || isWhetstone(card)
   const face = neutral ? SUIT_GLYPH[card.suit] : `${rankLabel(card.rank)}${SUIT_GLYPH[card.suit]}`
   const newRank = card.rank + UPGRADE_BONUS
+  // Honor the same layout setting the room cards use: modern prints the
+  // inscription's rules on the face, classic shows only the name (with the
+  // effect on hover). Reading the store here keeps the picker in lockstep, so
+  // toggling the setting mid-forge updates these cards immediately.
+  const layout = useCardLayout()
+  const showRules = layout === 'modern' && !!frame
+  // Inscribed candidates explain their effect on hover/focus, the same way a
+  // room card does, so picking what to add to the kit is an informed choice.
+  const [anchor, setAnchor] = useState(null)
+  const infoHandlers = frame
+    ? {
+        onMouseEnter: e => setAnchor(e.currentTarget.getBoundingClientRect()),
+        onMouseLeave: () => setAnchor(null),
+        onFocus: e => setAnchor(e.currentTarget.getBoundingClientRect()),
+        onBlur: () => setAnchor(null),
+      }
+    : null
 
   return (
-    <button
-      onClick={onPick}
-      className={`relative w-full max-w-[150px] aspect-[2/3] rounded-lg border-2 card-face text-stone-900 p-2.5 flex flex-col text-left transition-all ${
-        selected
-          ? 'border-rune ring-2 ring-rune/60 -translate-y-1'
-          : `${cardBorderTone(card)} hover:-translate-y-1 hover:shadow-lg`
-      }`}
-    >
-      <div className={`text-xl font-bold leading-none ${red ? 'text-blood' : 'text-stone-900'}`}>
-        {face}
-      </div>
-      <div className="flex-1 min-h-0 flex items-center justify-center py-1">
-        <SuitIcon suit={card.suit} inscribed={card.inscribed} className={`w-[55%] h-auto ${suitIconTone(card)}`} />
-      </div>
-      <div className="text-center min-h-[28px] flex flex-col justify-center gap-0.5 leading-tight">
-        {mode === 'upgrade' && (
-          <span className="text-[11px] font-medium text-stone-800">
-            +{UPGRADE_BONUS} → {rankLabel(newRank)}
-          </span>
-        )}
-        {frame && (
-          <span className="text-[9px] text-stone-600">{frame.name}</span>
-        )}
-        {mode === 'remove' && (
-          <span className="text-[10px] uppercase tracking-wider text-red-800/80">drop</span>
-        )}
-      </div>
-    </button>
+    <>
+      <button
+        onClick={onPick}
+        {...infoHandlers}
+        className={`relative w-full max-w-[150px] aspect-[2/3] rounded-lg border-2 card-face text-stone-900 p-2.5 flex flex-col text-left transition-all ${
+          selected
+            ? 'border-rune ring-2 ring-rune/60 -translate-y-1'
+            : `${cardBorderTone(card)} hover:-translate-y-1 hover:shadow-lg`
+        }`}
+      >
+        <div className={`text-xl font-bold leading-none ${red ? 'text-blood' : 'text-stone-900'}`}>
+          {face}
+        </div>
+        <div className="flex-1 min-h-0 flex items-center justify-center py-1">
+          <SuitIcon suit={card.suit} inscribed={card.inscribed} className={`w-[55%] h-auto ${suitIconTone(card)}`} />
+        </div>
+        <div className="text-center min-h-[28px] flex flex-col justify-center gap-0.5 leading-tight">
+          {mode === 'upgrade' && (
+            <span className="text-[11px] font-medium text-stone-800">
+              +{UPGRADE_BONUS} → {rankLabel(newRank)}
+            </span>
+          )}
+          {frame && (
+            <span className="text-[9px] uppercase tracking-wider font-semibold text-stone-700">{frame.name}</span>
+          )}
+          {showRules && (
+            <span className="text-[8.5px] leading-snug text-stone-500">{frame.description}</span>
+          )}
+          {mode === 'remove' && (
+            <span className="text-[10px] uppercase tracking-wider text-red-800/80">drop</span>
+          )}
+        </div>
+      </button>
+      <FanCardInfo anchor={anchor} frame={frame} upgradeBonus={card.upgraded ? card.upgradeBonus : 0} />
+    </>
   )
 }
 
@@ -162,7 +188,39 @@ export function CardSuitFan({ cards, selected, onPick, readOnly = false }) {
   )
 }
 
+// Floating info card for a hovered/focused inscribed kit card, so the fan
+// reads the way a room card does (where the inscription's effect is on the
+// face). Portal'd to the body and fixed-positioned from the anchor rect so the
+// fan's own overflow can't clip it. Anchored above the card unless it sits too
+// near the top of the viewport, in which case it drops below.
+function FanCardInfo({ anchor, frame, upgradeBonus }) {
+  if (!anchor || !frame) return null
+  const placeBelow = anchor.top < 150
+  const style = {
+    position: 'fixed',
+    left: anchor.left + anchor.width / 2,
+    top: placeBelow ? anchor.bottom + 8 : anchor.top - 8,
+    transform: placeBelow ? 'translate(-50%, 0)' : 'translate(-50%, -100%)',
+  }
+  return createPortal(
+    <div
+      role="tooltip"
+      style={style}
+      className="pointer-events-none z-[60] w-52 rounded-md border-2 border-rune/60 bg-stone-950/95 p-2.5 text-center shadow-2xl"
+    >
+      <div className="font-display text-rune text-[13px] mb-1">{frame.name}</div>
+      <div className="text-[11.5px] leading-snug text-slate-200">{frame.description}</div>
+      {upgradeBonus ? (
+        <div className="text-[10px] text-rune/80 mt-1.5">Sharpened +{upgradeBonus}</div>
+      ) : null}
+    </div>,
+    document.body,
+  )
+}
+
 function CardSuitFanRow({ suit, cards, selected, onPick, readOnly = false }) {
+  // One hovered/focused inscribed card at a time across this row.
+  const [info, setInfo] = useState(null) // { rect, frame, upgradeBonus }
   const isRed = suit === HEART || suit === DIAMOND
   const isWoundRow = suit === WOUND
   const isKeyRow = suit === KEY
@@ -236,9 +294,27 @@ function CardSuitFanRow({ suit, cards, selected, onPick, readOnly = false }) {
             marginLeft: i === 0 ? 0 : '-1.6rem',
             '--fan-z': i + 1,
           }
+          // Inscribed cards reveal their effect on hover/focus, mirroring how a
+          // room card carries that text. Plain/upgraded-only cards have nothing
+          // extra to show, so they get no tooltip.
+          const frame = c.inscribed ? INSCRIBED_FRAMES[c.inscribed] : null
+          const infoHandlers = frame
+            ? {
+                onMouseEnter: e => setInfo({ rect: e.currentTarget.getBoundingClientRect(), frame, upgradeBonus: c.upgraded ? c.upgradeBonus : 0 }),
+                onMouseLeave: () => setInfo(null),
+                onFocus: e => setInfo({ rect: e.currentTarget.getBoundingClientRect(), frame, upgradeBonus: c.upgraded ? c.upgradeBonus : 0 }),
+                onBlur: () => setInfo(null),
+              }
+            : null
           if (readOnly) {
             return (
-              <div key={c.id} style={style} className={`${baseClass} cursor-default`}>
+              <div
+                key={c.id}
+                style={style}
+                className={`${baseClass} ${frame ? 'cursor-help' : 'cursor-default'}`}
+                tabIndex={frame ? 0 : undefined}
+                {...infoHandlers}
+              >
                 {inner}
               </div>
             )
@@ -250,12 +326,14 @@ function CardSuitFanRow({ suit, cards, selected, onPick, readOnly = false }) {
               data-selected={isSelected ? 'true' : undefined}
               style={style}
               className={baseClass}
+              {...infoHandlers}
             >
               {inner}
             </button>
           )
         })}
       </div>
+      <FanCardInfo anchor={info?.rect} frame={info?.frame} upgradeBonus={info?.upgradeBonus} />
     </div>
   )
 }

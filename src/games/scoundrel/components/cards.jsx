@@ -8,9 +8,9 @@ import {
 import { Formula } from './atoms'
 import { AfflictionIcon, cardBorderTone } from './SuitIcon'
 
-// The card-slot faces live in their own module (see CARD_LAYOUT there to swap
-// between the classic and modern layouts). Re-exported so existing importers
-// of './cards' keep working.
+// The card-slot faces live in their own module; the classic/modern layout is
+// chosen from the player's display setting (see settings.js / useCardLayout).
+// Re-exported so existing importers of './cards' keep working.
 export { CardSlot } from './cardSlot'
 
 // -- HP bar ------------------------------------------------------------

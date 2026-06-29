@@ -6,13 +6,15 @@ import {
 import { formatFormula } from './atoms'
 import { SuitIcon, TraitIcon, cardBorderTone, suitIconTone } from './SuitIcon'
 import { HelperIcon } from './HelperIcon'
+import { useCardLayout } from '../settings'
 
-// Which card face to render. 'modern' moves the art to the top, names the card
-// below it, and prints the rules text at the bottom of the face so inscribed
-// cards and bosses are self-explanatory without a hover. 'classic' is the
-// original layout (art centered, name + category only, rules on hover only).
-// Both faces share the same outer shell, so flipping this swaps every card.
-export const CARD_LAYOUT = 'modern' // 'classic' | 'modern'
+// The card face is chosen per the player's display setting (Settings modal):
+//   'modern'  moves the art to the top, names the card below it, and prints
+//             the rules text at the bottom of bosses/inscribed/trait cards so
+//             they are self-explanatory without a hover.
+//   'classic' is the original layout (art centered, name + category only,
+//             rules on hover only).
+// Both faces share the same outer shell, so the setting swaps every card.
 
 // -- Shared preview line -----------------------------------------------
 
@@ -156,6 +158,7 @@ function ModernFace({ f }) {
 // -- Card slot (shared shell) ------------------------------------------
 
 export function CardSlot({ card, onClick, onBareHands, weaponDamage, bareDamage, potionPreview, reveal, recommended, tutorialTip, blocked, bareBlocked, bareRecommended, displayRank, dealIndex, forceBack, obscured }) {
+  const layout = useCardLayout()
   // Slight per-slot delay so a refill of several cards cascades in.
   const dealStyle = dealIndex != null ? { animationDelay: `${dealIndex * 0.04}s` } : undefined
   if (!card) {
@@ -229,7 +232,7 @@ export function CardSlot({ card, onClick, onBareHands, weaponDamage, bareDamage,
     : inscribed
       ? frame.description
       : (traitLabel && TRAITS[traitLabel] ? TRAITS[traitLabel].description : null)
-  const useModern = CARD_LAYOUT === 'modern' && !!rules
+  const useModern = layout === 'modern' && !!rules
 
   // When the lesson points at the bare-hands button AND the card-click
   // would actually swing (weapon usable), forbid the swing. If the
