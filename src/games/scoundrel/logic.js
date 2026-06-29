@@ -3,15 +3,15 @@
 // internal split is invisible to callers.
 
 export {
-  HEART, DIAMOND, CLUB, SPADE, WOUND, KEY, MAP, STONE, TORCH,
+  HEART, DIAMOND, CLUB, SPADE, WOUND, TOOL,
   SUIT_GLYPH, RANK_LABEL,
   BASE_MAX_HP, SIGIL_TARGET, ROOM_SIZE,
   MODES, DEFAULT_MODE, getMode,
   WOUND_DAMAGE_THRESHOLD, WOUND_CAP_PER_DESCENT, makeWoundCard,
-  INSCRIBED_FRAMES, INSCRIBED_FRAME_IDS, makeInscribedCard,
+  INSCRIBED_FRAMES, INSCRIBED_FRAME_IDS, makeInscribedCard, fixInscribedSuit,
   TRAITS, TRAIT_IDS,
   MAP_PEEK_COUNT,
-  isMonster, isWeapon, isPotion, isWound, isSkeletonKey, isMap, isWhetstone, isTorch, rankLabel, suitColor,
+  isMonster, isWeapon, isPotion, isTool, isCoin, isWound, isSkeletonKey, isMap, isWhetstone, isTorch, rankLabel, suitColor,
 } from './constants'
 
 export { THEMES, getTheme } from './themes'

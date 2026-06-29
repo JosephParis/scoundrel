@@ -486,6 +486,13 @@ function playCursedIdol(state, index, card) {
 
 // -- Card plays ---------------------------------------------------------
 
+// Every heart spends one of the room's potion charges: basic potions and the
+// inscribed Elixir of Life / Draught of Vigor / Potion of Strength alike. The
+// per-room limit gate lives here and nowhere else, so "isPotion -> counts
+// toward the limit" holds with no exceptions. Lucky Coin is NOT a heart (it's a
+// TOOL) and is handled separately, so it never reaches this path. Over the
+// limit the whole card is spent for nothing (or bites back under Apothecary),
+// inscribed effect included.
 function playPotion(state, index, card) {
   const room = state.room.slice()
   room[index] = null
@@ -502,7 +509,8 @@ function playPotion(state, index, card) {
     potionsUsedThisRoom: state.potionsUsedThisRoom + 1,
   }
 
-  // Apothecary: any potion after the first damages instead of healing.
+  // Apothecary: any potion after the room's first bites for its rank instead of
+  // taking effect (overrides Deep Draught's higher limit, hence the literal 1).
   if (apothecary && playedNow >= 1) {
     const damage = card.rank
     next = appendLog(next, `Sour draught: ${fmt(card)} bites back for ${damage}.`)
@@ -514,30 +522,82 @@ function playPotion(state, index, card) {
     return checkRefillAndComplete(result.state)
   }
 
-  // Normal heal path: first potion always, plus extras up to Deep Draught's
-  // limit. Alchemist adds a flat bonus on top of each draught (Bitter Brew
-  // halves the rank first, then Alchemist is added).
-  if (playedNow < limit) {
-    const base = bitterBrew ? Math.floor(card.rank / 2) : card.rank
-    const healAmount = base + sumBoonField(activeBoons(next), 'potionHealBonus')
-    const heal = applyHeal(next, healAmount)
-    next = heal.state
-    if (heal.healed > 0) {
-      const note = bitterBrew ? 'bitter, ' : ''
-      next = appendLog(next, `Drank ${fmt(card)}, ${note}restored ${heal.healed} HP.`)
-    } else if (hasAffliction(next, 'sealed')) {
-      next = appendLog(next, `Drank ${fmt(card)}, but the Sealed wound takes nothing.`)
-    } else {
-      next = appendLog(next, `Drank ${fmt(card)}, but you're already whole.`)
-    }
-    next = markTutorialLesson(next, 'potion')
-  } else {
-    next = appendLog(next, `Potion ${fmt(card)} wasted. No thirst left.`)
+  // Over the room's potion limit: the heart is spent for nothing, whatever its
+  // inscribed effect would have been.
+  if (playedNow >= limit) {
+    next = appendLog(next, `${fmt(card)} wasted. No thirst left.`)
+    return checkRefillAndComplete(next)
   }
 
-  // Lucky Coin: after the heal, refill the slot the coin just left with a
-  // fresh draw from the deck. Effectively a free extra card for the room.
-  if (card.inscribed === 'lucky_coin' && next.deck.length > 0) {
+  // --- Within the limit: apply this heart's specific effect. ---
+
+  // Elixir of Life: restore HP to full regardless of rank.
+  if (card.inscribed === 'panacea') {
+    const heal = applyHeal(next, next.maxHp - next.hp)
+    return checkRefillAndComplete(appendLog(
+      heal.state,
+      heal.healed > 0
+        ? `Elixir of Life: every ill mends. Healed ${heal.healed} HP to full.`
+        : hasAffliction(next, 'sealed')
+          ? 'Elixir of Life: the Sealed wound spurns it. Nothing mends.'
+          : 'Elixir of Life: already whole. The draught spills.'
+    ))
+  }
+
+  // Draught of Vigor: heal its rank and lift max HP by 2 for the rest of the
+  // descent. maxHp is recomputed on each descend, so the bump clears naturally.
+  if (card.inscribed === 'draught_of_vigor') {
+    const heal = applyHeal({ ...next, maxHp: next.maxHp + 2 }, card.rank)
+    return checkRefillAndComplete(appendLog(
+      heal.state, `Draught of Vigor: max HP +2, restored ${heal.healed} HP.`
+    ))
+  }
+
+  // Potion of Strength: no heal; bank its rank as a persistent weapon-strength
+  // bonus (read by effectiveWeaponRank), riding whatever weapon you hold.
+  if (card.inscribed === 'potion_of_strength') {
+    return checkRefillAndComplete(appendLog(
+      { ...next, strengthBonus: (next.strengthBonus || 0) + card.rank },
+      `Potion of Strength: weapon strikes harder by ${card.rank}.`
+    ))
+  }
+
+  // Basic potion: heal its rank. Bitter Brew halves it first, then Alchemist
+  // adds a flat bonus on top.
+  const base = bitterBrew ? Math.floor(card.rank / 2) : card.rank
+  const healAmount = base + sumBoonField(activeBoons(next), 'potionHealBonus')
+  const heal = applyHeal(next, healAmount)
+  next = heal.state
+  if (heal.healed > 0) {
+    const note = bitterBrew ? 'bitter, ' : ''
+    next = appendLog(next, `Drank ${fmt(card)}, ${note}restored ${heal.healed} HP.`)
+  } else if (hasAffliction(next, 'sealed')) {
+    next = appendLog(next, `Drank ${fmt(card)}, but the Sealed wound takes nothing.`)
+  } else {
+    next = appendLog(next, `Drank ${fmt(card)}, but you're already whole.`)
+  }
+  next = markTutorialLesson(next, 'potion')
+  return checkRefillAndComplete(next)
+}
+
+// Lucky Coin: heals its rank, then refills the slot it left with a fresh draw
+// (a free extra card for the room). It is not a heart (it's a TOOL), so it never
+// spends a potion charge, is never gated by the per-room limit, and is untouched
+// by the potion boons/themes (Alchemist, Bitter Brew, Apothecary).
+function playLuckyCoin(state, index, card) {
+  const room = state.room.slice()
+  room[index] = null
+  let next = { ...state, room, discard: state.discard.concat(card) }
+  const heal = applyHeal(next, card.rank)
+  next = appendLog(
+    heal.state,
+    heal.healed > 0
+      ? `Lucky Coin: restored ${heal.healed} HP.`
+      : hasAffliction(next, 'sealed')
+        ? 'Lucky Coin: the Sealed wound takes nothing.'
+        : 'Lucky Coin: already whole.'
+  )
+  if (next.deck.length > 0) {
     const drawn = next.deck[0]
     const newDeck = next.deck.slice(1)
     const newRoom = next.room.slice()
@@ -547,7 +607,6 @@ function playPotion(state, index, card) {
       `Lucky Coin draws ${fmt(drawn)} into the empty slot.`
     )
   }
-
   return checkRefillAndComplete(next)
 }
 
@@ -613,14 +672,15 @@ export function playCard(state, index) {
   if (state.phase !== 'descent') return state
   const card = state.room[index]
   if (!card) return state
-  // Inscribed cards with custom handlers intercept before their natural
-  // suit's handler. Lucky Coin still flows through playPotion (heart) and
-  // is special-cased inside it; Cursed Idol and Potion of Strength divert
-  // away from their natural-suit handlers entirely.
+  // Inscribed cards with custom handlers intercept before their natural suit's
+  // handler. Cursed Idol diverts from its spade handler. Lucky Coin heals but is
+  // exempt from the potion limit, so it routes to its own handler before the
+  // isPotion gate (the explicit id check also catches saves still carrying the
+  // old HEART suit). Every other heart -- basic potions and the inscribed Elixir
+  // of Life / Draught of Vigor / Potion of Strength -- flows through playPotion,
+  // which owns the per-room limit.
   if (card.inscribed === 'cursed_idol') return playCursedIdol(state, index, card)
-  if (card.inscribed === 'potion_of_strength') return playPotionOfStrength(state, index, card)
-  if (card.inscribed === 'panacea') return playPanacea(state, index, card)
-  if (card.inscribed === 'draught_of_vigor') return playDraughtOfVigor(state, index, card)
+  if (card.inscribed === 'lucky_coin') return playLuckyCoin(state, index, card)
   if (isTorch(card)) return playTorch(state, index, card)
   if (isSkeletonKey(card)) return playSkeletonKey(state, index, card)
   if (isMap(card)) return playMap(state, index, card)
@@ -743,61 +803,6 @@ function playTorch(state, index, card) {
       'Torch flares, but nothing in the room will catch.'
     )
   }
-  return checkRefillAndComplete(next)
-}
-
-// Potion of Strength: a heart that doesn't heal and doesn't count as a
-// potion. Banks its rank as a persistent weapon-strength bonus for the
-// rest of the descent (state.strengthBonus, read by effectiveWeaponRank).
-// The bonus rides whichever weapon you equip later if you don't have one
-// yet, so the play is never wasted.
-function playPotionOfStrength(state, index, card) {
-  const room = state.room.slice()
-  room[index] = null
-  const next = appendLog(
-    {
-      ...state,
-      room,
-      discard: state.discard.concat(card),
-      strengthBonus: (state.strengthBonus || 0) + card.rank,
-    },
-    `Potion of Strength: weapon strikes harder by ${card.rank}.`
-  )
-  return checkRefillAndComplete(next)
-}
-
-// Elixir of Life (inscribed 'panacea'): a once-per-run heart that restores HP
-// to full regardless of rank. Bypasses the potion economy (no Apothecary /
-// Bitter Brew / per-room limit), like Potion of Strength. Consumed even at full HP.
-function playPanacea(state, index, card) {
-  const room = state.room.slice()
-  room[index] = null
-  const base = { ...state, room, discard: state.discard.concat(card) }
-  const heal = applyHeal(base, base.maxHp - base.hp)
-  const next = appendLog(
-    heal.state,
-    heal.healed > 0
-      ? `Elixir of Life: every ill mends. Healed ${heal.healed} HP to full.`
-      : hasAffliction(base, 'sealed')
-        ? 'Elixir of Life: the Sealed wound spurns it. Nothing mends.'
-        : 'Elixir of Life: already whole. The draught spills.'
-  )
-  return checkRefillAndComplete(next)
-}
-
-// Draught of Vigor: a heart that heals its rank and lifts max HP by 2 for the
-// rest of the descent. maxHp is recomputed fresh on each descend, so the bump
-// naturally clears at the next sanctuary.
-function playDraughtOfVigor(state, index, card) {
-  const room = state.room.slice()
-  room[index] = null
-  // The max HP lift still lands while Sealed; only the immediate heal is blocked.
-  const base = { ...state, room, discard: state.discard.concat(card), maxHp: state.maxHp + 2 }
-  const heal = applyHeal(base, card.rank)
-  const next = appendLog(
-    heal.state,
-    `Draught of Vigor: max HP +2, restored ${heal.healed} HP.`
-  )
   return checkRefillAndComplete(next)
 }
 

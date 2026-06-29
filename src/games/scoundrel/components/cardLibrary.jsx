@@ -1,6 +1,6 @@
 import { createPortal } from 'react-dom'
 import {
-  HEART, DIAMOND, SPADE, WOUND, KEY, MAP, STONE, TORCH, SUIT_GLYPH, rankLabel,
+  HEART, DIAMOND, SPADE, WOUND, SUIT_GLYPH, rankLabel,
   BOSSES, BOSS_IDS, INSCRIBED_FRAMES, INSCRIBED_FRAME_IDS,
   TRAITS, TRAIT_IDS,
 } from '../logic'
@@ -140,9 +140,9 @@ function PreviewCard({ card }) {
   const red = card.suit === HEART || card.suit === DIAMOND
   const boss = !!card.boss
   const inscribed = !!card.inscribed
-  // Synthetic-suit tools and rank-0 inscriptions carry no rank, so the face
-  // shows the bare suit glyph (matches the live card).
-  const synthetic = [WOUND, KEY, MAP, STONE, TORCH].includes(card.suit)
+  // Wounds and rank-0 inscriptions (Key, Map, Whetstone, Torch) carry no rank,
+  // so the face shows the bare suit glyph. Lucky Coin keeps its rank.
+  const synthetic = card.suit === WOUND
   const noRank = synthetic || (inscribed && card.rank === 0)
   const traitLabel = card.armored ? 'armored'
     : card.relentless ? 'relentless'

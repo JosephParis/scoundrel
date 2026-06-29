@@ -1,5 +1,5 @@
 import { useCallback, useEffect, useRef, useState } from 'react'
-import { createRun, retireRun, STARTER_BOON_IDS, UNLOCKABLE_BOON_IDS, ASCENSION_MAX } from './logic'
+import { createRun, retireRun, STARTER_BOON_IDS, UNLOCKABLE_BOON_IDS, ASCENSION_MAX, fixInscribedSuit } from './logic'
 import { TopBar, RetireModal, TutorialReplayModal } from './components/TopBar'
 import { CreditsModal, DevModal, SettingsModal } from './components/modals'
 import { CardLibraryModal } from './components/cardLibrary'
@@ -100,6 +100,12 @@ function loadSavedGame() {
     if (typeof state.monstersSlain !== 'number') state.monstersSlain = 0
     if (typeof state.biggestKill !== 'number') state.biggestKill = 0
     if (!Array.isArray(state.bossesDefeated)) state.bossesDefeated = []
+    // Re-stamp inscribed-card suits from their frames so saves written before a
+    // frame's suit changed stay consistent (the per-tool suits collapsed into one
+    // TOOL suit). Additive, so no SAVE_VERSION bump needed.
+    for (const field of ['kit', 'deck', 'room', 'discard']) {
+      if (Array.isArray(state[field])) state[field] = state[field].map(fixInscribedSuit)
+    }
     return state
   } catch {
     return null

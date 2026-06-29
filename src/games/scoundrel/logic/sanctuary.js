@@ -447,29 +447,17 @@ export function describeDamage(state, card, weaponUsed) {
 //   { mode: 'strength', value, parts }   // Potion of Strength (inscribed)
 //   { mode: 'skip',     note }            // wasted overflow
 export function describePotion(state, card) {
-  if (!card || !isPotion(card)) return null
+  if (!card) return null
 
-  // Potion of Strength: never heals, never counts as a potion, so it
-  // bypasses Apothecary / Bitter Brew entirely. Preview is the strength
-  // bump it'll add to the descent's weapon-strength bonus.
-  if (card.inscribed === 'potion_of_strength') {
-    return {
-      mode: 'strength',
-      value: card.rank,
-      parts: [{ label: 'strength', value: card.rank, op: '+' }],
-    }
+  // Lucky Coin heals its rank but is not a potion (it's a TOOL): it never touches
+  // the per-room limit, so it always shows its heal, untouched by the potion
+  // boons/themes. Keyed by id so saves carrying the old HEART suit still read it.
+  if (card.inscribed === 'lucky_coin') {
+    const value = Math.max(0, Math.min(state.maxHp, state.hp + card.rank) - state.hp)
+    return { mode: 'heal', value, parts: [] }
   }
 
-  // Elixir of Life: heals whatever is missing, straight to full.
-  if (card.inscribed === 'panacea') {
-    return { mode: 'heal', value: Math.max(0, state.maxHp - state.hp), parts: [] }
-  }
-
-  // Draught of Vigor: rank heal against the raised (+2) max HP.
-  if (card.inscribed === 'draught_of_vigor') {
-    const newMax = state.maxHp + 2
-    return { mode: 'heal', value: Math.min(newMax, state.hp + card.rank) - state.hp, parts: [] }
-  }
+  if (!isPotion(card)) return null
 
   const themes = activeThemes(state)
   const apothecary = themeFlagAny(themes, 'secondPotionDamages')
@@ -477,21 +465,33 @@ export function describePotion(state, card) {
   const playedNow = state.potionsUsedThisRoom || 0
   const limit = computePotionsPerRoomLimit(activeBoons(state))
 
+  // Over the limit, every heart is wasted (or bites under Apothecary) before any
+  // inscribed effect lands -- mirror playPotion so the preview never overpromises.
   if (apothecary && playedNow >= 1) {
-    const parts = [{ label: 'sour draught', value: card.rank, op: '+' }]
-    return { mode: 'damage', value: card.rank, parts }
+    return { mode: 'damage', value: card.rank, parts: [{ label: 'sour draught', value: card.rank, op: '+' }] }
+  }
+  if (playedNow >= limit) {
+    return { mode: 'skip', note: 'No thirst left' }
   }
 
-  if (playedNow < limit) {
-    const parts = [{ label: 'potion', value: card.rank, op: '+' }]
-    if (bitterBrew) {
-      const lost = card.rank - Math.floor(card.rank / 2)
-      if (lost > 0) parts.push({ label: 'Bitter Brew', value: lost, op: '-' })
-    }
-    const potionBonus = sumBoonField(activeBoons(state), 'potionHealBonus')
-    if (potionBonus) parts.push({ label: 'Alchemist', value: potionBonus, op: '+' })
-    return { mode: 'heal', value: Math.max(0, sumParts(parts)), parts }
+  // Within the limit: preview this heart's specific effect.
+  if (card.inscribed === 'potion_of_strength') {
+    return { mode: 'strength', value: card.rank, parts: [{ label: 'strength', value: card.rank, op: '+' }] }
+  }
+  if (card.inscribed === 'panacea') {
+    return { mode: 'heal', value: Math.max(0, state.maxHp - state.hp), parts: [] }
+  }
+  if (card.inscribed === 'draught_of_vigor') {
+    const newMax = state.maxHp + 2
+    return { mode: 'heal', value: Math.min(newMax, state.hp + card.rank) - state.hp, parts: [] }
   }
 
-  return { mode: 'skip', note: 'No thirst left' }
+  const parts = [{ label: 'potion', value: card.rank, op: '+' }]
+  if (bitterBrew) {
+    const lost = card.rank - Math.floor(card.rank / 2)
+    if (lost > 0) parts.push({ label: 'Bitter Brew', value: lost, op: '-' })
+  }
+  const potionBonus = sumBoonField(activeBoons(state), 'potionHealBonus')
+  if (potionBonus) parts.push({ label: 'Alchemist', value: potionBonus, op: '+' })
+  return { mode: 'heal', value: Math.max(0, sumParts(parts)), parts }
 }

@@ -237,7 +237,7 @@ export function DescentView({ game, setGame }) {
                 const preview = previewMonsterDamage(game, previewCard)
                 weaponDamage = preview.weapon
                 bareDamage = preview.bare
-              } else if (!obscured && !blind && c && isPotion(c) && !c.faceDown) {
+              } else if (!obscured && !blind && c && (isPotion(c) || c.inscribed === 'lucky_coin') && !c.faceDown) {
                 potionPreview = describePotion(game, c)
               }
               // The player has already committed once the reveal starts, so

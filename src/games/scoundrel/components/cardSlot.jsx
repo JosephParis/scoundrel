@@ -1,6 +1,6 @@
 import {
   HEART, DIAMOND, SUIT_GLYPH, rankLabel,
-  isMonster, isWeapon, isPotion, isWound, isSkeletonKey, isMap, isWhetstone, isTorch, isBoss,
+  isMonster, isWeapon, isPotion, isTool, isWound, isSkeletonKey, isMap, isWhetstone, isTorch, isBoss,
   INSCRIBED_FRAMES, BOSSES, TRAITS,
 } from '../logic'
 import { formatFormula } from './atoms'
@@ -89,13 +89,13 @@ function CardPreview({
 // -- Classic face (original layout) ------------------------------------
 
 function ClassicFace({ f }) {
-  const { card, red, wound, key: isKey, map: isMapCard, stone, torch, noRank, obscured, shownRank } = f
+  const { card, red, wound, tool, noRank, obscured, shownRank } = f
   return (
     <>
       <div className={`text-2xl font-bold leading-none ${
-        red ? 'text-blood' : wound ? 'text-red-900' : isKey ? 'text-amber-700' : isMapCard ? 'text-sky-800' : stone ? 'text-slate-700' : torch ? 'text-orange-700' : 'text-stone-900'
+        red ? 'text-blood' : wound ? 'text-red-900' : tool ? 'text-amber-600' : 'text-stone-900'
       }`}>
-        {(wound || isKey || isMapCard || stone || torch || noRank || obscured) ? SUIT_GLYPH[card.suit] : `${rankLabel(shownRank)}${SUIT_GLYPH[card.suit]}`}
+        {(wound || noRank || obscured) ? SUIT_GLYPH[card.suit] : `${rankLabel(shownRank)}${SUIT_GLYPH[card.suit]}`}
       </div>
       <div className="flex-1 min-h-0 flex items-center justify-center py-1">
         <SuitIcon suit={card.suit} inscribed={card.inscribed} boss={card.boss} className={`w-[62%] h-auto ${suitIconTone(card)}`} />
@@ -115,7 +115,7 @@ function ClassicFace({ f }) {
 // -- Modern face (art up, name below, rules at the bottom) --------------
 
 function ModernFace({ f }) {
-  const { card, red, wound, key: isKey, map: isMapCard, stone, torch, noRank, obscured, shownRank, rules } = f
+  const { card, red, wound, tool, noRank, obscured, shownRank, rules } = f
   // Name shown under the art. Special cards use their proper name; everything
   // else shows its category so the face still says what it is.
   const name = f.boss ? f.bossDef.name : f.inscribed ? f.frame.name : f.kind
@@ -126,9 +126,9 @@ function ModernFace({ f }) {
   return (
     <>
       <div className={`text-xl font-bold leading-none ${
-        red ? 'text-blood' : wound ? 'text-red-900' : isKey ? 'text-amber-700' : isMapCard ? 'text-sky-800' : stone ? 'text-slate-700' : torch ? 'text-orange-700' : 'text-stone-900'
+        red ? 'text-blood' : wound ? 'text-red-900' : tool ? 'text-amber-600' : 'text-stone-900'
       }`}>
-        {(wound || isKey || isMapCard || stone || torch || noRank || obscured) ? SUIT_GLYPH[card.suit] : `${rankLabel(shownRank)}${SUIT_GLYPH[card.suit]}`}
+        {(wound || noRank || obscured) ? SUIT_GLYPH[card.suit] : `${rankLabel(shownRank)}${SUIT_GLYPH[card.suit]}`}
       </div>
       {/* Art sits below the rank glyph, sized to read as the centerpiece while
           still leaving the lower half for the rules text. */}
@@ -177,6 +177,7 @@ export function CardSlot({ card, onClick, onBareHands, weaponDamage, bareDamage,
   const map = isMap(card)
   const stone = isWhetstone(card)
   const torch = isTorch(card)
+  const tool = isTool(card)
   const inscribed = !!card.inscribed
   // Rank-0 inscriptions (e.g. Elixir of Life) carry no meaningful rank, so the
   // face shows the bare suit glyph like the synthetic-suit tools do.
@@ -252,7 +253,7 @@ export function CardSlot({ card, onClick, onBareHands, weaponDamage, bareDamage,
 
   // Everything the chosen face needs to draw itself.
   const f = {
-    card, red, wound, key, map, stone, torch, inscribed, noRank, boss, bossDef,
+    card, red, wound, key, map, stone, torch, tool, inscribed, noRank, boss, bossDef,
     traitLabel, frame, kind, footerKind, shownRank, willUseWeapon, monsterPreview,
     potionHeal, potionSour, potionStrength, potionSkip, obscured, rules, useModern,
     isWoundCard: wound, isKeyCard: key, isMapCard: map, isStoneCard: stone, isTorchCard: torch,

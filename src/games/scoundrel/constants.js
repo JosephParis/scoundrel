@@ -6,20 +6,17 @@ export const SPADE = 'S'
 // every card carrying the same shape. Nothing in the codebase treats 'W' as
 // a monster, weapon, or potion; isWound() is the explicit gate.
 export const WOUND = 'W'
-// Skeleton Key: inscribed-only card with no natural suit fit. Same shape
-// trick as wounds. isSkeletonKey() is the explicit gate.
-export const KEY = 'K'
-// Map: another inscribed-only tool card. Same trick as KEY: a synthetic
-// suit so the deck fan can group it separately from the other tools.
-export const MAP = 'M'
-// Whetstone: same tool-suit pattern. A separate synthetic suit so the
-// deck fan keeps it out of the real-weapon (DIAMOND) row.
-export const STONE = 'O'
-// Torch: a trigger-on-draw tool, same synthetic-suit pattern as KEY/MAP/STONE.
-// isTorch() is the explicit gate.
-export const TORCH = 'T'
+// Tool: the player's utility cards (Skeleton Key, Map, Whetstone, Torch, Lucky
+// Coin) share one synthetic suit. They are neither potions (HEART) nor weapons
+// (DIAMOND); each keeps its own art and effect (keyed by `inscribed`), but they
+// read as a single category: one glyph, one color, one row in the deck fan.
+// isTool() is the category gate; the per-card predicates (isSkeletonKey, isMap,
+// isWhetstone, isTorch, isCoin) split them by `inscribed` id for dispatch/art.
+// Keeping Lucky Coin off HEART also keeps the per-room potion limit a clean
+// invariant: every heart counts toward it, no exceptions.
+export const TOOL = 'T'
 
-export const SUIT_GLYPH = { H: '♥', D: '♦', C: '♣', S: '♠', W: '✕', K: '⚷', M: '⌖', O: '◈', T: '✦' }
+export const SUIT_GLYPH = { H: '♥', D: '♦', C: '♣', S: '♠', W: '✕', T: '⬢' }
 export const RANK_LABEL = { 11: 'J', 12: 'Q', 13: 'K', 14: 'A' }
 
 export const BASE_MAX_HP = 20
@@ -67,21 +64,24 @@ export function isMonster(c) { return !!c && (c.suit === CLUB || c.suit === SPAD
 export function isWeapon(c) { return !!c && c.suit === DIAMOND }
 export function isPotion(c) { return !!c && c.suit === HEART }
 export function isWound(c) { return !!c && c.suit === WOUND }
+// The unified utility category: any card on the TOOL suit.
+export function isTool(c) { return !!c && c.suit === TOOL }
 // A kit card is anything the player owns and carries: weapons, potions, and the
-// neutral tool cards (Skeleton Key, Map, Whetstone). Wounds are descent-transient
-// and never belong to the persisted kit, so they are excluded explicitly.
+// tool cards (Skeleton Key, Map, Whetstone, Torch, Lucky Coin). Wounds are
+// descent-transient and never belong to the persisted kit, so they're excluded.
 export function isKitCard(c) { return !!c && !isMonster(c) && !isWound(c) }
-export function isSkeletonKey(c) { return !!c && c.suit === KEY }
-export function isMap(c) { return !!c && c.suit === MAP }
-export function isWhetstone(c) { return !!c && c.suit === STONE }
-export function isTorch(c) { return !!c && c.suit === TORCH }
+// Per-tool predicates split the shared TOOL suit by `inscribed` id so combat can
+// dispatch and the card faces can pick the right art/hint. Lucky Coin's gate also
+// keeps it out of the potion economy (the limit code keys off isPotion alone).
+export function isSkeletonKey(c) { return !!c && c.inscribed === 'skeleton_key' }
+export function isMap(c) { return !!c && c.inscribed === 'map' }
+export function isWhetstone(c) { return !!c && c.inscribed === 'whetstone' }
+export function isTorch(c) { return !!c && c.inscribed === 'torch' }
+export function isCoin(c) { return !!c && c.inscribed === 'lucky_coin' }
 export function rankLabel(r) { return RANK_LABEL[r] ?? String(r) }
 export function suitColor(suit) {
   if (suit === WOUND) return 'wound'
-  if (suit === KEY) return 'key'
-  if (suit === MAP) return 'map'
-  if (suit === STONE) return 'stone'
-  if (suit === TORCH) return 'torch'
+  if (suit === TOOL) return 'tool'
   return (suit === HEART || suit === DIAMOND) ? 'red' : 'black'
 }
 
@@ -131,8 +131,8 @@ export const INSCRIBED_FRAMES = {
   lucky_coin: {
     id: 'lucky_coin',
     name: 'Lucky Coin',
-    description: 'A heart that heals its rank, then refills the room with one extra card.',
-    suit: HEART,
+    description: 'Heals its rank, then refills the room with one extra card. Never counts against the potion limit.',
+    suit: TOOL,
     rankMin: 3,
     rankMax: 6,
     playEffect: 'extraRefill',
@@ -150,7 +150,7 @@ export const INSCRIBED_FRAMES = {
     id: 'skeleton_key',
     name: 'Skeleton Key',
     description: 'When drawn, discards every other card in the room and refills. One per run.',
-    suit: KEY,
+    suit: TOOL,
     rankMin: 0,
     rankMax: 0,
     playEffect: 'roomSkip',
@@ -160,7 +160,7 @@ export const INSCRIBED_FRAMES = {
     id: 'map',
     name: 'Map',
     description: `When drawn, reveals the next ${MAP_PEEK_COUNT} cards of the deck, then discards.`,
-    suit: MAP,
+    suit: TOOL,
     rankMin: 0,
     rankMax: 0,
     playEffect: 'peek',
@@ -168,7 +168,7 @@ export const INSCRIBED_FRAMES = {
   potion_of_strength: {
     id: 'potion_of_strength',
     name: 'Potion of Strength',
-    description: 'A heart that does not heal. Adds its rank to your weapon strength for the rest of the descent.',
+    description: 'A heart that does not heal. Adds its rank to your weapon strength for the rest of the descent. Wasted if you already drank a potion this room.',
     suit: HEART,
     rankMin: 2,
     rankMax: 4,
@@ -204,7 +204,7 @@ export const INSCRIBED_FRAMES = {
   panacea: {
     id: 'panacea',
     name: 'Elixir of Life',
-    description: 'When drunk, restores HP to full. One per run.',
+    description: 'When drunk, restores HP to full. One per run. Wasted if you already drank a potion this room.',
     suit: HEART,
     rankMin: 0,
     rankMax: 0,
@@ -214,7 +214,7 @@ export const INSCRIBED_FRAMES = {
   draught_of_vigor: {
     id: 'draught_of_vigor',
     name: 'Draught of Vigor',
-    description: 'Heals its rank and raises max HP by 2 for the rest of the descent.',
+    description: 'Heals its rank and raises max HP by 2 for the rest of the descent. Wasted if you already drank a potion this room.',
     suit: HEART,
     rankMin: 2,
     rankMax: 6,
@@ -224,7 +224,7 @@ export const INSCRIBED_FRAMES = {
     id: 'torch',
     name: 'Torch',
     description: 'When drawn, burns the strongest non-boss monster out of the room without a fight, then discards.',
-    suit: TORCH,
+    suit: TOOL,
     rankMin: 0,
     rankMax: 0,
     playEffect: 'burn',
@@ -233,7 +233,7 @@ export const INSCRIBED_FRAMES = {
     id: 'whetstone',
     name: 'Whetstone',
     description: 'When drawn, clears the binding on your weapon and your spare. Any monster is fair game again.',
-    suit: STONE,
+    suit: TOOL,
     rankMin: 0,
     rankMax: 0,
     playEffect: 'sharpen',
@@ -285,6 +285,17 @@ export const TRAITS = {
 }
 
 export const TRAIT_IDS = Object.keys(TRAITS)
+
+// Saves written before a frame's suit changed still carry the old suit on
+// persisted cards (e.g. the separate KEY/MAP/STONE/TORCH/COIN suits collapsing
+// into one TOOL suit). Re-stamp the suit from the frame so old kits stay
+// consistent. Returns the same object reference when nothing needs fixing.
+export function fixInscribedSuit(card) {
+  if (!card || !card.inscribed) return card
+  const frame = INSCRIBED_FRAMES[card.inscribed]
+  if (frame && card.suit !== frame.suit) return { ...card, suit: frame.suit }
+  return card
+}
 
 let inscribedCounter = 0
 export function makeInscribedCard(frameId, rank) {

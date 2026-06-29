@@ -3,7 +3,7 @@ import { createPortal } from 'react-dom'
 import {
   UPGRADE_BONUS,
   rankLabel, INSCRIBED_FRAMES,
-  SUIT_GLYPH, HEART, DIAMOND, CLUB, SPADE, WOUND, KEY, MAP, STONE, TORCH, isWound, isSkeletonKey, isMap, isWhetstone, isTorch,
+  SUIT_GLYPH, HEART, DIAMOND, CLUB, SPADE, WOUND, TOOL, isWound, isTool, isSkeletonKey, isMap, isWhetstone, isTorch,
 } from '../logic'
 import { ConfirmButton } from './atoms'
 import { SuitIcon, cardBorderTone, suitIconTone } from './SuitIcon'
@@ -91,7 +91,9 @@ export function EditOfferPanel({ game, onPick, onSkip }) {
 function EditChoiceCard({ card, mode, selected, onPick }) {
   const red = card.suit === HEART || card.suit === DIAMOND
   const frame = card.inscribed ? INSCRIBED_FRAMES[card.inscribed] : null
-  const neutral = isSkeletonKey(card) || isMap(card) || isWhetstone(card)
+  // Rank-less tools (Key, Map, Whetstone, Torch) show only the suit glyph; Lucky
+  // Coin carries a rank so it falls through to the rank+glyph face.
+  const neutral = isSkeletonKey(card) || isMap(card) || isWhetstone(card) || isTorch(card)
   const face = neutral ? SUIT_GLYPH[card.suit] : `${rankLabel(card.rank)}${SUIT_GLYPH[card.suit]}`
   const newRank = card.rank + UPGRADE_BONUS
   // Honor the same layout setting the room cards use: modern prints the
@@ -159,10 +161,10 @@ function EditChoiceCard({ card, mode, selected, onPick }) {
 // card above its neighbors. Pass `readOnly` to render the fan for
 // display only (no click handler, no selected state) — hover-lift
 // still works so the player can peek at any card.
-const SUIT_FAN_ORDER = [HEART, DIAMOND, CLUB, SPADE, WOUND, KEY, MAP, STONE, TORCH]
+const SUIT_FAN_ORDER = [HEART, DIAMOND, CLUB, SPADE, WOUND, TOOL]
 
 export function CardSuitFan({ cards, selected, onPick, readOnly = false }) {
-  const bySuit = { [HEART]: [], [DIAMOND]: [], [CLUB]: [], [SPADE]: [], [WOUND]: [], [KEY]: [], [MAP]: [], [STONE]: [], [TORCH]: [] }
+  const bySuit = { [HEART]: [], [DIAMOND]: [], [CLUB]: [], [SPADE]: [], [WOUND]: [], [TOOL]: [] }
   for (const c of cards) {
     if (bySuit[c.suit]) bySuit[c.suit].push(c)
   }
@@ -223,23 +225,14 @@ function CardSuitFanRow({ suit, cards, selected, onPick, readOnly = false }) {
   const [info, setInfo] = useState(null) // { rect, frame, upgradeBonus }
   const isRed = suit === HEART || suit === DIAMOND
   const isWoundRow = suit === WOUND
-  const isKeyRow = suit === KEY
-  const isMapRow = suit === MAP
-  const isStoneRow = suit === STONE
-  const isTorchRow = suit === TORCH
+  const isToolRow = suit === TOOL
   const suitColorClass = isRed
     ? 'text-blood'
     : isWoundRow
       ? 'text-red-700'
-      : isKeyRow
+      : isToolRow
         ? 'text-amber-300'
-        : isMapRow
-          ? 'text-sky-300'
-          : isStoneRow
-            ? 'text-slate-300'
-            : isTorchRow
-              ? 'text-orange-400'
-              : 'text-parchment'
+        : 'text-parchment'
   return (
     <div className="flex items-start">
       <div className={`w-6 shrink-0 pt-3 text-center text-base leading-none ${suitColorClass}`}>
@@ -249,25 +242,17 @@ function CardSuitFanRow({ suit, cards, selected, onPick, readOnly = false }) {
         {cards.map((c, i) => {
           const isSelected = !readOnly && selected === c.id
           const cardIsWound = isWound(c)
-          const cardIsKey = isSkeletonKey(c)
-          const cardIsMap = isMap(c)
-          const cardIsStone = isWhetstone(c)
-          const cardIsTorch = isTorch(c)
-          // Rank-0 inscriptions (Elixir of Life) show the bare glyph, no rank.
+          const cardIsTool = isTool(c)
+          // Rank-0 inscriptions (Key, Map, Whetstone, Torch) show the bare glyph,
+          // no rank; Lucky Coin keeps its rank.
           const cardNoRank = !!c.inscribed && c.rank === 0
           const cardColorClass = isRed
             ? 'text-blood'
             : cardIsWound
               ? 'text-red-700'
-              : cardIsKey
+              : cardIsTool
                 ? 'text-amber-300'
-                : cardIsMap
-                  ? 'text-sky-300'
-                  : cardIsStone
-                    ? 'text-slate-300'
-                    : cardIsTorch
-                      ? 'text-orange-400'
-                      : 'text-parchment'
+                : 'text-parchment'
           const baseClass = `card-fan-item relative aspect-[2/3] w-12 sm:w-14 shrink-0 rounded border-2 p-1 flex flex-col justify-between text-left ${
             isSelected
               ? 'border-rune bg-stone-700'
@@ -276,7 +261,7 @@ function CardSuitFanRow({ suit, cards, selected, onPick, readOnly = false }) {
           const inner = (
             <>
               <div className={`text-xs sm:text-sm font-bold leading-none ${cardColorClass}`}>
-                {(cardIsWound || cardIsKey || cardIsMap || cardIsStone || cardIsTorch || cardNoRank) ? SUIT_GLYPH[c.suit] : `${rankLabel(c.rank)}${SUIT_GLYPH[c.suit]}`}
+                {(cardIsWound || cardNoRank) ? SUIT_GLYPH[c.suit] : `${rankLabel(c.rank)}${SUIT_GLYPH[c.suit]}`}
               </div>
               {(c.upgraded || c.inscribed) && (
                 <div className="flex flex-col items-end gap-0.5 leading-none">

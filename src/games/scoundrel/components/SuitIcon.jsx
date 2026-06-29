@@ -1,16 +1,12 @@
-import { HEART, SPADE, CLUB, DIAMOND, WOUND, KEY, MAP, STONE, TORCH, isMonster, isWeapon, isPotion, isWound, isSkeletonKey, isMap, isWhetstone, isTorch, isBoss } from '../logic'
+import { HEART, SPADE, CLUB, DIAMOND, WOUND, isMonster, isWeapon, isPotion, isTool, isWound, isBoss } from '../logic'
 
 // Border color by card type: monsters deep green, weapons cool gray, potions
-// deep purple, wounds dull rust, skeleton keys warm gold, maps faded ink,
-// whetstones cool slate. Bosses overlap with monsters but get a rune-gold
-// border so they read as distinct on sight.
+// deep purple, wounds dull rust, tools warm gold. Bosses overlap with monsters
+// but get a rune-gold border so they read as distinct on sight.
 export function cardBorderTone(card) {
   if (!card) return 'border-stone-700'
   if (isBoss(card)) return 'border-rune'
-  if (isSkeletonKey(card)) return 'border-amber-600'
-  if (isMap(card)) return 'border-sky-700'
-  if (isWhetstone(card)) return 'border-slate-500'
-  if (isTorch(card)) return 'border-orange-600'
+  if (isTool(card)) return 'border-amber-600'
   if (isMonster(card)) return 'border-green-700'
   if (isWeapon(card)) return 'border-gray-500'
   if (isPotion(card)) return 'border-purple-700'
@@ -23,10 +19,7 @@ export function cardBorderTone(card) {
 // sigil itself reads gold, matching the rune border.
 export function suitIconTone(card) {
   if (isBoss(card)) return 'text-rune'
-  if (isSkeletonKey(card)) return 'text-amber-700'
-  if (isMap(card)) return 'text-sky-800'
-  if (isWhetstone(card)) return 'text-slate-600'
-  if (isTorch(card)) return 'text-orange-600'
+  if (isTool(card)) return 'text-amber-700'
   if (isMonster(card)) return 'text-green-800'
   if (isWeapon(card)) return 'text-stone-700'
   if (isPotion(card)) return 'text-purple-800'
@@ -49,9 +42,6 @@ const SUIT_ICON_PATHS = {
   // Simple ragged X for wounds, kept lo-fi to read as "scar" rather than a
   // proper sigil. Drawn as two thick crossed strokes in path commands.
   [WOUND]: 'M120 100 L412 392 M412 100 L120 392',
-  // Stylized key silhouette for skeleton keys: round bow on the left, long
-  // shaft, two teeth on the right.
-  [KEY]: 'M170 256 a64 64 0 1 1 128 0 a64 64 0 1 1 -128 0 M298 256 L470 256 M430 256 L430 320 M390 256 L390 300',
 }
 
 // Wounds use a stroked path instead of a filled silhouette; render them
@@ -206,12 +196,8 @@ export function SuitIcon({ suit, inscribed, boss, className }) {
     return <FilledIcon d={INSCRIBED_ICON_PATHS[inscribed]} className={className} />
   }
   if (suit === WOUND) return <WoundIcon className={className} />
-  // Synthetic suits used only by inscriptions; if a card has the suit
-  // but no `inscribed` (defensive), fall back to the same silhouette.
-  if (suit === KEY) return <FilledIcon d={INSCRIBED_ICON_PATHS.skeleton_key} className={className} />
-  if (suit === MAP) return <FilledIcon d={INSCRIBED_ICON_PATHS.map} className={className} />
-  if (suit === STONE) return <FilledIcon d={INSCRIBED_ICON_PATHS.whetstone} className={className} />
-  if (suit === TORCH) return <FilledIcon d={INSCRIBED_ICON_PATHS.torch} className={className} />
+  // The TOOL suit only ever appears on inscribed cards, so the branch above
+  // draws every real tool. A bare TOOL card (no `inscribed`) has no silhouette.
   const d = SUIT_ICON_PATHS[suit]
   if (!d) return null
   // Hearts (potion-ball) mirrored so the flask reads better next to the rank.
