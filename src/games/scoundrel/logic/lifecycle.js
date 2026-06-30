@@ -128,7 +128,6 @@ export function createRun(rng = Math.random, options = {}) {
     twinSoulsUsed: false,
     cowardsRewardCharge: 0,
     numbRemaining: 0,
-    strengthBonus: 0,
     mapPeek: null,
     // Rolling tail of the player's last 3 monster-kill ranks. Read by the
     // Devourer boss's dynamic rank (3 + sum). Resets per descent so the
@@ -208,8 +207,10 @@ export function descend(state) {
   const asc = getAscensionEffectsForState(state)
   const fullHeal = Math.max(1, Math.floor(maxHp * asc.sanctuaryHealMultiplier))
   // Stoic forgoes the sanctuary's heal: wounds carry from the previous descent
-  // (capped at the new max). The opening descent has no prior HP, so it starts
-  // full. Read through muteState so a Wormwood-muted Stoic heals normally.
+  // (capped at the new max). It is a delayed boon, so hasBoon already reports
+  // false on the descent it was picked for (see stoicActive / activeBoons); the
+  // sigilsEarned guard keeps the opening descent full as a belt-and-braces. Read
+  // through muteState so a Wormwood-muted Stoic heals normally.
   const carriesWounds = hasBoon(muteState, 'stoic') && (state.sigilsEarned || 0) > 0
   const startHp = carriesWounds ? Math.min(state.hp, maxHp) : fullHeal
 
@@ -281,7 +282,6 @@ export function descend(state) {
     numbRemaining: 0,
     woundsAddedThisDescent: 0,
     pendingCursedHeal: 0,
-    strengthBonus: 0,
     mapPeek: null,
     lastKilledMonsterRanks: [],
     log: [baseLine, ...themeLog],
@@ -520,7 +520,6 @@ export function endDescentVictory(state) {
     numbRemaining: 0,
     woundsAddedThisDescent: 0,
     pendingCursedHeal: 0,
-    strengthBonus: 0,
     mapPeek: null,
     lastKilledMonsterRanks: [],
   }

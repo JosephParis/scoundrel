@@ -150,10 +150,10 @@ export function ConditionsPanel({ game, theme }) {
         </div>
       )}
 
-      {(game.strengthBonus || 0) > 0 && (
+      {(game.weapon?.strengthBonus || 0) > 0 && (
         <div>
           <div className="text-slate-500 text-[10px] uppercase tracking-wider mb-0.5">Strength</div>
-          <div className="text-rune font-mono">+{game.strengthBonus} to weapon strikes</div>
+          <div className="text-rune font-mono">+{game.weapon.strengthBonus} to this weapon's strikes</div>
         </div>
       )}
 

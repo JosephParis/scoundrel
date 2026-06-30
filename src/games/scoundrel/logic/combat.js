@@ -553,12 +553,21 @@ function playPotion(state, index, card) {
     ))
   }
 
-  // Potion of Strength: no heal; bank its rank as a persistent weapon-strength
-  // bonus (read by effectiveWeaponRank), riding whatever weapon you hold.
+  // Potion of Strength: no heal; whet the equipped weapon by its rank. The
+  // bonus lives on the weapon object (read by effectiveWeaponRank), so it stays
+  // with that blade and is lost the moment you take up a different one. With no
+  // weapon in hand there is nothing to strengthen, so the draught is wasted.
   if (card.inscribed === 'potion_of_strength') {
+    if (!next.weapon) {
+      return checkRefillAndComplete(appendLog(
+        next,
+        'Potion of Strength: no weapon in hand, the draught is wasted.'
+      ))
+    }
+    const buffed = { ...next.weapon, strengthBonus: (next.weapon.strengthBonus || 0) + card.rank }
     return checkRefillAndComplete(appendLog(
-      { ...next, strengthBonus: (next.strengthBonus || 0) + card.rank },
-      `Potion of Strength: weapon strikes harder by ${card.rank}.`
+      { ...next, weapon: buffed },
+      `Potion of Strength: this weapon strikes harder by ${card.rank}.`
     ))
   }
 

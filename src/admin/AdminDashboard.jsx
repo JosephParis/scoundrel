@@ -2,7 +2,7 @@ import { useCallback, useEffect, useMemo, useState } from 'react'
 import { BOONS } from '../games/scoundrel/boons'
 import { getTheme } from '../games/scoundrel/themes'
 import { getBoss } from '../games/scoundrel/bosses'
-import { INSCRIBED_FRAMES, SUIT_GLYPH, rankLabel, getMode } from '../games/scoundrel/constants'
+import { INSCRIBED_FRAMES, SUIT_GLYPH, rankLabel, getMode, GAME_VERSION, VERSION_HISTORY } from '../games/scoundrel/constants'
 
 /**
  * Admin-only analytics dashboard (route: /admin). Reads pre-aggregated stats
@@ -272,6 +272,51 @@ function RunShape({ rows }) {
   )
 }
 
+// Version range filter: two bounds (From / To) over the ordered version list,
+// so admins can scope to a single version, "everything from X on" (set From),
+// "everything up to X" (set To), or any band in between. `ordered` carries the
+// canonical sort order; the parent turns the bounds into the explicit version
+// list the API filters on. Per-version run counts come from the server's
+// unfiltered census so the menu is stable regardless of the active range. An
+// untouched full range means all versions (legacy rows included); the live
+// build's GAME_VERSION is flagged. Hidden until there's more than one version
+// to range over, since a lone version has nothing to narrow.
+function VersionRange({ range, onChange, ordered, rows }) {
+  const countOf = useMemo(() => {
+    const m = new Map()
+    for (const r of rows) if (r.version != null) m.set(r.version, num(r.n))
+    return m
+  }, [rows])
+
+  if (ordered.length < 2) return null
+  const label = v => `${v}${v === GAME_VERSION ? ' (current)' : ''} · ${countOf.get(v) || 0}`
+  const fromV = range.from || ordered[0]
+  const toV = range.to || ordered[ordered.length - 1]
+  const selectClass = 'rounded border border-stone-700 bg-stone-900 px-2 py-1 outline-none focus:border-amber-500'
+
+  return (
+    <div className="flex items-center gap-2 text-stone-400">
+      <span>versions</span>
+      <select value={fromV} onChange={e => onChange({ ...range, from: e.target.value })} className={selectClass}>
+        {ordered.map(v => <option key={v} value={v}>{label(v)}</option>)}
+      </select>
+      <span className="text-stone-600">→</span>
+      <select value={toV} onChange={e => onChange({ ...range, to: e.target.value })} className={selectClass}>
+        {ordered.map(v => <option key={v} value={v}>{label(v)}</option>)}
+      </select>
+      {(range.from || range.to) && (
+        <button
+          onClick={() => onChange({ from: '', to: '' })}
+          className="rounded border border-stone-700 px-2 py-1 text-xs hover:border-amber-500"
+          title="Reset to all versions"
+        >
+          all
+        </button>
+      )}
+    </div>
+  )
+}
+
 function EmptyRow({ cols }) {
   return (
     <tr>
@@ -317,12 +362,16 @@ export default function AdminDashboard() {
   const [error, setError] = useState(null)
   const [loading, setLoading] = useState(false)
   const [minN, setMinN] = useState(1)
+  // Empty bounds = open (oldest / newest). A narrowed From/To range scopes every
+  // stat to that band of balance versions server-side (see /api/stats ?versions).
+  const [range, setRange] = useState({ from: '', to: '' })
 
-  const load = useCallback(async (t) => {
+  const load = useCallback(async (t, versionsCsv) => {
     setLoading(true)
     setError(null)
     try {
-      const res = await fetch('/api/stats', { headers: { Authorization: `Bearer ${t}` } })
+      const url = versionsCsv ? `/api/stats?versions=${encodeURIComponent(versionsCsv)}` : '/api/stats'
+      const res = await fetch(url, { headers: { Authorization: `Bearer ${t}` } })
       if (res.status === 401) {
         setError('Invalid token.')
         setData(null)
@@ -343,13 +392,42 @@ export default function AdminDashboard() {
     }
   }, [])
 
+  // Versions present in the data, sorted by the canonical VERSION_HISTORY order
+  // (the labels don't sort reliably on their own). Any present version missing
+  // from VERSION_HISTORY is appended so it stays selectable. Legacy null-version
+  // rows are excluded here: a range is over known versions only.
+  const ordered = useMemo(() => {
+    const present = (data?.versionsAvailable || [])
+      .filter(r => r.version != null)
+      .map(r => r.version)
+    const set = new Set(present)
+    const known = VERSION_HISTORY.filter(v => set.has(v))
+    const extra = present.filter(v => !VERSION_HISTORY.includes(v))
+    return [...known, ...extra]
+  }, [data])
+
+  // The From/To range resolved into the explicit version list sent to the API.
+  // Open bounds fall back to the extremes; an untouched full range returns '',
+  // which means "all versions" server-side (and includes legacy rows).
+  const versionsParam = useMemo(() => {
+    if (ordered.length === 0) return ''
+    const fromV = range.from || ordered[0]
+    const toV = range.to || ordered[ordered.length - 1]
+    let fi = ordered.indexOf(fromV); if (fi < 0) fi = 0
+    let ti = ordered.indexOf(toV); if (ti < 0) ti = ordered.length - 1
+    if (fi > ti) [fi, ti] = [ti, fi]
+    if (fi === 0 && ti === ordered.length - 1) return ''
+    return ordered.slice(fi, ti + 1).join(',')
+  }, [ordered, range])
+
   useEffect(() => {
-    // Auto-load when a token is present (persisted on mount, or just submitted).
-    // load() flips loading/error then awaits the fetch; firing it from an effect
-    // is the intended data-sync use, and the synchronous setState is harmless.
+    // Auto-load when a token is present (persisted on mount, or just submitted),
+    // and re-load whenever the version range changes. load() flips loading/error
+    // then awaits the fetch; firing it from an effect is the intended data-sync
+    // use, and the synchronous setState is harmless.
     // eslint-disable-next-line react-hooks/set-state-in-effect
-    if (token) load(token)
-  }, [token, load])
+    if (token) load(token, versionsParam)
+  }, [token, versionsParam, load])
 
   const submitToken = useCallback((t) => {
     if (!t) return
@@ -366,6 +444,12 @@ export default function AdminDashboard() {
         <header className="mb-6 flex items-center justify-between gap-4">
           <h1 className="text-xl font-semibold">Scoundrel — run analytics</h1>
           <div className="flex items-center gap-3 text-sm">
+            <VersionRange
+              range={range}
+              onChange={setRange}
+              ordered={ordered}
+              rows={data?.versionsAvailable || []}
+            />
             <label className="flex items-center gap-2 text-stone-400">
               min runs
               <input
@@ -376,11 +460,17 @@ export default function AdminDashboard() {
                 className="w-16 rounded border border-stone-700 bg-stone-900 px-2 py-1 text-right outline-none focus:border-amber-500"
               />
             </label>
-            <button onClick={() => load(token)} className="rounded border border-stone-700 px-3 py-1 hover:border-amber-500">
+            <button onClick={() => load(token, versionsParam)} className="rounded border border-stone-700 px-3 py-1 hover:border-amber-500">
               {loading ? '…' : 'Refresh'}
             </button>
           </div>
         </header>
+
+        {versionsParam && (
+          <p className="-mt-3 mb-4 text-xs text-amber-300/80">
+            Scoped to versions <span className="font-mono">{versionsParam.split(',').join(', ')}</span>. Every stat below covers only this range (legacy unversioned runs excluded).
+          </p>
+        )}
 
         {error && <p className="mb-4 rounded border border-red-900 bg-red-950/40 px-3 py-2 text-sm text-red-300">{error}</p>}
 

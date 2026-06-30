@@ -157,7 +157,7 @@ export const THEMES = {
     id: 'the_swarm',
     name: 'Greater Swarm',
     description: 'Adds 14 monsters of rank 2-6 to the deck.',
-    tier: 1,
+    tier: 2,
     monsterMods: { add: { count: 14, band: 'low' } },
   },
 
@@ -416,7 +416,7 @@ function getThemePool(sigils) {
 
 // excludeId drops the previous descent's theme so the dungeon never rolls
 // the same theme two descents in a row within a tier band (e.g. Tier 5
-// spans descents 8-10). Every tier pool has >=4 themes, so removing one is
+// spans descents 8-10). Every tier pool has >=3 themes, so removing one is
 // always safe; the guard keeps a 1-theme pool from collapsing to nothing.
 export function pickThemeId(rng, sigils = 0, excludeId = null) {
   const full = getThemePool(sigils)

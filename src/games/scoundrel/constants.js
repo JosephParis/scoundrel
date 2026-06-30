@@ -23,6 +23,20 @@ export const BASE_MAX_HP = 20
 export const SIGIL_TARGET = 10
 export const ROOM_SIZE = 4
 
+// Ordered history of balance versions, oldest first. APPEND a new entry by hand
+// whenever a gameplay change makes prior runs' stats no longer comparable (a
+// reworked boon, a retuned theme, a damage formula change). Never reorder or
+// remove an entry: this array IS the sort order the /admin range filter uses,
+// because the free-form labels do not sort reliably on their own ('0.10' sorts
+// before '0.9' lexicographically). Every finished run is stamped with the live
+// version, so the dashboard can scope stats to one version or a From/To range
+// and trust the numbers describe a known band of rulesets. Keep labels short;
+// they are what admins pick from.
+export const VERSION_HISTORY = ['0.1']
+
+// The live version: always the newest entry above. Stamped onto each run.
+export const GAME_VERSION = VERSION_HISTORY[VERSION_HISTORY.length - 1]
+
 // Run modes. Each mode is a small bundle of flags applied at the run loop's
 // edges (sanctuary visit, theme pick). Default leaves the game unchanged.
 // Hardcore strips boon offers and the forge for a pure deck-only run.
@@ -168,7 +182,7 @@ export const INSCRIBED_FRAMES = {
   potion_of_strength: {
     id: 'potion_of_strength',
     name: 'Potion of Strength',
-    description: 'A heart that does not heal. Adds its rank to your weapon strength for the rest of the descent. Wasted if you already drank a potion this room.',
+    description: 'A heart that does not heal. Adds its rank to your equipped weapon\'s strikes. The bonus stays on that weapon and is lost if you replace it (wasted with no weapon in hand, or if you already drank a potion this room).',
     suit: HEART,
     rankMin: 2,
     rankMax: 4,

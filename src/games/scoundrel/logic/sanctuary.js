@@ -339,8 +339,8 @@ export function describeWeaponStrength(state, weapon = state.weapon) {
   if (hasBoon(state, 'berserker') && (state.monstersFoughtThisRoom || 0) > 0) {
     parts.push({ label: 'Berserker', value: state.monstersFoughtThisRoom, op: '+' })
   }
-  if ((state.strengthBonus || 0) > 0) {
-    parts.push({ label: 'Strength', value: state.strengthBonus, op: '+' })
+  if ((weapon.strengthBonus || 0) > 0) {
+    parts.push({ label: 'Strength', value: weapon.strengthBonus, op: '+' })
   }
   return { value: Math.max(0, sumParts(parts)), parts }
 }
@@ -385,6 +385,17 @@ export function describeDamage(state, card, weaponUsed) {
     if (!c || c.id === card.id || !c.boss) continue
     const bonus = BOSSES[c.boss]?.roomMonsterRankBonus || 0
     if (bonus) parts.push({ label: BOSSES[c.boss].name, value: bonus, op: '+' })
+  }
+
+  // Monster-trait rank bonuses, mirroring effectiveMonsterRank so the preview
+  // matches the hit. Swelling rides on the carrier card's own trait; Vengeful
+  // is a room-wide lingering +1 (per fallen vengeful monster) that touches every
+  // card while it lasts, so it shows on all of them, not just the carrier.
+  if (card.swelling && (state.monstersFoughtThisRoom || 0) > 0) {
+    parts.push({ label: 'Swelling', value: state.monstersFoughtThisRoom, op: '+' })
+  }
+  if ((state.vengefulBonus || 0) > 0) {
+    parts.push({ label: 'Vengeful', value: state.vengefulBonus, op: '+' })
   }
 
   if (weaponUsed) {
@@ -476,6 +487,8 @@ export function describePotion(state, card) {
 
   // Within the limit: preview this heart's specific effect.
   if (card.inscribed === 'potion_of_strength') {
+    // The bonus rides the equipped weapon; with no weapon in hand it is wasted.
+    if (!state.weapon) return { mode: 'skip', note: 'No weapon to whet' }
     return { mode: 'strength', value: card.rank, parts: [{ label: 'strength', value: card.rank, op: '+' }] }
   }
   if (card.inscribed === 'panacea') {

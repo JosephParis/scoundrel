@@ -12,9 +12,26 @@ import { neon } from '@neondatabase/serverless'
  * Counts come back from Postgres as strings (bigint); the client coerces with
  * Number(). Older records that predate a field (death, boonPicks, forgeEdits)
  * contribute no rows to those sections, which is the desired behavior.
+ *
+ * Optional ?versions=<v1,v2,...> scopes every stat to a set of balance versions
+ * (see GAME_VERSION / VERSION_HISTORY). The dashboard computes the set from a
+ * From/To range over the ordered version history and passes the explicit list,
+ * so ordering lives client-side and the server never has to sort the labels.
+ * Absent/empty = all versions (including legacy rows that predate stamping).
+ * The response always includes `versionsAvailable` (every version present,
+ * unfiltered) so the dashboard can build the picker, plus the `versions`
+ * actually applied ([] = all).
  */
 
 const sql = process.env.DATABASE_URL ? neon(process.env.DATABASE_URL) : null
+
+// Fold a non-empty array of scalars into a parameterized "$1, $2, ..." fragment
+// for an IN list. Each value is a bound parameter (never inlined), so a
+// caller-supplied version list is injection-safe. neon flattens these nested
+// fragments recursively when the outer query executes.
+function commaSeparated(values) {
+  return values.reduce((acc, v, i) => (i === 0 ? sql`${v}` : sql`${acc}, ${v}`), null)
+}
 
 function authorized(req) {
   const token = process.env.ADMIN_TOKEN
@@ -32,6 +49,18 @@ export default async function handler(req, res) {
   if (!sql) return res.status(503).json({ error: 'database_not_configured' })
   if (!process.env.ADMIN_TOKEN) return res.status(503).json({ error: 'admin_token_not_configured' })
   if (!authorized(req)) return res.status(401).json({ error: 'unauthorized' })
+
+  // Optional ?versions=<v1,v2,...> filter. When absent/empty, every aggregation
+  // sees the whole table (legacy null-version rows included). When set, `runs`
+  // below is a subquery that pre-filters to that set of versions, so a single
+  // fragment scopes every stat consistently. Values are always parameterized
+  // (IN list), so a caller-supplied list is injection-safe even as it flows
+  // into many queries.
+  const versionsRaw = typeof req.query?.versions === 'string' ? req.query.versions : ''
+  const versions = versionsRaw.split(',').map(s => s.trim()).filter(Boolean)
+  const runs = versions.length === 0
+    ? sql`(select * from runs)`
+    : sql`(select * from runs where game_version in (${commaSeparated(versions)}))`
 
   try {
     const [
@@ -53,24 +82,25 @@ export default async function handler(req, res) {
       retireByPhase,
       themeSurvival,
       playerActivity,
+      versionsAvailable,
     ] = await Promise.all([
       sql`
         select count(*) n,
                count(*) filter (where outcome = 'victory') wins,
                count(*) filter (where outcome = 'death') deaths,
                count(*) filter (where outcome = 'retired') retires
-        from runs
+        from ${runs} r
       `,
       sql`
         select b->>'id' id, count(*) n,
                count(*) filter (where r.outcome = 'victory') wins
-        from runs r, jsonb_array_elements(r.record->'boons') b
+        from ${runs} r, jsonb_array_elements(r.record->'boons') b
         group by 1 order by n desc
       `,
       sql`
         select b1->>'id' a, b2->>'id' b, count(*) n,
                count(*) filter (where r.outcome = 'victory') wins
-        from runs r,
+        from ${runs} r,
              jsonb_array_elements(r.record->'boons') b1,
              jsonb_array_elements(r.record->'boons') b2
         where b1->>'id' < b2->>'id'
@@ -79,31 +109,31 @@ export default async function handler(req, res) {
       sql`
         select t->>'id' id, count(*) n,
                count(*) filter (where r.outcome = 'victory') wins
-        from runs r, jsonb_array_elements(r.record->'themesFaced') t
+        from ${runs} r, jsonb_array_elements(r.record->'themesFaced') t
         group by 1 order by n desc
       `,
       sql`
         select c->>'inscribed' frame,
                count(distinct r.run_key) n,
                count(distinct r.run_key) filter (where r.outcome = 'victory') wins
-        from runs r, jsonb_array_elements(r.record->'endingDeck') c
+        from ${runs} r, jsonb_array_elements(r.record->'endingDeck') c
         where c->>'inscribed' is not null
         group by 1 order by n desc
       `,
       sql`
         select ascension, count(*) n,
                count(*) filter (where outcome = 'victory') wins
-        from runs group by 1 order by ascension
+        from ${runs} r group by 1 order by ascension
       `,
       sql`
         select record->'death'->>'source' source, count(*) n
-        from runs
+        from ${runs} r
         where outcome = 'death' and record->'death' is not null
         group by 1 order by n desc
       `,
       sql`
         select (record->'death'->>'descent')::int descent, count(*) n
-        from runs
+        from ${runs} r
         where outcome = 'death' and record->'death'->>'descent' is not null
         group by 1 order by descent
       `,
@@ -112,7 +142,7 @@ export default async function handler(req, res) {
                (record->'death'->'card'->>'rank')::int rank,
                record->'death'->'card'->>'boss' boss,
                count(*) n
-        from runs
+        from ${runs} r
         where outcome = 'death' and record->'death'->'card' is not null
         group by 1, 2, 3 order by n desc limit 40
       `,
@@ -120,7 +150,7 @@ export default async function handler(req, res) {
         select boon, sum(picked) times_picked, count(*) times_offered
         from (
           select o.v boon, (o.v = (p->>'picked'))::int picked
-          from runs r,
+          from ${runs} r,
                jsonb_array_elements(r.record->'boonPicks') p,
                jsonb_array_elements_text(p->'offered') o(v)
         ) x
@@ -129,18 +159,18 @@ export default async function handler(req, res) {
       sql`
         select e->>'type' type, count(*) n,
                count(*) filter (where (e->>'skipped')::boolean) skips
-        from runs r, jsonb_array_elements(r.record->'forgeEdits') e
+        from ${runs} r, jsonb_array_elements(r.record->'forgeEdits') e
         group by 1 order by 1
       `,
       sql`
         select coalesce(mode, 'default') mode, count(*) n,
                count(*) filter (where outcome = 'victory') wins
-        from runs group by 1 order by n desc
+        from ${runs} r group by 1 order by n desc
       `,
       sql`
         select outcome, count(*) n,
                round(avg(duration_ms) / 1000.0)::int avg_seconds
-        from runs where duration_ms is not null group by 1 order by 1
+        from ${runs} r where duration_ms is not null group by 1 order by 1
       `,
       sql`
         select outcome, count(*) n,
@@ -148,7 +178,7 @@ export default async function handler(req, res) {
                round(avg((record->>'boonCount')::numeric), 1) avg_boons,
                round(avg((record->>'inscribedCount')::numeric), 1) avg_inscribed,
                round(avg((record->>'upgradedCount')::numeric), 1) avg_upgraded
-        from runs where record->>'kitEdits' is not null
+        from ${runs} r where record->>'kitEdits' is not null
         group by 1 order by 1
       `,
       sql`
@@ -157,13 +187,13 @@ export default async function handler(req, res) {
                count(*) filter (where d->>'outcome' = 'cleared') cleared,
                count(*) filter (where d->>'outcome' = 'died') died,
                count(*) filter (where d->>'outcome' = 'retired') retired
-        from runs r, jsonb_array_elements(r.record->'descents') d
+        from ${runs} r, jsonb_array_elements(r.record->'descents') d
         where d->>'descent' is not null
         group by 1 order by descent
       `,
       sql`
         select record->'retire'->>'phase' phase, count(*) n
-        from runs
+        from ${runs} r
         where outcome = 'retired' and record->'retire' is not null
         group by 1 order by n desc
       `,
@@ -173,7 +203,7 @@ export default async function handler(req, res) {
                count(*) filter (where d->>'outcome' = 'cleared') cleared,
                count(*) filter (where d->>'outcome' = 'died') died,
                count(*) filter (where d->>'outcome' = 'retired') retired
-        from runs r,
+        from ${runs} r,
              jsonb_array_elements(r.record->'descents') d,
              jsonb_array_elements_text(d->'themes') th(v)
         group by 1 order by faced desc
@@ -185,13 +215,22 @@ export default async function handler(req, res) {
                max(ended_at) last_seen,
                min(started_at) first_seen,
                max(ascension) best_ascension
-        from runs
+        from ${runs} r
         group by 1 order by last_seen desc nulls last limit 200
+      `,
+      // Unfiltered on purpose: this powers the version picker, so it must list
+      // every version present regardless of the current selection. Null covers
+      // legacy rows that predate version stamping.
+      sql`
+        select game_version version, count(*) n, max(ended_at) last_seen
+        from runs group by 1 order by last_seen desc nulls last
       `,
     ])
 
     return res.status(200).json({
       generatedAt: Date.now(),
+      versions,
+      versionsAvailable,
       overview: overview[0],
       winrateByBoon,
       winrateByBoonPair,

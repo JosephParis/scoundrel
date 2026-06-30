@@ -1,5 +1,6 @@
 import { useState } from 'react'
 import { BOONS, THEMES, SIGIL_TARGET } from '../logic'
+import { CardLibraryContent } from './cardLibrary'
 
 // -- Tutorial intro (shown in sanctuary action slot) -------------------
 
@@ -40,6 +41,7 @@ const RULES_TABS = [
   { id: 'rules', label: 'How to play' },
   { id: 'boons', label: 'Boons' },
   { id: 'themes', label: 'Trials' },
+  { id: 'library', label: 'Card library' },
 ]
 
 function RulesTabBar({ tab, setTab }) {
@@ -93,6 +95,7 @@ export function RulesModal({ open, onClose }) {
         {tab === 'rules' && <RulesContentFull />}
         {tab === 'boons' && <BoonsGlossary />}
         {tab === 'themes' && <ThemesGlossary />}
+        {tab === 'library' && <CardLibraryContent />}
       </div>
     </div>
   )

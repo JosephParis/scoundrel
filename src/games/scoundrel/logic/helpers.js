@@ -121,11 +121,28 @@ export function effectiveMonsterRank(state, card) {
 
 // -- Boon helpers ------------------------------------------------------
 
+// Stoic is a delayed boon: it takes hold from the descent AFTER the one it was
+// chosen for, so the run leg you spend the pick on plays out unchanged (full
+// sanctuary heal, no max-HP swing). boonPicks records the descent each boon was
+// taken before; Stoic is live once the current descent has moved past it.
+export function stoicActive(state) {
+  if (!state.boons?.includes('stoic')) return false
+  const pick = (state.boonPicks || []).find(p => p.picked === 'stoic')
+  if (!pick) return false
+  const currentDescent = (state.sigilsEarned || 0) + 1
+  return currentDescent > pick.descent
+}
+
 // Wormwood mutes one Boon for the descent. activeBoons filters it out so
-// every effect-read consults the same gated list.
+// every effect-read consults the same gated list. Stoic is filtered until it
+// goes live (see stoicActive), so every max-HP / heal read defers as one.
 export function activeBoons(state) {
-  if (state.mutedBoon) return state.boons.filter(id => id !== state.mutedBoon)
-  return state.boons
+  let ids = state.boons
+  if (ids?.includes('stoic') && !stoicActive(state)) {
+    ids = ids.filter(id => id !== 'stoic')
+  }
+  if (state.mutedBoon) ids = ids.filter(id => id !== state.mutedBoon)
+  return ids
 }
 
 export function hasBoon(state, id) {
@@ -171,7 +188,9 @@ export function effectiveWeaponRank(state, weapon) {
   let bonus = sumBoonField(boons, 'weaponRankBonus')
   if (hasBoon(state, 'wounded_lion') && state.hp < 10) bonus += 2
   if (hasBoon(state, 'berserker')) bonus += (state.monstersFoughtThisRoom || 0)
-  bonus += state.strengthBonus || 0
+  // Potion of Strength is banked on the weapon itself, so it only lifts the
+  // blade that drank it, not every weapon the player picks up afterwards.
+  bonus += weapon.strengthBonus || 0
   return Math.max(0, weapon.rank + bonus)
 }
 

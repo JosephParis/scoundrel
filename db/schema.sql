@@ -18,13 +18,26 @@ create table if not exists runs (
   started_at    bigint,                  -- epoch ms
   ended_at      bigint,                  -- epoch ms
   duration_ms   bigint,
+  game_version  text,                    -- balance version stamp (GAME_VERSION); null on legacy rows
   record        jsonb not null,          -- full buildRunRecord blob
   created_at    timestamptz not null default now()
 );
 
+-- Added after the table first shipped; api/runs.js applies the same migration
+-- in place so existing deployments pick it up. Old rows keep a null version.
+alter table runs add column if not exists game_version text;
+
 create index if not exists runs_outcome_idx on runs (outcome);
 create index if not exists runs_account_idx on runs (account_id);
 create index if not exists runs_ended_idx   on runs (ended_at);
+create index if not exists runs_version_idx on runs (game_version);
+
+-- Filter any stat by balance version with a predicate on game_version, e.g.
+--   where game_version = '0.1'                 -- one version
+--   where game_version in ('0.2','0.3','0.4')  -- a range of versions
+-- GET /api/stats?versions=<v1,v2,...> does this across every aggregation (the
+-- dashboard turns a From/To range over VERSION_HISTORY into the list). Legacy
+-- null rows only show when unfiltered ("All versions").
 
 -- ---------------------------------------------------------------------------
 -- Example analytics queries (dev-only; run from the Neon SQL console / psql).

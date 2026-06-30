@@ -32,31 +32,42 @@ export function CardLibraryModal({ open, onClose }) {
         <div className="mb-5">
           <div className="text-[10px] uppercase tracking-[0.3em] text-slate-500">The catalogue</div>
           <h2 className="font-display text-rune text-2xl mt-1">Special cards</h2>
-          <p className="text-[11.5px] text-slate-500 mt-1 max-w-md">
-            Bosses appear in the descent deck. Forge inscriptions are added at the sanctuary and persist for the rest of the run. Monster traits are stamped onto some cards by certain trials.
-          </p>
         </div>
 
-        <div className="space-y-6 max-h-[65vh] overflow-y-auto pr-2">
-          <Section title="Bosses">
-            <ul className="grid grid-cols-1 sm:grid-cols-2 gap-3">
-              {BOSS_IDS.map(id => <BossEntry key={id} id={id} />)}
-            </ul>
-          </Section>
-          <Section title="Forge inscriptions">
-            <ul className="grid grid-cols-1 sm:grid-cols-2 gap-3">
-              {INSCRIBED_FRAME_IDS.map(id => <InscribedEntry key={id} id={id} />)}
-            </ul>
-          </Section>
-          <Section title="Monster traits">
-            <ul className="grid grid-cols-1 sm:grid-cols-2 gap-3">
-              {TRAIT_IDS.map(id => <TraitEntry key={id} id={id} />)}
-            </ul>
-          </Section>
+        <div className="max-h-[65vh] overflow-y-auto pr-2">
+          <CardLibraryContent />
         </div>
       </div>
     </div>
   ), document.body)
+}
+
+// The catalogue body on its own, no modal chrome. Shared by the standalone
+// CardLibraryModal (Home / overflow menu) and the "Card library" tab inside
+// the How-to-play modal, so the reference reads the same wherever it opens.
+export function CardLibraryContent() {
+  return (
+    <div className="space-y-6">
+      <p className="text-[12px] text-slate-400 leading-snug max-w-xl">
+        Bosses appear in the descent deck. Forge inscriptions are added at the sanctuary and persist for the rest of the run. Monster traits are stamped onto some cards by certain trials.
+      </p>
+      <Section title="Bosses">
+        <ul className="grid grid-cols-1 sm:grid-cols-2 gap-3">
+          {BOSS_IDS.map(id => <BossEntry key={id} id={id} />)}
+        </ul>
+      </Section>
+      <Section title="Forge inscriptions">
+        <ul className="grid grid-cols-1 sm:grid-cols-2 gap-3">
+          {INSCRIBED_FRAME_IDS.map(id => <InscribedEntry key={id} id={id} />)}
+        </ul>
+      </Section>
+      <Section title="Monster traits">
+        <ul className="grid grid-cols-1 sm:grid-cols-2 gap-3">
+          {TRAIT_IDS.map(id => <TraitEntry key={id} id={id} />)}
+        </ul>
+      </Section>
+    </div>
+  )
 }
 
 function Section({ title, children }) {

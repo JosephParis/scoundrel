@@ -5,7 +5,7 @@
  * screen or the history modal.
  */
 
-import { getMode } from './constants'
+import { getMode, GAME_VERSION } from './constants'
 import { getAscension } from './ascensions'
 import { BOONS } from './boons'
 import { getTheme } from './themes'
@@ -13,9 +13,10 @@ import { getTheme } from './themes'
 // v2 added `death` (where/how the run ended). v3 added the decision funnels
 // `boonPicks` and `forgeEdits` (offered-vs-chosen). v4 added `retire` (soft
 // death), the per-descent `descents` timeline, and denormalized run-shape
-// counts. Older records simply lack the newer fields; readers treat them as
-// null/[]/0.
-const RECORD_VERSION = 4
+// counts. v5 added `gameVersion` (the balance version stamp, for filtering
+// analytics by ruleset). Older records simply lack the newer fields; readers
+// treat them as null/[]/0.
+const RECORD_VERSION = 5
 const GUEST_ID = 'guest'
 
 function outcomeOf(state) {
@@ -65,6 +66,9 @@ export function buildRunRecord(state, user) {
   const endingDeck = endingDeckOf(state)
   return {
     v: RECORD_VERSION,
+    // Balance version live when the run ended. Lets analytics filter every stat
+    // to one ruleset so retuned boons/themes don't pollute comparisons.
+    gameVersion: GAME_VERSION,
     id: `run_${startedAt}_${Math.random().toString(36).slice(2, 8)}`,
     accountId: user?.sub || GUEST_ID,
     startedAt,
