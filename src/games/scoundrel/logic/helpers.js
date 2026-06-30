@@ -121,16 +121,17 @@ export function effectiveMonsterRank(state, card) {
 
 // -- Boon helpers ------------------------------------------------------
 
-// Stoic is a delayed boon: it takes hold from the descent AFTER the one it was
-// chosen for, so the run leg you spend the pick on plays out unchanged (full
-// sanctuary heal, no max-HP swing). boonPicks records the descent each boon was
-// taken before; Stoic is live once the current descent has moved past it.
+// Stoic takes hold from the very next descent after it is chosen: that descent
+// gains the +10 max HP and takes a full heal to the new max, then the heal
+// stops (see carriesWounds in lifecycle). boonPicks records the descent each
+// boon precedes; pick.descent IS that next descent, so Stoic is live once the
+// current descent has reached it.
 export function stoicActive(state) {
   if (!state.boons?.includes('stoic')) return false
   const pick = (state.boonPicks || []).find(p => p.picked === 'stoic')
   if (!pick) return false
   const currentDescent = (state.sigilsEarned || 0) + 1
-  return currentDescent > pick.descent
+  return currentDescent >= pick.descent
 }
 
 // Wormwood mutes one Boon for the descent. activeBoons filters it out so

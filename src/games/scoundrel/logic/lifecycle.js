@@ -206,12 +206,18 @@ export function descend(state) {
   // through computeMaxHp / damage / picker code paths instead of here.
   const asc = getAscensionEffectsForState(state)
   const fullHeal = Math.max(1, Math.floor(maxHp * asc.sanctuaryHealMultiplier))
-  // Stoic forgoes the sanctuary's heal: wounds carry from the previous descent
-  // (capped at the new max). It is a delayed boon, so hasBoon already reports
-  // false on the descent it was picked for (see stoicActive / activeBoons); the
-  // sigilsEarned guard keeps the opening descent full as a belt-and-braces. Read
-  // through muteState so a Wormwood-muted Stoic heals normally.
-  const carriesWounds = hasBoon(muteState, 'stoic') && (state.sigilsEarned || 0) > 0
+  // Stoic's first live descent (pick.descent, the descent right after it was
+  // chosen) still takes a full sanctuary heal, topping up to the new (+10) max:
+  // you start that descent at full (e.g. 30), so the bonus actually lands as
+  // health. Only from the descent AFTER that does it forgo the heal, carrying
+  // wounds between descents. hasBoon already reports false until Stoic is live
+  // (see stoicActive / activeBoons); the first live descent has
+  // sigilsEarned === pick.descent - 1, so carrying starts once sigilsEarned has
+  // reached pick.descent. Read through muteState so a Wormwood-muted Stoic heals
+  // normally.
+  const stoicPick = (state.boonPicks || []).find(p => p.picked === 'stoic')
+  const carriesWounds =
+    hasBoon(muteState, 'stoic') && stoicPick && (state.sigilsEarned || 0) >= stoicPick.descent
   const startHp = carriesWounds ? Math.min(state.hp, maxHp) : fullHeal
 
   // Carried weapons arrive rested (lastSlain cleared). DESIGN.md §2.
