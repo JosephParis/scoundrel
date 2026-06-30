@@ -1,276 +1,20 @@
 import { useCallback, useEffect, useMemo, useState } from 'react'
-import { BOONS } from '../games/scoundrel/boons'
-import { getTheme } from '../games/scoundrel/themes'
-import { getBoss } from '../games/scoundrel/bosses'
-import { INSCRIBED_FRAMES, SUIT_GLYPH, rankLabel, getMode, GAME_VERSION, VERSION_HISTORY } from '../games/scoundrel/constants'
+import { GAME_VERSION, VERSION_HISTORY } from '../games/scoundrel/constants'
+import { num, pct, boonName, themeName, frameName, modeName, cardLabel, fmtDuration } from './format'
+import { WinrateTable, CountTable, DescentFunnel, ThemeSurvival, PlayerTable, RunShape } from './tables'
 
 /**
  * Admin-only analytics dashboard (route: /admin). Reads pre-aggregated stats
  * from GET /api/stats, gated by an admin token the user pastes once and we
  * keep in localStorage. Everything here is read-only; the heavy lifting (the
- * SQL aggregation) happens server-side. Ids are mapped to display names with
- * the same tables the game uses.
+ * SQL aggregation) happens server-side. Display helpers live in ./format and
+ * the sortable stat tables in ./tables.
  *
  * Only works against a deployed build (or `vercel dev`): plain `npm run dev`
  * has no /api route.
  */
 
 const TOKEN_KEY = 'scoundrel:admin_token'
-const num = v => Number(v || 0)
-const pct = (wins, n) => (n > 0 ? `${Math.round((num(wins) / num(n)) * 100)}%` : '–')
-
-const boonName = id => BOONS[id]?.name || id
-const themeName = id => getTheme(id)?.name || id
-const frameName = id => INSCRIBED_FRAMES[id]?.name || id
-const modeName = id => getMode(id)?.name || id
-const cardLabel = (suit, rank, boss) =>
-  boss ? (getBoss(boss)?.name || boss) : `${rankLabel(num(rank))}${SUIT_GLYPH[suit] || suit || ''}`
-const fmtDuration = (sec) => {
-  const s = num(sec)
-  if (s <= 0) return '–'
-  const m = Math.floor(s / 60)
-  return m > 0 ? `${m}m ${s % 60}s` : `${s}s`
-}
-const fmtDate = (ms) => {
-  const n = num(ms)
-  if (n <= 0) return '–'
-  const days = Math.floor((Date.now() - n) / 86400000)
-  if (days <= 0) return 'today'
-  return days === 1 ? '1d ago' : `${days}d ago`
-}
-// account_id is the auth `sub` for signed-in players; every anonymous player
-// collapses into the single 'guest' bucket. Truncate signed-in ids to the
-// tail so full auth identifiers don't splash across the table.
-const shortId = (id) => {
-  if (id === 'guest') return 'Guests (all anonymous)'
-  const tail = id.includes('|') ? id.slice(id.indexOf('|') + 1) : id
-  return `…${tail.slice(-8)}`
-}
-
-// A winrate table: rows normalized to { label, n, wins }. Filtered by the
-// shared min-sample threshold, then sorted by winrate (n as tie-break).
-function WinrateTable({ title, rows, minN }) {
-  const shown = useMemo(() => {
-    return rows
-      .filter(r => num(r.n) >= minN)
-      .sort((a, b) => {
-        const wa = num(a.wins) / Math.max(1, num(a.n))
-        const wb = num(b.wins) / Math.max(1, num(b.n))
-        return wb - wa || num(b.n) - num(a.n)
-      })
-  }, [rows, minN])
-
-  return (
-    <Section title={title} count={shown.length}>
-      <table className="w-full text-sm">
-        <thead>
-          <tr className="text-left text-stone-400 border-b border-stone-700">
-            <th className="py-1 pr-2 font-medium">Name</th>
-            <th className="py-1 px-2 font-medium text-right">Runs</th>
-            <th className="py-1 px-2 font-medium text-right">Wins</th>
-            <th className="py-1 pl-2 font-medium text-right">Winrate</th>
-          </tr>
-        </thead>
-        <tbody>
-          {shown.map((r, i) => (
-            <tr key={i} className="border-b border-stone-800/60">
-              <td className="py-1 pr-2">{r.label}</td>
-              <td className="py-1 px-2 text-right tabular-nums text-stone-400">{num(r.n)}</td>
-              <td className="py-1 px-2 text-right tabular-nums text-stone-400">{num(r.wins)}</td>
-              <td className="py-1 pl-2 text-right tabular-nums text-amber-300">{pct(r.wins, r.n)}</td>
-            </tr>
-          ))}
-          {shown.length === 0 && <EmptyRow cols={4} />}
-        </tbody>
-      </table>
-    </Section>
-  )
-}
-
-// A plain count table: rows normalized to { label, n }.
-function CountTable({ title, rows, extra }) {
-  return (
-    <Section title={title} count={rows.length}>
-      <table className="w-full text-sm">
-        <thead>
-          <tr className="text-left text-stone-400 border-b border-stone-700">
-            <th className="py-1 pr-2 font-medium">{extra?.label || 'Name'}</th>
-            <th className="py-1 pl-2 font-medium text-right">{extra?.col || 'Count'}</th>
-          </tr>
-        </thead>
-        <tbody>
-          {rows.map((r, i) => (
-            <tr key={i} className="border-b border-stone-800/60">
-              <td className="py-1 pr-2">{r.label}</td>
-              <td className="py-1 pl-2 text-right tabular-nums text-amber-300">{r.value}</td>
-            </tr>
-          ))}
-          {rows.length === 0 && <EmptyRow cols={2} />}
-        </tbody>
-      </table>
-    </Section>
-  )
-}
-
-function Section({ title, count, className = '', children }) {
-  return (
-    <section className={`rounded-lg border border-stone-700 bg-stone-900/60 p-4 ${className}`}>
-      <h2 className="mb-2 text-xs font-semibold uppercase tracking-wider text-stone-400">
-        {title} {count != null && <span className="text-stone-600">({count})</span>}
-      </h2>
-      {children}
-    </section>
-  )
-}
-
-// Bespoke multi-column tables for the per-descent funnel and run-shape data,
-// which don't fit the simple winrate/count shapes.
-function DescentFunnel({ rows }) {
-  return (
-    <Section title="Per-descent funnel" count={rows.length} className="lg:col-span-2">
-      <table className="w-full text-sm">
-        <thead>
-          <tr className="text-left text-stone-400 border-b border-stone-700">
-            <th className="py-1 pr-2 font-medium">Descent</th>
-            <th className="py-1 px-2 font-medium text-right">Entered</th>
-            <th className="py-1 px-2 font-medium text-right">Cleared</th>
-            <th className="py-1 px-2 font-medium text-right">Died</th>
-            <th className="py-1 px-2 font-medium text-right">Retired</th>
-            <th className="py-1 pl-2 font-medium text-right">Clear rate</th>
-          </tr>
-        </thead>
-        <tbody>
-          {rows.map((r, i) => (
-            <tr key={i} className="border-b border-stone-800/60">
-              <td className="py-1 pr-2">Descent {num(r.descent)}</td>
-              <td className="py-1 px-2 text-right tabular-nums text-stone-400">{num(r.entered)}</td>
-              <td className="py-1 px-2 text-right tabular-nums text-stone-400">{num(r.cleared)}</td>
-              <td className="py-1 px-2 text-right tabular-nums text-red-400">{num(r.died)}</td>
-              <td className="py-1 px-2 text-right tabular-nums text-stone-500">{num(r.retired)}</td>
-              <td className="py-1 pl-2 text-right tabular-nums text-amber-300">{pct(r.cleared, r.entered)}</td>
-            </tr>
-          ))}
-          {rows.length === 0 && <EmptyRow cols={6} />}
-        </tbody>
-      </table>
-    </Section>
-  )
-}
-
-// Chance of beating a theme: from the per-descent timeline, clear vs death
-// when the theme was actually faced. Beat rate excludes retires (a voluntary
-// quit isn't the theme winning). Unbiased by run depth, unlike run-winrate.
-function ThemeSurvival({ rows, minN }) {
-  const shown = useMemo(() => {
-    const beat = r => num(r.cleared) / Math.max(1, num(r.cleared) + num(r.died))
-    return rows
-      .filter(r => num(r.faced) >= minN)
-      .sort((a, b) => beat(b) - beat(a) || num(b.faced) - num(a.faced))
-  }, [rows, minN])
-
-  return (
-    <Section title="Theme survival (chance of beating)" count={shown.length} className="lg:col-span-2">
-      <table className="w-full text-sm">
-        <thead>
-          <tr className="text-left text-stone-400 border-b border-stone-700">
-            <th className="py-1 pr-2 font-medium">Theme</th>
-            <th className="py-1 px-2 font-medium text-right">Faced</th>
-            <th className="py-1 px-2 font-medium text-right">Cleared</th>
-            <th className="py-1 px-2 font-medium text-right">Died</th>
-            <th className="py-1 px-2 font-medium text-right">Retired</th>
-            <th className="py-1 pl-2 font-medium text-right">Beat rate</th>
-          </tr>
-        </thead>
-        <tbody>
-          {shown.map((r, i) => (
-            <tr key={i} className="border-b border-stone-800/60">
-              <td className="py-1 pr-2">{themeName(r.theme)}</td>
-              <td className="py-1 px-2 text-right tabular-nums text-stone-400">{num(r.faced)}</td>
-              <td className="py-1 px-2 text-right tabular-nums text-stone-400">{num(r.cleared)}</td>
-              <td className="py-1 px-2 text-right tabular-nums text-red-400">{num(r.died)}</td>
-              <td className="py-1 px-2 text-right tabular-nums text-stone-500">{num(r.retired)}</td>
-              <td className="py-1 pl-2 text-right tabular-nums text-amber-300">{pct(r.cleared, num(r.cleared) + num(r.died))}</td>
-            </tr>
-          ))}
-          {shown.length === 0 && <EmptyRow cols={6} />}
-        </tbody>
-      </table>
-    </Section>
-  )
-}
-
-// Per-player activity. Guest runs are conflated into one row (a total, not a
-// person), so it's labelled and de-emphasized. Respects the min-runs filter.
-function PlayerTable({ rows, minN }) {
-  const shown = useMemo(() => rows.filter(r => num(r.n) >= minN), [rows, minN])
-
-  return (
-    <Section title="Players" count={shown.length} className="lg:col-span-2">
-      <table className="w-full text-sm">
-        <thead>
-          <tr className="text-left text-stone-400 border-b border-stone-700">
-            <th className="py-1 pr-2 font-medium">Player</th>
-            <th className="py-1 px-2 font-medium text-right">Runs</th>
-            <th className="py-1 px-2 font-medium text-right">Wins</th>
-            <th className="py-1 px-2 font-medium text-right">Winrate</th>
-            <th className="py-1 px-2 font-medium text-right">Best asc</th>
-            <th className="py-1 pl-2 font-medium text-right">Last seen</th>
-          </tr>
-        </thead>
-        <tbody>
-          {shown.map((r, i) => {
-            const guest = r.account_id === 'guest'
-            return (
-              <tr key={i} className="border-b border-stone-800/60">
-                <td className={`py-1 pr-2 font-mono text-xs ${guest ? 'text-stone-500 italic' : ''}`}>
-                  {shortId(r.account_id)}
-                </td>
-                <td className="py-1 px-2 text-right tabular-nums text-stone-400">{num(r.n)}</td>
-                <td className="py-1 px-2 text-right tabular-nums text-stone-400">{num(r.wins)}</td>
-                <td className="py-1 px-2 text-right tabular-nums text-amber-300">{pct(r.wins, r.n)}</td>
-                <td className="py-1 px-2 text-right tabular-nums text-stone-400">{num(r.best_ascension)}</td>
-                <td className="py-1 pl-2 text-right tabular-nums text-stone-500">{fmtDate(r.last_seen)}</td>
-              </tr>
-            )
-          })}
-          {shown.length === 0 && <EmptyRow cols={6} />}
-        </tbody>
-      </table>
-    </Section>
-  )
-}
-
-function RunShape({ rows }) {
-  return (
-    <Section title="Run shape by outcome" count={rows.length} className="lg:col-span-2">
-      <table className="w-full text-sm">
-        <thead>
-          <tr className="text-left text-stone-400 border-b border-stone-700">
-            <th className="py-1 pr-2 font-medium">Outcome</th>
-            <th className="py-1 px-2 font-medium text-right">Runs</th>
-            <th className="py-1 px-2 font-medium text-right">Kit edits</th>
-            <th className="py-1 px-2 font-medium text-right">Boons</th>
-            <th className="py-1 px-2 font-medium text-right">Inscribed</th>
-            <th className="py-1 pl-2 font-medium text-right">Upgraded</th>
-          </tr>
-        </thead>
-        <tbody>
-          {rows.map((r, i) => (
-            <tr key={i} className="border-b border-stone-800/60">
-              <td className="py-1 pr-2 capitalize">{r.outcome}</td>
-              <td className="py-1 px-2 text-right tabular-nums text-stone-400">{num(r.n)}</td>
-              <td className="py-1 px-2 text-right tabular-nums">{num(r.avg_kit_edits)}</td>
-              <td className="py-1 px-2 text-right tabular-nums">{num(r.avg_boons)}</td>
-              <td className="py-1 px-2 text-right tabular-nums">{num(r.avg_inscribed)}</td>
-              <td className="py-1 pl-2 text-right tabular-nums">{num(r.avg_upgraded)}</td>
-            </tr>
-          ))}
-          {rows.length === 0 && <EmptyRow cols={6} />}
-        </tbody>
-      </table>
-    </Section>
-  )
-}
 
 // Version range filter: two bounds (From / To) over the ordered version list,
 // so admins can scope to a single version, "everything from X on" (set From),
@@ -314,14 +58,6 @@ function VersionRange({ range, onChange, ordered, rows }) {
         </button>
       )}
     </div>
-  )
-}
-
-function EmptyRow({ cols }) {
-  return (
-    <tr>
-      <td colSpan={cols} className="py-3 text-center text-stone-600">no data yet</td>
-    </tr>
   )
 }
 
@@ -529,6 +265,7 @@ export default function AdminDashboard() {
               rows={data.boonPickRate.map(r => ({
                 label: boonName(r.boon),
                 value: `${num(r.times_picked)} / ${num(r.times_offered)} (${pct(r.times_picked, r.times_offered)})`,
+                sortVal: num(r.times_picked) / Math.max(1, num(r.times_offered)),
               }))}
             />
             <CountTable
@@ -537,6 +274,7 @@ export default function AdminDashboard() {
               rows={data.forgeByType.map(r => ({
                 label: r.type,
                 value: `${num(r.skips)} / ${num(r.n)} (${pct(r.skips, r.n)} skip)`,
+                sortVal: num(r.skips) / Math.max(1, num(r.n)),
               }))}
             />
             <WinrateTable
@@ -558,6 +296,7 @@ export default function AdminDashboard() {
               rows={(data.durationByOutcome || []).map(r => ({
                 label: r.outcome,
                 value: `${fmtDuration(r.avg_seconds)} · ${num(r.n)}`,
+                sortVal: num(r.avg_seconds),
               }))}
             />
             <ThemeSurvival rows={data.themeSurvival || []} minN={minN} />
