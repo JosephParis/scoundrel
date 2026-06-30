@@ -222,10 +222,10 @@ export function descend(state) {
 
   // Carried weapons arrive rested (lastSlain cleared). DESIGN.md §2.
   const weapon = state.carriedWeapon
-    ? { rank: state.carriedWeapon.rank, originalRank: state.carriedWeapon.originalRank, lastSlain: null }
+    ? { rank: state.carriedWeapon.rank, originalRank: state.carriedWeapon.originalRank, lastSlain: null, ...(state.carriedWeapon.inscribed ? { inscribed: state.carriedWeapon.inscribed } : null) }
     : null
   const spareWeapon = state.carriedSpareWeapon
-    ? { rank: state.carriedSpareWeapon.rank, originalRank: state.carriedSpareWeapon.originalRank, lastSlain: null }
+    ? { rank: state.carriedSpareWeapon.rank, originalRank: state.carriedSpareWeapon.originalRank, lastSlain: null, ...(state.carriedSpareWeapon.inscribed ? { inscribed: state.carriedSpareWeapon.inscribed } : null) }
     : null
 
   const baseTheme = getTheme(themeId)
@@ -382,8 +382,8 @@ export function retireRun(state) {
 }
 
 export function endDescentVictory(state) {
-  const carriedWeapon = state.weapon ? { rank: state.weapon.rank, originalRank: state.weapon.originalRank } : null
-  const carriedSpareWeapon = state.spareWeapon ? { rank: state.spareWeapon.rank, originalRank: state.spareWeapon.originalRank } : null
+  const carriedWeapon = state.weapon ? { rank: state.weapon.rank, originalRank: state.weapon.originalRank, ...(state.weapon.inscribed ? { inscribed: state.weapon.inscribed } : null) } : null
+  const carriedSpareWeapon = state.spareWeapon ? { rank: state.spareWeapon.rank, originalRank: state.spareWeapon.originalRank, ...(state.spareWeapon.inscribed ? { inscribed: state.spareWeapon.inscribed } : null) } : null
 
   // Tutorial completion: no sigil earned, no boon offer, no forge,
   // and the tutorial weapon does not carry into The Quiet. The
