@@ -851,18 +851,21 @@ export function checkRefillAndComplete(state) {
     return endDescentVictory(state)
   }
 
-  if (remaining.length === 1) {
+  // Refill when the room is down to its last card (the standard rule) or has
+  // been fully emptied (Skeleton Key scatters every card, leaving 0 remaining).
+  if (remaining.length <= 1) {
     const themes = activeThemes(state)
     const targetSize = getRoomSize(themes)
 
     // Rebuild a fixed-size room: place the leftover (in its old slot if it
-    // still fits, else slot 0), then fill the rest from the deck.
-    const leftover = state.room.find(Boolean)
-    const leftoverIdx = state.room.findIndex(c => c && c.id === leftover.id)
-    const slot = leftoverIdx < targetSize ? leftoverIdx : 0
+    // still fits, else slot 0), then fill the rest from the deck. With no
+    // leftover (fully emptied room), the whole room fills from the deck.
+    const leftover = state.room.find(Boolean) || null
+    const leftoverIdx = leftover ? state.room.findIndex(c => c && c.id === leftover.id) : -1
+    const slot = leftoverIdx >= 0 && leftoverIdx < targetSize ? leftoverIdx : 0
 
     const newRoom = new Array(targetSize).fill(null)
-    newRoom[slot] = leftover
+    if (leftover) newRoom[slot] = leftover
 
     const deck = state.deck.slice()
     let firstNewIdx = null
