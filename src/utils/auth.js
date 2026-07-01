@@ -60,7 +60,10 @@ export function clearUser() {
 /**
  * Initialize Google Identity Services and render the Sign In button.
  * @param {HTMLElement} buttonEl - container element for the button
- * @param {function} onSuccess - called with { name, email, picture, sub }
+ * @param {function} onSuccess - called with (user, credential): the decoded
+ *   { name, email, picture, sub } plus the raw id_token. The raw credential is
+ *   handed to the server (via cloudSync) to verify the account and mint a
+ *   session token for cross-device save sync; it is not persisted here.
  * @param {function} onError - called with error message on failure
  */
 export function initGoogleSignIn(buttonEl, onSuccess, onError) {
@@ -95,7 +98,7 @@ export function initGoogleSignIn(buttonEl, onSuccess, onError) {
         sub: payload.sub,
       }
       saveUser(user)
-      onSuccess(user)
+      onSuccess(user, response.credential)
     },
   })
 

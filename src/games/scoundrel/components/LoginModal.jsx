@@ -38,7 +38,7 @@ export function LoginModal({ open, onLogin, onClose }) {
     if (!open || !hasGoogleClientId || !gisReady || !buttonRef.current) return
     initGoogleSignIn(
       buttonRef.current,
-      (user) => onLogin(user),
+      (user, credential) => onLogin(user, credential),
       (msg) => setError(msg)
     )
   }, [open, gisReady, onLogin])
@@ -73,7 +73,7 @@ export function LoginModal({ open, onLogin, onClose }) {
         </p>
         <p className="text-sm text-slate-300 leading-snug mb-6">
           {hasGoogleClientId
-            ? 'Sign in with your Google account to attach your name to this run.'
+            ? 'Sign in with your Google account to save your progress and carry it across devices.'
             : 'Enter a name to begin.'}
         </p>
 
@@ -93,7 +93,7 @@ export function LoginModal({ open, onLogin, onClose }) {
               </div>
             )}
             <p className="text-[11px] text-slate-500 italic text-center">
-              We only use your name and profile picture. Your data stays on your device.
+              We use your name and profile picture, and store your game progress so it follows you across devices.
             </p>
           </div>
         ) : (

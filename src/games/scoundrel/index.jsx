@@ -11,6 +11,10 @@ import { LoginModal } from './components/LoginModal'
 import { HistoryModal } from './components/HistoryModal'
 import { HomeView } from './components/HomeView'
 import { loadUser, signOut as signOutUser } from '../../utils/auth'
+import {
+  exchangeCredential, getSessionToken, clearSessionToken,
+  syncNow, scheduleSync, flushSync,
+} from '../../utils/cloudSync'
 import { historyStore } from '../../utils/historyStore'
 import { buildRunRecord } from './history'
 import { useRunAnalytics } from './analytics'
@@ -115,9 +119,22 @@ function loadSavedGame() {
 function saveGame(state) {
   try {
     const { rng: _rng, ...serializable } = state
-    localStorage.setItem(SAVE_KEY, JSON.stringify({ version: SAVE_VERSION, state: serializable }))
+    // savedAt stamps the wall-clock of this write so cross-device sync can pick
+    // the newest active run (last-write-wins). loadSavedGame ignores it.
+    localStorage.setItem(SAVE_KEY, JSON.stringify({ version: SAVE_VERSION, state: serializable, savedAt: Date.now() }))
   } catch {
     // Quota exceeded or storage disabled. Silently skip.
+  }
+}
+
+// savedAt of the currently stored run, or 0 when there is none. Used to decide
+// whether a synced remote save is newer than what this device last wrote.
+function readSaveSavedAt() {
+  try {
+    const raw = localStorage.getItem(SAVE_KEY)
+    return raw ? (JSON.parse(raw)?.savedAt || 0) : 0
+  } catch {
+    return 0
   }
 }
 
@@ -168,20 +185,84 @@ export default function Scoundrel() {
   const [homeOpen, setHomeOpen] = useState(false)
   const [settingsOpen, setSettingsOpen] = useState(false)
 
-  const handleLogin = useCallback((u) => {
+  // savedAt of the run this device most recently wrote. A synced remote save is
+  // only adopted when strictly newer than this, so an in-progress local run is
+  // never interrupted by a stale copy from another device.
+  const lastSaveAtRef = useRef(readSaveSavedAt())
+
+  // Reflect a merged cloud profile into live React state. Storage was already
+  // updated by applyCloudState; this only pulls the pieces the running UI holds
+  // in state (the ascension ceiling and, when newer, the active run) forward.
+  // Library / tutorial / seen-specials are read from storage where they're used,
+  // so persisting them is enough.
+  const applyMerged = useCallback((merged) => {
+    if (!merged) return
+    if (Number.isFinite(merged.ascensionUnlocked)) {
+      setAscensionUnlocked(prev => Math.max(prev, merged.ascensionUnlocked))
+    }
+    if (merged.save?.savedAt && merged.save.savedAt > lastSaveAtRef.current) {
+      const loaded = loadSavedGame()
+      if (loaded) {
+        lastSaveAtRef.current = merged.save.savedAt
+        setGame(loaded)
+      }
+    }
+  }, [])
+
+  const handleLogin = useCallback(async (u, credential) => {
     setUser(u)
     setLoginOpen(false)
     // Fold any runs played as a guest into the freshly signed-in account so
-    // pre-login history isn't orphaned. Fire-and-forget; the store is async.
-    if (u?.sub) historyStore.migrateGuest(u.sub)
-  }, [])
+    // pre-login history isn't orphaned before we snapshot it up to the server.
+    if (u?.sub) await historyStore.migrateGuest(u.sub)
+    // Exchange the fresh Google credential for a session token, then converge
+    // this device with the account's cloud profile. No credential (dev sign-in)
+    // or a failed exchange simply leaves the player in local-only mode.
+    if (credential) await exchangeCredential(credential)
+    if (u?.sub && getSessionToken()) applyMerged(await syncNow(u.sub))
+  }, [applyMerged])
 
   const handleSignOut = useCallback(() => {
+    // Drop the session token too so a shared device stops syncing this account.
+    clearSessionToken()
     signOutUser(() => setUser(null))
   }, [])
 
+  // Converge with the cloud profile once on mount for a returning signed-in
+  // player who still holds a valid session token (handleLogin covers a fresh
+  // sign-in). Runs a single time; later changes are pushed by the effect below.
+  useEffect(() => {
+    if (!user?.sub || !getSessionToken()) return
+    let cancelled = false
+    syncNow(user.sub).then(merged => { if (!cancelled) applyMerged(merged) })
+    return () => { cancelled = true }
+    // eslint-disable-next-line react-hooks/exhaustive-deps
+  }, [])
+
+  // Debounced push of local progress to the cloud whenever the run, the
+  // ascension ceiling, or the signed-in account changes. Covers unlocks and
+  // finished-run history too, since those advance alongside the run state.
+  useEffect(() => {
+    scheduleSync(user?.sub)
+  }, [game, ascensionUnlocked, user])
+
+  // Flush a pending sync when the tab is hidden or closed so the last few
+  // actions of a session are not lost before the debounce fires.
+  useEffect(() => {
+    if (!user?.sub) return
+    const flush = () => flushSync(user.sub)
+    const onVisibility = () => { if (document.visibilityState === 'hidden') flush() }
+    window.addEventListener('visibilitychange', onVisibility)
+    window.addEventListener('pagehide', flush)
+    return () => {
+      window.removeEventListener('visibilitychange', onVisibility)
+      window.removeEventListener('pagehide', flush)
+    }
+  }, [user])
+
   useEffect(() => {
     saveGame(game)
+    lastSaveAtRef.current = readSaveSavedAt()
   }, [game])
 
   // Emit PostHog run/descent/run-ended events as the game state advances.
