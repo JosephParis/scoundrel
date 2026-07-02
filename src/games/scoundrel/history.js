@@ -62,6 +62,8 @@ function finalWeaponOf(state) {
 export function buildRunRecord(state, user) {
   const now = Date.now()
   const startedAt = state.runStartedAt || now
+  // Paused wall-clock: accumulated total plus any pause still open at run end.
+  const pausedMs = (state.pausedMs || 0) + (state.pausedAt ? Math.max(0, now - state.pausedAt) : 0)
   const outcome = outcomeOf(state)
   const endingDeck = endingDeckOf(state)
   return {
@@ -73,7 +75,7 @@ export function buildRunRecord(state, user) {
     accountId: user?.sub || GUEST_ID,
     startedAt,
     endedAt: now,
-    durationMs: Math.max(0, now - startedAt),
+    durationMs: Math.max(0, now - startedAt - pausedMs),
     outcome,
     sigilsEarned: state.sigilsEarned || 0,
     sigilTarget: state.sigilTarget || 0,

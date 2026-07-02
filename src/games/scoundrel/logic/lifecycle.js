@@ -105,6 +105,11 @@ export function createRun(rng = Math.random, options = {}) {
     // `{ ...state }` spreads in descend/endDescentVictory carry them forward)
     // and are snapshotted into a stored record by buildRunRecord at run end.
     runStartedAt: Date.now(),
+    // Wall-clock time spent paused (home/pause menu open), in ms. Subtracted
+    // from the run's duration at record time so idling in the menu doesn't
+    // inflate playtime. pausedAt holds the start of the current pause, or null.
+    pausedMs: 0,
+    pausedAt: null,
     themesFaced: [],
     runRoomsEntered: 0,
     monstersSlain: 0,

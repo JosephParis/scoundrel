@@ -99,6 +99,14 @@ function loadSavedGame() {
     // at its end instead of loading with undefined fields. No SAVE_VERSION
     // bump: these are additive and a bump would discard the live run.
     if (typeof state.runStartedAt !== 'number') state.runStartedAt = Date.now()
+    // The pause menu isn't open on load, so treat a save written mid-pause as
+    // resumed: fold the open interval into pausedMs and clear pausedAt. Time the
+    // tab spent closed while paused is correctly excluded from playtime.
+    if (typeof state.pausedMs !== 'number') state.pausedMs = 0
+    if (state.pausedAt) {
+      state.pausedMs += Math.max(0, Date.now() - state.pausedAt)
+      state.pausedAt = null
+    }
     if (!Array.isArray(state.themesFaced)) state.themesFaced = []
     if (typeof state.runRoomsEntered !== 'number') state.runRoomsEntered = state.roomsEntered || 0
     if (typeof state.monstersSlain !== 'number') state.monstersSlain = 0
@@ -342,6 +350,27 @@ export default function Scoundrel() {
     wasTutorialRef.current = game.tutorial
   }, [game.tutorial, game.phase])
 
+  // Open the home/pause menu and stop the run timer by stamping pausedAt (unless
+  // a run is already terminal, where the duration is fixed, or already paused).
+  const openHome = useCallback(() => {
+    setHomeOpen(true)
+    setGame(g => {
+      const terminal = g.phase === 'gameover' || g.phase === 'victory'
+      if (terminal || g.pausedAt) return g
+      return { ...g, pausedAt: Date.now() }
+    })
+  }, [])
+
+  // Close the menu and resume the timer, folding the elapsed pause into pausedMs.
+  const resumeHome = useCallback(() => {
+    setHomeOpen(false)
+    setGame(g =>
+      g.pausedAt
+        ? { ...g, pausedMs: (g.pausedMs || 0) + Math.max(0, Date.now() - g.pausedAt), pausedAt: null }
+        : g
+    )
+  }, [])
+
   useEffect(() => {
     const anyOpen = rulesOpen || retireOpen || creditsOpen || devOpen || tutorialReplayOpen || loginOpen || cardLibraryOpen || historyOpen || homeOpen || settingsOpen
     if (!anyOpen) return
@@ -356,11 +385,24 @@ export default function Scoundrel() {
       else if (tutorialReplayOpen) setTutorialReplayOpen(false)
       else if (loginOpen) setLoginOpen(false)
       else if (rulesOpen) setRulesOpen(false)
-      else if (homeOpen) setHomeOpen(false)
+      else if (homeOpen) resumeHome()
     }
     window.addEventListener('keydown', onKey)
     return () => window.removeEventListener('keydown', onKey)
-  }, [rulesOpen, retireOpen, creditsOpen, devOpen, tutorialReplayOpen, loginOpen, cardLibraryOpen, historyOpen, homeOpen, settingsOpen])
+  }, [rulesOpen, retireOpen, creditsOpen, devOpen, tutorialReplayOpen, loginOpen, cardLibraryOpen, historyOpen, homeOpen, settingsOpen, resumeHome])
+
+  // Escape pauses an active run when nothing else is open, opening the pause
+  // menu. (The overlay-close handler above owns Escape whenever a panel is up.)
+  useEffect(() => {
+    const runActive = game.phase === 'sanctuary' || game.phase === 'descent'
+    const anyOpen = rulesOpen || retireOpen || creditsOpen || devOpen || tutorialReplayOpen || loginOpen || cardLibraryOpen || historyOpen || homeOpen || settingsOpen
+    if (!runActive || anyOpen) return
+    const onKey = (e) => {
+      if (e.key === 'Escape') openHome()
+    }
+    window.addEventListener('keydown', onKey)
+    return () => window.removeEventListener('keydown', onKey)
+  }, [game.phase, rulesOpen, retireOpen, creditsOpen, devOpen, tutorialReplayOpen, loginOpen, cardLibraryOpen, historyOpen, homeOpen, settingsOpen, openHome])
 
   const confirmReplayTutorial = () => {
     setGame(createRun(Math.random, { tutorial: true, unlockedBoons: loadLibrary() }))
@@ -395,7 +437,7 @@ export default function Scoundrel() {
         onSignOut={handleSignOut}
         onOpenCardLibrary={() => setCardLibraryOpen(true)}
         onOpenHistory={() => setHistoryOpen(true)}
-        onOpenHome={() => setHomeOpen(true)}
+        onOpenHome={openHome}
         onOpenSettings={() => setSettingsOpen(true)}
       />
       <RulesModal open={rulesOpen} onClose={() => setRulesOpen(false)} />
@@ -427,7 +469,7 @@ export default function Scoundrel() {
       />
       <HomeView
         open={homeOpen}
-        onResume={() => setHomeOpen(false)}
+        onResume={resumeHome}
         onOpenRules={() => setRulesOpen(true)}
         onOpenHistory={() => setHistoryOpen(true)}
         onOpenCardLibrary={() => setCardLibraryOpen(true)}

@@ -17,6 +17,16 @@ export function TopBar({ game, user, onOpenRules, onRetire, onOpenCredits, onOpe
           </button>
         </div>
         <div className="flex items-center gap-1.5 sm:gap-2 shrink-0">
+          {runActive && (
+            <button
+              onClick={onOpenHome}
+              aria-label="Pause"
+              title="Pause (Esc)"
+              className="w-8 h-8 sm:w-9 sm:h-9 grid place-items-center rounded-md border border-stone-700 hover:border-rune/60 text-slate-400 hover:text-parchment transition"
+            >
+              <PauseIcon />
+            </button>
+          )}
           <MuteButton />
           <button
             onClick={onOpenRules}
@@ -45,6 +55,20 @@ export function TopBar({ game, user, onOpenRules, onRetire, onOpenCredits, onOpe
         </div>
       </div>
     </header>
+  )
+}
+
+function PauseIcon() {
+  return (
+    <svg
+      viewBox="0 0 24 24"
+      className="w-4 h-4 sm:w-[18px] sm:h-[18px]"
+      fill="currentColor"
+      aria-hidden="true"
+    >
+      <rect x="6" y="5" width="4" height="14" rx="1" />
+      <rect x="14" y="5" width="4" height="14" rx="1" />
+    </svg>
   )
 }
 
