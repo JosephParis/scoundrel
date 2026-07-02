@@ -882,6 +882,9 @@ export function checkRefillAndComplete(state) {
       room: newRoom,
       potionsUsedThisRoom: 0,
       canFlee: !themeFlagAny(themes, 'cannotFlee'),
+      // Clearing a room breaks a flee chain, so a still-armed Scoundrel's Cloak
+      // stands down (unspent) rather than treating a later flee as consecutive.
+      cloakArmed: false,
       monstersFoughtThisRoom: 0,
     }
 

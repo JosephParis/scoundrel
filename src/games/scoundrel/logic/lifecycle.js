@@ -130,6 +130,7 @@ export function createRun(rng = Math.random, options = {}) {
     riposteCharge: 0,
     secondWindUsed: false,
     cloakUsed: false,
+    cloakArmed: false,
     twinSoulsUsed: false,
     cowardsRewardCharge: 0,
     numbRemaining: 0,
@@ -288,6 +289,7 @@ export function descend(state) {
     riposteCharge: 0,
     secondWindUsed: false,
     cloakUsed: false,
+    cloakArmed: false,
     twinSoulsUsed: false,
     cowardsRewardCharge: 0,
     numbRemaining: 0,
@@ -526,6 +528,7 @@ export function endDescentVictory(state) {
     riposteCharge: 0,
     secondWindUsed: false,
     cloakUsed: false,
+    cloakArmed: false,
     twinSoulsUsed: false,
     cowardsRewardCharge: 0,
     numbRemaining: 0,
@@ -578,7 +581,17 @@ export function fleeRoom(state) {
   const themes = themesFor(state.theme, state.themeChildren)
   if (themeFlagAny(themes, 'cannotFlee')) return state
 
-  const usingCloak = hasBoon(state, 'scoundrels_cloak') && !state.cloakUsed
+  // Scoundrel's Cloak lets you flee two rooms in a row, once per descent. The
+  // charge is only spent on the *second* consecutive flee: the first flee arms
+  // the cloak (keeping flee available), and clearing a room in between disarms
+  // it (in checkRefillAndComplete) so the charge survives for a real chain.
+  const cloakConsecutive = state.cloakArmed === true
+  const armCloak = hasBoon(state, 'scoundrels_cloak') && !state.cloakUsed && !cloakConsecutive
+  const cloakNote = armCloak
+    ? " (Scoundrel's Cloak: you can flee again.)"
+    : cloakConsecutive
+      ? " (Scoundrel's Cloak spent: your second flee.)"
+      : ''
   const targetSize = getRoomSize(themes)
   // Coward's Reward: each flee banks +1 on your next opening swing (cap 3).
   const cowardsCharge = hasBoon(state, 'cowards_reward')
@@ -610,13 +623,14 @@ export function fleeRoom(state) {
         ...state,
         deck,
         room: newRoom,
-        canFlee: usingCloak,
-        cloakUsed: usingCloak ? true : state.cloakUsed,
+        canFlee: armCloak,
+        cloakUsed: cloakConsecutive ? true : state.cloakUsed,
+        cloakArmed: armCloak,
         potionsUsedThisRoom: 0,
         monstersFoughtThisRoom: 0,
         cowardsRewardCharge: cowardsCharge,
       },
-      usingCloak ? `${note} (Scoundrel's Cloak: you can flee again.)` : note
+      `${note}${cloakNote}`
     )
     if (hasBoon(next, 'cowards_reward')) {
       next = appendLog(next, `Coward's Reward: opening swing banked at +${cowardsCharge}.`)
@@ -636,15 +650,14 @@ export function fleeRoom(state) {
       ...state,
       deck,
       room,
-      canFlee: usingCloak,
-      cloakUsed: usingCloak ? true : state.cloakUsed,
+      canFlee: armCloak,
+      cloakUsed: cloakConsecutive ? true : state.cloakUsed,
+      cloakArmed: armCloak,
       potionsUsedThisRoom: 0,
       monstersFoughtThisRoom: 0,
       cowardsRewardCharge: cowardsCharge,
     },
-    usingCloak
-      ? 'You retreat. The room scatters back into the dark. (Scoundrel\'s Cloak: you can flee again.)'
-      : 'You retreat. The room scatters back into the dark.'
+    `You retreat. The room scatters back into the dark.${cloakNote}`
   )
   if (hasBoon(next, 'cowards_reward')) {
     next = appendLog(next, `Coward's Reward: opening swing banked at +${cowardsCharge}.`)
