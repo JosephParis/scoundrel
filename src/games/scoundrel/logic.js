@@ -14,7 +14,7 @@ export {
   isMonster, isWeapon, isPotion, isTool, isCoin, isWound, isSkeletonKey, isMap, isWhetstone, isTorch, rankLabel, suitColor,
 } from './constants'
 
-export { THEMES, getTheme } from './themes'
+export { THEMES, getTheme, getVisibleThemes } from './themes'
 export { BOONS, getBoon, STARTER_BOON_IDS, UNLOCKABLE_BOON_IDS } from './boons'
 export {
   AFFLICTIONS, AFFLICTION_IDS, BLEEDING_DAMAGE,

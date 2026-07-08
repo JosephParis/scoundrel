@@ -2,7 +2,7 @@ import { createPortal } from 'react-dom'
 import {
   HEART, DIAMOND, SPADE, WOUND, SUIT_GLYPH, rankLabel,
   BOSSES, BOSS_IDS, INSCRIBED_FRAMES, INSCRIBED_FRAME_IDS,
-  TRAITS, TRAIT_IDS,
+  TRAITS, TRAIT_IDS, isEnabled,
 } from '../logic'
 import { SuitIcon, TraitIcon, cardBorderTone, suitIconTone } from './SuitIcon'
 
@@ -46,10 +46,14 @@ export function CardLibraryModal({ open, onClose }) {
 // CardLibraryModal (Home / overflow menu) and the "Card library" tab inside
 // the How-to-play modal, so the reference reads the same wherever it opens.
 export function CardLibraryContent() {
+  // Monster traits only come from the experimental trait Trials; with the
+  // `specialMonsters` flag off those Trials never roll, so the section (and
+  // its mention in the intro) would only describe cards the player can't meet.
+  const showTraits = isEnabled('specialMonsters')
   return (
     <div className="space-y-6">
       <p className="text-[12px] text-slate-400 leading-snug max-w-xl">
-        Bosses appear in the descent deck. Forge inscriptions are added at the sanctuary and persist for the rest of the run. Monster traits are stamped onto some cards by certain trials.
+        Bosses appear in the descent deck. Forge inscriptions are added at the sanctuary and persist for the rest of the run.{showTraits ? ' Monster traits are stamped onto some cards by certain trials.' : ''}
       </p>
       <Section title="Bosses">
         <ul className="grid grid-cols-1 sm:grid-cols-2 gap-3">
@@ -61,11 +65,13 @@ export function CardLibraryContent() {
           {INSCRIBED_FRAME_IDS.map(id => <InscribedEntry key={id} id={id} />)}
         </ul>
       </Section>
-      <Section title="Monster traits">
-        <ul className="grid grid-cols-1 sm:grid-cols-2 gap-3">
-          {TRAIT_IDS.map(id => <TraitEntry key={id} id={id} />)}
-        </ul>
-      </Section>
+      {showTraits && (
+        <Section title="Monster traits">
+          <ul className="grid grid-cols-1 sm:grid-cols-2 gap-3">
+            {TRAIT_IDS.map(id => <TraitEntry key={id} id={id} />)}
+          </ul>
+        </Section>
+      )}
     </div>
   )
 }

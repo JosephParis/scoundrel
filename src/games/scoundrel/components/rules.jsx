@@ -1,5 +1,5 @@
 import { useState } from 'react'
-import { BOONS, THEMES, SIGIL_TARGET } from '../logic'
+import { BOONS, getVisibleThemes, SIGIL_TARGET } from '../logic'
 import { CardLibraryContent } from './cardLibrary'
 
 // -- Tutorial intro (shown in sanctuary action slot) -------------------
@@ -319,7 +319,7 @@ const TIER_META = {
 }
 
 function ThemesGlossary() {
-  const all = Object.values(THEMES)
+  const all = getVisibleThemes()
   const opening = all.filter(t => !t.tier)
   const byTier = [1, 2, 3, 4, 5].map(n => all.filter(t => t.tier === n))
   const deeperEmpty = byTier.slice(1).every(group => group.length === 0)

@@ -20,6 +20,7 @@ const DEFAULTS = {
   wounds: false,
   customCards: true,
   bosses: false,
+  specialMonsters: false,
 }
 
 export const FLAG_IDS = Object.keys(DEFAULTS)
@@ -48,6 +49,10 @@ export const FLAG_META = {
   bosses: {
     name: 'Bosses',
     description: 'One random boss (The Hollow One, The Brood, The Devourer, The Mimic, or The Warden) is shuffled into every descent deck. Off: every monster is a plain card.',
+  },
+  specialMonsters: {
+    name: 'Special monsters (experimental)',
+    description: 'Trials that give monsters traits (armored, relentless, cursed, and the like) enter rotation. Off: those Trials never roll, and the dungeon draws only from the settled pool.',
   },
 }
 

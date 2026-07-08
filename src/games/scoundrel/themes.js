@@ -1,4 +1,5 @@
 import { HEART, DIAMOND, CLUB, SPADE, SUIT_GLYPH, rankLabel } from './constants'
+import { isEnabled } from './flags'
 
 function fmt(card) {
   return `${rankLabel(card.rank)}${SUIT_GLYPH[card.suit]}`
@@ -282,6 +283,7 @@ export const THEMES = {
     name: 'The Bulwark',
     description: 'About 2 in 5 monsters are armored: weapons do nothing, fight them bare-handed.',
     tier: 4,
+    experimental: true,
     monsterMods: { traits: { armored: 0.4 } },
   },
 
@@ -290,6 +292,7 @@ export const THEMES = {
     name: 'The Frenzy',
     description: 'About 2 in 5 monsters are relentless: they hit you twice, dealing their damage a second time.',
     tier: 4,
+    experimental: true,
     monsterMods: { traits: { relentless: 0.4 } },
   },
 
@@ -298,6 +301,7 @@ export const THEMES = {
     name: 'The Veil',
     description: 'About 3 in 10 monsters are shrouded: they sit face-down, and you fight them without seeing their rank.',
     tier: 4,
+    experimental: true,
     monsterMods: { traits: { shrouded: 0.3 } },
   },
 
@@ -316,6 +320,7 @@ export const THEMES = {
     name: 'The Snare',
     description: 'About 3 in 10 monsters are warded: you cannot flee a room while one is present.',
     tier: 5,
+    experimental: true,
     monsterMods: { traits: { warded: 0.3 } },
   },
 
@@ -324,6 +329,7 @@ export const THEMES = {
     name: 'The Grudge',
     description: 'About 3 in 10 monsters are vengeful: when one dies, every other monster in the room hits at +1 for the rest of the room.',
     tier: 5,
+    experimental: true,
     monsterMods: { traits: { vengeful: 0.3 } },
   },
 
@@ -332,6 +338,7 @@ export const THEMES = {
     name: 'The Glut',
     description: 'About 1 in 4 monsters are swelling: each hits at +1 for every monster already slain in the room.',
     tier: 5,
+    experimental: true,
     monsterMods: { traits: { swelling: 0.25 } },
   },
 
@@ -340,6 +347,7 @@ export const THEMES = {
     name: 'The Gloom',
     description: 'About 3 in 10 monsters are cursed: slaying one leaves you Blind, so the next room shows only card backs.',
     tier: 5,
+    experimental: true,
     monsterMods: { traits: { cursed: { chance: 0.3, inflicts: 'blind', rooms: 1 } } },
   },
 
@@ -348,6 +356,7 @@ export const THEMES = {
     name: 'The Hex',
     description: 'About 3 in 10 monsters are cursed: slaying one Seals your wounds, so healing restores nothing for 2 rooms.',
     tier: 5,
+    experimental: true,
     monsterMods: { traits: { cursed: { chance: 0.3, inflicts: 'sealed', rooms: 2 } } },
   },
 
@@ -356,6 +365,7 @@ export const THEMES = {
     name: 'The Leech',
     description: 'About 1 in 4 monsters are cursed: slaying one leaves you Bleeding, costing 2 HP at each threshold for 2 rooms.',
     tier: 5,
+    experimental: true,
     monsterMods: { traits: { cursed: { chance: 0.25, inflicts: 'bleeding', rooms: 2 } } },
   },
 
@@ -406,9 +416,18 @@ const TIER_5_IDS = Object.values(THEMES).filter(t => t.tier === 5).map(t => t.id
 // - sigils 3–4 → Tier 3 (descents 4–5, queens)
 // - sigils 5–6 → Tier 4 (descents 6–7, kings)
 // - sigils 7+  → Tier 5 (descents 8–10, aces)
+// Experimental themes (monster-trait Trials) are held out of rotation unless
+// the `specialMonsters` flag is on, so a test build ships only the settled
+// pool. Every tier still keeps >=5 non-experimental themes, so the pool never
+// runs dry with the flag off.
+function withoutExperimental(ids) {
+  if (isEnabled('specialMonsters')) return ids
+  return ids.filter(id => !THEMES[id].experimental)
+}
+
 function getThemePool(sigils) {
-  if (sigils >= 7) return TIER_5_IDS
-  if (sigils >= 5) return TIER_4_IDS
+  if (sigils >= 7) return withoutExperimental(TIER_5_IDS)
+  if (sigils >= 5) return withoutExperimental(TIER_4_IDS)
   if (sigils >= 3) return TIER_3_IDS
   if (sigils >= 2) return TIER_2_IDS
   return TIER_1_IDS
@@ -441,6 +460,14 @@ export function resolveThemeChildren(themeId, rng) {
 
 export function getTheme(id) {
   return id ? THEMES[id] : null
+}
+
+// Theme objects the player can actually encounter this build, honoring the
+// `specialMonsters` flag. Reference UI (how-to-play glossary, card library)
+// filters through this so hidden Trials never appear as dead entries.
+export function getVisibleThemes() {
+  const showExperimental = isEnabled('specialMonsters')
+  return Object.values(THEMES).filter(t => showExperimental || !t.experimental)
 }
 
 // Returns the array of theme objects whose effects apply this descent.
