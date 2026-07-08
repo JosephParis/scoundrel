@@ -43,6 +43,9 @@ function ensureSchema() {
       // deployments forward in place. Old rows keep a null version (they
       // predate stamping) and fall outside any specific-version filter.
       .then(() => sql`alter table runs add column if not exists game_version text`)
+      // dev marks runs that used the Dev overrides tool (test data). Legacy
+      // rows keep a null dev, which `dev is not true` reads as a real run.
+      .then(() => sql`alter table runs add column if not exists dev boolean`)
       .then(() => Promise.all([
         sql`create index if not exists runs_outcome_idx on runs (outcome)`,
         sql`create index if not exists runs_account_idx on runs (account_id)`,
@@ -78,13 +81,13 @@ export default async function handler(req, res) {
     await sql`
       insert into runs (
         run_key, account_id, outcome, mode, ascension, sigils_earned,
-        started_at, ended_at, duration_ms, game_version, record
+        started_at, ended_at, duration_ms, game_version, dev, record
       ) values (
         ${runKey}, ${record.accountId}, ${record.outcome},
         ${record.mode?.id ?? null}, ${record.ascension ?? null},
         ${record.sigilsEarned ?? null}, ${record.startedAt ?? null},
         ${record.endedAt ?? null}, ${record.durationMs ?? null},
-        ${record.gameVersion ?? null}, ${JSON.stringify(record)}::jsonb
+        ${record.gameVersion ?? null}, ${record.dev === true}, ${JSON.stringify(record)}::jsonb
       )
       on conflict (run_key) do nothing
     `

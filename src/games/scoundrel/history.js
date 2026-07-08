@@ -14,9 +14,10 @@ import { getTheme } from './themes'
 // `boonPicks` and `forgeEdits` (offered-vs-chosen). v4 added `retire` (soft
 // death), the per-descent `descents` timeline, and denormalized run-shape
 // counts. v5 added `gameVersion` (the balance version stamp, for filtering
-// analytics by ruleset). Older records simply lack the newer fields; readers
-// treat them as null/[]/0.
-const RECORD_VERSION = 5
+// analytics by ruleset). v6 added `dev` (the run touched the Dev overrides
+// tool, so it is test data and admin stats exclude it). Older records simply
+// lack the newer fields; readers treat them as null/[]/0/false.
+const RECORD_VERSION = 6
 const GUEST_ID = 'guest'
 
 function outcomeOf(state) {
@@ -71,6 +72,9 @@ export function buildRunRecord(state, user) {
     // Balance version live when the run ended. Lets analytics filter every stat
     // to one ruleset so retuned boons/themes don't pollute comparisons.
     gameVersion: GAME_VERSION,
+    // True if the Dev overrides tool was applied during this run. Such runs are
+    // test data: kept locally for the tester but excluded from admin stats.
+    dev: state.devUsed === true,
     id: `run_${startedAt}_${Math.random().toString(36).slice(2, 8)}`,
     accountId: user?.sub || GUEST_ID,
     startedAt,

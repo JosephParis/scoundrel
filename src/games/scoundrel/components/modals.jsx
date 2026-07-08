@@ -182,6 +182,10 @@ export function DevModal({ open, onClose, game, setGame }) {
         : { forgeGrantIndex: 0, forgeChoices: [] }
       return {
         ...g,
+        // Stamp the run as dev-touched so its record is flagged test data and
+        // kept out of admin stats. Run-level: descend() spreads state forward,
+        // so this survives to the terminal record even across descents.
+        devUsed: true,
         sigilsEarned: sigils,
         nextTheme: themeId,
         nextThemeChildren: isCompound

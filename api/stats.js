@@ -21,6 +21,9 @@ import { neon } from '@neondatabase/serverless'
  * The response always includes `versionsAvailable` (every version present,
  * unfiltered) so the dashboard can build the picker, plus the `versions`
  * actually applied ([] = all).
+ *
+ * Runs that used the Dev overrides tool are test data and are excluded from
+ * every aggregation by default. Pass ?includeDev=1 to fold them back in.
  */
 
 const sql = process.env.DATABASE_URL ? neon(process.env.DATABASE_URL) : null
@@ -31,6 +34,15 @@ const sql = process.env.DATABASE_URL ? neon(process.env.DATABASE_URL) : null
 // fragments recursively when the outer query executes.
 function commaSeparated(values) {
   return values.reduce((acc, v, i) => (i === 0 ? sql`${v}` : sql`${acc}, ${v}`), null)
+}
+
+// AND a list of condition fragments into a `where ...` clause, dropping any
+// null/false entries. Empty list yields an empty fragment (no where clause),
+// so callers can compose optional filters without branching per combination.
+function whereAnd(conds) {
+  const active = conds.filter(Boolean)
+  if (active.length === 0) return sql``
+  return active.reduce((acc, c, i) => (i === 0 ? sql`where ${c}` : sql`${acc} and ${c}`), null)
 }
 
 function authorized(req) {
@@ -58,9 +70,14 @@ export default async function handler(req, res) {
   // into many queries.
   const versionsRaw = typeof req.query?.versions === 'string' ? req.query.versions : ''
   const versions = versionsRaw.split(',').map(s => s.trim()).filter(Boolean)
-  const runs = versions.length === 0
-    ? sql`(select * from runs)`
-    : sql`(select * from runs where game_version in (${commaSeparated(versions)}))`
+
+  // Dev-tool runs are test data and are hidden by default. `dev is not true`
+  // keeps legacy rows (null dev, predating the column) as real runs. Pass
+  // ?includeDev=1 to fold them back in for debugging the dashboard itself.
+  const includeDev = req.query?.includeDev === '1' || req.query?.includeDev === 'true'
+  const devCond = includeDev ? null : sql`dev is not true`
+  const versionCond = versions.length === 0 ? null : sql`game_version in (${commaSeparated(versions)})`
+  const runs = sql`(select * from runs ${whereAnd([versionCond, devCond])})`
 
   try {
     const [
@@ -218,12 +235,14 @@ export default async function handler(req, res) {
         from ${runs} r
         group by 1 order by last_seen desc nulls last limit 200
       `,
-      // Unfiltered on purpose: this powers the version picker, so it must list
-      // every version present regardless of the current selection. Null covers
-      // legacy rows that predate version stamping.
+      // Version-unfiltered on purpose: this powers the version picker, so it
+      // must list every version present regardless of the current selection.
+      // Null covers legacy rows that predate version stamping. Dev runs are
+      // still excluded (unless includeDev) so the picker mirrors the real data
+      // the dashboard will actually show.
       sql`
         select game_version version, count(*) n, max(ended_at) last_seen
-        from runs group by 1 order by last_seen desc nulls last
+        from runs ${whereAnd([devCond])} group by 1 order by last_seen desc nulls last
       `,
     ])
 
