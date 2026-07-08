@@ -6,10 +6,10 @@ import {
 } from '../logic'
 import { SuitIcon, TraitIcon, cardBorderTone, suitIconTone } from './SuitIcon'
 
-// Catalogue of every special card the run can produce: bosses (shuffled
-// into the descent deck) and forge inscriptions (added at sanctuary).
-// Always shows the full set, even if the player has not yet enabled the
-// related flag, so the reference works as a "what's in the deck" guide.
+// Catalogue of the special cards the run can produce: bosses (shuffled into
+// the descent deck), forge inscriptions (added at sanctuary), and monster
+// traits. Each section is gated by the flag that puts those cards in play, so
+// the reference only lists what the current settings can actually deal out.
 export function CardLibraryModal({ open, onClose }) {
   if (!open) return null
 
@@ -46,25 +46,45 @@ export function CardLibraryModal({ open, onClose }) {
 // CardLibraryModal (Home / overflow menu) and the "Card library" tab inside
 // the How-to-play modal, so the reference reads the same wherever it opens.
 export function CardLibraryContent() {
-  // Monster traits only come from the experimental trait Trials; with the
-  // `specialMonsters` flag off those Trials never roll, so the section (and
-  // its mention in the intro) would only describe cards the player can't meet.
+  // Each section describes cards a specific flag brings into play, so gate it
+  // by that flag: with the flag off those cards never appear, and cataloguing
+  // them would only describe things the player can't meet. Bosses -> `bosses`,
+  // forge inscriptions -> `customCards`, monster traits -> `specialMonsters`.
+  const showBosses = isEnabled('bosses')
+  const showInscriptions = isEnabled('customCards')
   const showTraits = isEnabled('specialMonsters')
+
+  const intro = [
+    showBosses && 'Bosses appear in the descent deck.',
+    showInscriptions && 'Forge inscriptions are added at the sanctuary and persist for the rest of the run.',
+    showTraits && 'Monster traits are stamped onto some cards by certain trials.',
+  ].filter(Boolean).join(' ')
+
+  if (!showBosses && !showInscriptions && !showTraits) {
+    return (
+      <p className="text-[12px] text-slate-500 italic leading-snug max-w-xl">
+        No special cards are in play with your current settings. The deck is the plain 52.
+      </p>
+    )
+  }
+
   return (
     <div className="space-y-6">
-      <p className="text-[12px] text-slate-400 leading-snug max-w-xl">
-        Bosses appear in the descent deck. Forge inscriptions are added at the sanctuary and persist for the rest of the run.{showTraits ? ' Monster traits are stamped onto some cards by certain trials.' : ''}
-      </p>
-      <Section title="Bosses">
-        <ul className="grid grid-cols-1 sm:grid-cols-2 gap-3">
-          {BOSS_IDS.map(id => <BossEntry key={id} id={id} />)}
-        </ul>
-      </Section>
-      <Section title="Forge inscriptions">
-        <ul className="grid grid-cols-1 sm:grid-cols-2 gap-3">
-          {INSCRIBED_FRAME_IDS.map(id => <InscribedEntry key={id} id={id} />)}
-        </ul>
-      </Section>
+      <p className="text-[12px] text-slate-400 leading-snug max-w-xl">{intro}</p>
+      {showBosses && (
+        <Section title="Bosses">
+          <ul className="grid grid-cols-1 sm:grid-cols-2 gap-3">
+            {BOSS_IDS.map(id => <BossEntry key={id} id={id} />)}
+          </ul>
+        </Section>
+      )}
+      {showInscriptions && (
+        <Section title="Forge inscriptions">
+          <ul className="grid grid-cols-1 sm:grid-cols-2 gap-3">
+            {INSCRIBED_FRAME_IDS.map(id => <InscribedEntry key={id} id={id} />)}
+          </ul>
+        </Section>
+      )}
       {showTraits && (
         <Section title="Monster traits">
           <ul className="grid grid-cols-1 sm:grid-cols-2 gap-3">
