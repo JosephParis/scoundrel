@@ -56,7 +56,7 @@ export function createRun(rng = Math.random, options = {}) {
     // Set of tutorial lessons the player has completed. Used by the
     // UI to decide when to stop recommending actions and showing
     // hover tips. Possible values: 'equip', 'fight', 'potion',
-    // 'replace', 'barehands', 'flee'.
+    // 'replace', 'barehands', 'barehands_choice', 'flee'.
     tutorialLessons: [],
     boons: [],
     // The player's kit: weapons and potions they own and edit across the run.

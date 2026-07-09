@@ -2,7 +2,7 @@ import { useEffect, useState } from 'react'
 import {
   descend, pickBoon, setRunMode, setRunAscension,
   applyForgeEdit, skipForgeEdit, forgeActive,
-  isEnabled,
+  isEnabled, BASE_MAX_HP,
 } from '../logic'
 import { PhaseRail, LogPanel, DescendAction } from './atoms'
 import { BoonOfferPanel, RunStatePanel, DeckPeekButton, DeckModal, LoadoutPanel } from './boons'
@@ -97,7 +97,9 @@ export function SanctuaryView({ game, setGame, onSkipTutorial, ascensionUnlocked
         <div className="panel p-3">
           <div className="text-[10px] uppercase tracking-widest text-slate-500 mb-1">Lifeblood</div>
           <div className="font-mono text-parchment text-base">
-            {game.maxHp}<span className="text-slate-500 text-sm">/{game.maxHp}</span>
+            {/* Before the first descent maxHp is still 0 (computed on descend),
+                so fall back to the base so the opening visit never reads "0/0". */}
+            {game.maxHp || BASE_MAX_HP}<span className="text-slate-500 text-sm">/{game.maxHp || BASE_MAX_HP}</span>
             <span className="ml-2 text-[10px] uppercase tracking-widest text-rune/70">Rested</span>
           </div>
         </div>

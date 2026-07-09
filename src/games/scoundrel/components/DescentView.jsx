@@ -206,7 +206,12 @@ export function DescentView({ game, setGame }) {
             </div>
           </div>
           {game.tutorial && (
-            tutorialActive ? (
+            !tutorialActive ? (
+              <div className="mb-3 panel p-4 text-[14px] text-slate-400 leading-relaxed">
+                <span className="text-rune font-semibold uppercase text-[11px] tracking-[0.2em] mr-2">Tutorial</span>
+                Lessons complete. Finish the walk on your own; the next descent is The Quiet.
+              </div>
+            ) : cueHasTarget ? (
               <div className="mb-3 panel panel-warm p-4 text-[14px] text-slate-300 leading-relaxed space-y-2">
                 <div>
                   <span className="text-rune font-semibold uppercase text-[11px] tracking-[0.2em] mr-2">Tutorial</span>
@@ -217,9 +222,11 @@ export function DescentView({ game, setGame }) {
                 </div>
               </div>
             ) : (
-              <div className="mb-3 panel p-4 text-[14px] text-slate-400 leading-relaxed">
+              // No card is worth a special cue (e.g. only wasteful potions left):
+              // don't claim a glowing move exists or that anything is locked.
+              <div className="mb-3 panel panel-warm p-4 text-[14px] text-slate-300 leading-relaxed">
                 <span className="text-rune font-semibold uppercase text-[11px] tracking-[0.2em] mr-2">Tutorial</span>
-                Lessons complete. Finish the walk on your own; the next descent is The Quiet.
+                No move stands out here. Play any card to move on; sometimes you just spend a spare to refill the room.
               </div>
             )
           )}
@@ -649,7 +656,7 @@ function tutorialTipFor(game, card) {
     // followed the cue to pick up 7♦. With the fresh weapon in hand, the
     // raw mechanics permit a swing, but the lesson is the strategic trade.
     if (inBareChoiceSetup && card.id === 'tut_s8' && !game.weapon.lastSlain) {
-      return `You always have the option to bare-hand a monster, and take it's full rank in damage instead of using your weapon.`
+      return `You can always bare-hand a monster instead of swinging, taking its full rank in damage. Do it here to keep this fresh weapon unbound for the bigger fight still in the deck.`
     }
     const damage = Math.max(0, card.rank - game.weapon.rank)
     return `Swing. Take ${damage} damage (${card.rank} - ${game.weapon.rank}). After the kill the weapon binds at ${card.rank}; only monsters of that rank or lower can be swung at.`

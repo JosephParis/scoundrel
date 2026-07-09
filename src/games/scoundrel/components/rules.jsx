@@ -131,8 +131,8 @@ function RulesContentBrief() {
     <div className="text-[13px] leading-snug">
       <div className="grid grid-cols-1 md:grid-cols-2 gap-x-6 gap-y-4">
         <RuleSection title="The deck">
-          <RuleRow term="Size">44 cards. Red face cards (J/Q/K/A of ♥ and ♦) are removed.</RuleRow>
-          <RuleRow term="Ranks">2–10 as printed. J = 11, Q = 12, K = 13, A = 14.</RuleRow>
+          <RuleRow term="Kit + dungeon">Each descent shuffles your kit (weapons ♦ and potions ♥) together with the dungeon's monsters (♣ ♠) into one deck.</RuleRow>
+          <RuleRow term="Ranks">Tools run 2–10, no ♥/♦ face cards. Monsters run 2 to Ace: J = 11, Q = 12, K = 13, A = 14.</RuleRow>
           <RuleRow term="♥ Potion"><span className="text-slate-500">Heals HP = rank.</span> First potion per room heals; extras are wasted.</RuleRow>
           <RuleRow term="♦ Weapon"><span className="text-slate-500">Equips it.</span> Replaces your current weapon.</RuleRow>
           <RuleRow term="♣ ♠ Monster"><span className="text-slate-500">Fight it.</span> Click to swing; "Bare hands" forces a bare-handed fight.</RuleRow>
@@ -170,8 +170,8 @@ function RulesContentFull() {
       </p>
 
       <RuleSection title="The deck">
-        <RuleRow term="Size">44 cards. The red face cards (J/Q/K of ♥ and ♦) are removed: no king-weapons, no queen-potions in this hold.</RuleRow>
-        <RuleRow term="Ranks">2–10 as printed. J = 11, Q = 12, K = 13, A = 14.</RuleRow>
+        <RuleRow term="Kit + dungeon">Each descent shuffles your kit (the weapons ♦ and potions ♥ you own and forge) with the dungeon's monsters (♣ ♠) into one deck. You author your tools; the dungeon authors the threats.</RuleRow>
+        <RuleRow term="Ranks">Your tools run 2–10: no king-weapons, no queen-potions in this hold. Monsters run 2 to Ace (J = 11, Q = 12, K = 13, A = 14).</RuleRow>
       </RuleSection>
 
       <RuleSection title="The cards">
