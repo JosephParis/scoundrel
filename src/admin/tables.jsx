@@ -1,5 +1,6 @@
 import { useCallback, useMemo, useState } from 'react'
 import { num, pct, themeName, shortId, fmtDate } from './format'
+import { bandForTheme, bandVerdict, BAND_TOLERANCE, VERDICT_MIN_DECISIVE } from './bands'
 
 /**
  * Sortable stat tables for the admin dashboard. Every table is built from
@@ -71,7 +72,7 @@ function SortTh({ col, index, count, sort, onSort }) {
   )
 }
 
-export function DataTable({ title, className, columns, rows, defaultSort }) {
+export function DataTable({ title, className, columns, rows, defaultSort, footer }) {
   const [sort, toggle] = useSort(defaultSort)
   const shown = useMemo(() => applySort(rows, sort, columns), [rows, sort, columns])
   return (
@@ -97,6 +98,7 @@ export function DataTable({ title, className, columns, rows, defaultSort }) {
           {shown.length === 0 && <EmptyRow cols={columns.length} />}
         </tbody>
       </table>
+      {footer}
     </Section>
   )
 }
@@ -175,8 +177,22 @@ export function DescentFunnel({ rows }) {
   return <DataTable title="Per-descent funnel" className="lg:col-span-2" columns={DESCENT_COLUMNS} rows={rows} defaultSort={{ key: 'descent', dir: 'asc' }} />
 }
 
+// Beat rate as a 0-100 number: survival among decisive outcomes (clear vs
+// death), the metric WINRATE_TARGETS' tier bands are set against. Null when a
+// theme has no decisive outcomes yet.
+const beatPct = r => {
+  const decisive = num(r.cleared) + num(r.died)
+  return decisive > 0 ? (num(r.cleared) / decisive) * 100 : null
+}
+
+// Verdict → text colour. 'ok' (in band) reads as well-tuned, not a warning.
+const VERDICT_TEXT = { punishing: 'text-red-400', soft: 'text-sky-400', ok: 'text-emerald-400' }
+const VERDICT_TAG = { punishing: 'too hard', soft: 'too soft' }
+
 // Chance of beating a theme: clear vs death when the theme was actually faced.
-// Beat rate excludes retires (a voluntary quit isn't the theme winning).
+// Beat rate excludes retires (a voluntary quit isn't the theme winning). The
+// beat cell is tinted against the theme's tier survival band (WINRATE_TARGETS)
+// so out-of-band themes surface at a glance; a Target column shows the band.
 export function ThemeSurvival({ rows, minN }) {
   const filtered = useMemo(() => rows.filter(r => num(r.faced) >= minN), [rows, minN])
   const columns = useMemo(() => [
@@ -185,9 +201,43 @@ export function ThemeSurvival({ rows, minN }) {
     { key: 'cleared', label: 'Cleared', align: 'right', sort: r => num(r.cleared), render: r => num(r.cleared), cellClass: 'tabular-nums text-stone-400' },
     { key: 'died', label: 'Died', align: 'right', sort: r => num(r.died), render: r => num(r.died), cellClass: 'tabular-nums text-red-400' },
     { key: 'retired', label: 'Retired', align: 'right', sort: r => num(r.retired), render: r => num(r.retired), cellClass: 'tabular-nums text-stone-500' },
-    { key: 'beat', label: 'Beat rate', align: 'right', sort: r => num(r.cleared) / Math.max(1, num(r.cleared) + num(r.died)), render: r => pct(r.cleared, num(r.cleared) + num(r.died)), cellClass: 'tabular-nums text-amber-300' },
+    {
+      key: 'target', label: 'Target', align: 'right',
+      sort: r => { const b = bandForTheme(r.theme); return b ? b.low : -1 },
+      render: r => { const b = bandForTheme(r.theme); return b ? `${b.label} ${b.low}-${b.high}%` : '—' },
+      cellClass: 'tabular-nums text-stone-500',
+    },
+    {
+      key: 'beat', label: 'Beat rate', align: 'right',
+      sort: r => beatPct(r) ?? -1,
+      render: r => {
+        const decisive = num(r.cleared) + num(r.died)
+        const verdict = bandVerdict(bandForTheme(r.theme), beatPct(r), decisive)
+        const tag = verdict && VERDICT_TAG[verdict]
+        return (
+          <>
+            {pct(r.cleared, decisive)}
+            {tag && <span className="ml-1 text-[10px] uppercase tracking-wide opacity-80">{tag}</span>}
+          </>
+        )
+      },
+      cellClass: r => {
+        const decisive = num(r.cleared) + num(r.died)
+        const verdict = bandVerdict(bandForTheme(r.theme), beatPct(r), decisive)
+        return `tabular-nums ${verdict ? VERDICT_TEXT[verdict] : 'text-amber-300'}`
+      },
+    },
   ], [])
-  return <DataTable title="Theme survival (chance of beating)" className="lg:col-span-2" columns={columns} rows={filtered} defaultSort={{ key: 'beat', dir: 'desc' }} />
+  const legend = (
+    <p className="mt-2 text-[11px] leading-snug text-stone-500">
+      Beat rate tinted against the tier's survival target (WINRATE_TARGETS):{' '}
+      <span className="text-emerald-400">in band</span>,{' '}
+      <span className="text-red-400">too hard</span>,{' '}
+      <span className="text-sky-400">too soft</span>. Needs ≥{VERDICT_MIN_DECISIVE} decisive
+      runs to flag, with ±{BAND_TOLERANCE}pt slack. Assumes Ascension 0, default mode.
+    </p>
+  )
+  return <DataTable title="Theme survival (chance of beating)" className="lg:col-span-2" columns={columns} rows={filtered} defaultSort={{ key: 'beat', dir: 'desc' }} footer={legend} />
 }
 
 // Per-player activity. Guest runs are conflated into one row (a total, not a
