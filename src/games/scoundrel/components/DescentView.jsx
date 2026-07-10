@@ -317,7 +317,7 @@ export function DescentView({ game, setGame }) {
                   className="absolute top-full left-1/2 -translate-x-1/2 mt-2 z-30 w-80 rounded-lg bg-[#0f1116] p-3 text-[13px] leading-relaxed text-slate-200 text-left pointer-events-none shadow-2xl border border-rune/40"
                   role="tooltip"
                 >
-                  The 4 cards you flee from go to the bottom of the deck, and a fresh 4 come off the top. No damage, but you'll meet those cards again later. Cooldown after: you must clear a fresh room first.
+                  The 4 cards you flee from go to the bottom of the deck, and a fresh 4 come off the top. You can't flee two rooms in a row.
                 </div>
               )}
             </div>
