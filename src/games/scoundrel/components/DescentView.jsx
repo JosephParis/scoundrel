@@ -233,7 +233,12 @@ export function DescentView({ game, setGame }) {
               </div>
             )
           )}
-          <div className="grid grid-cols-2 sm:grid-cols-4 gap-4 justify-items-center">
+          {/* Lift the card row above the flee button below it: a card's
+              tutorial tooltip hangs down over the flee button, and the deal
+              animation traps the tooltip's z-index inside the card's own
+              stacking context, so without this the flee button (a later DOM
+              sibling) paints on top of the opaque tooltip and shows through. */}
+          <div className="relative z-10 grid grid-cols-2 sm:grid-cols-4 gap-4 justify-items-center">
             {(() => { const blind = hasAffliction(game, 'blind'); const obscured = hasAffliction(game, 'obscured'); return game.room.map((c, i) => {
               let weaponDamage = null
               let bareDamage = null
@@ -309,7 +314,7 @@ export function DescentView({ game, setGame }) {
               </button>
               {tutorialCue?.recommendFlee && (
                 <div
-                  className="absolute top-full left-1/2 -translate-x-1/2 mt-2 z-30 w-80 panel p-3 text-[13px] leading-relaxed text-slate-200 text-left pointer-events-none shadow-2xl border border-rune/40"
+                  className="absolute top-full left-1/2 -translate-x-1/2 mt-2 z-30 w-80 rounded-lg bg-[#0f1116] p-3 text-[13px] leading-relaxed text-slate-200 text-left pointer-events-none shadow-2xl border border-rune/40"
                   role="tooltip"
                 >
                   The 4 cards you flee from go to the bottom of the deck, and a fresh 4 come off the top. No damage, but you'll meet those cards again later. Cooldown after: you must clear a fresh room first.

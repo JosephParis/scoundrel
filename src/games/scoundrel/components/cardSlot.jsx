@@ -315,7 +315,7 @@ export function CardSlot({ card, onClick, onBareHands, weaponDamage, bareDamage,
       )}
       {tutorialTip && (
         <div
-          className="absolute top-full left-1/2 -translate-x-1/2 mt-2 z-30 w-72 panel p-3 text-[13px] leading-relaxed text-slate-200 text-left pointer-events-none shadow-2xl border border-rune/40"
+          className="absolute top-full left-1/2 -translate-x-1/2 mt-2 z-30 w-72 rounded-lg bg-[#0f1116] p-3 text-[13px] leading-relaxed text-slate-200 text-left pointer-events-none shadow-2xl border border-rune/40"
           role="tooltip"
         >
           {tutorialTip}
