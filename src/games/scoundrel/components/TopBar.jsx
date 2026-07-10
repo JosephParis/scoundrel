@@ -1,7 +1,7 @@
 import { useEffect, useRef, useState } from 'react'
 import { audio, useMuted } from '../audio'
 
-export function TopBar({ game, user, onOpenRules, onRetire, onOpenCredits, onOpenDev, onReplayTutorial, onOpenLogin, onSignOut, onOpenCardLibrary, onOpenHistory, onOpenHome, onOpenSettings }) {
+export function TopBar({ game, user, onOpenRules, onRetire, onOpenCredits, onOpenDev, onReplayTutorial, onOpenLogin, onSignOut, onOpenCardLibrary, onOpenHistory, onOpenHome, onOpenSettings, onOpenFeedback }) {
   const runActive = game.phase === 'sanctuary' || game.phase === 'descent'
   return (
     <header className="fixed top-0 left-0 right-0 z-30 border-b border-stone-800/80 bg-dungeon/85 backdrop-blur-md flex justify-center">
@@ -51,6 +51,7 @@ export function TopBar({ game, user, onOpenRules, onRetire, onOpenCredits, onOpe
             onOpenCardLibrary={onOpenCardLibrary}
             onOpenHistory={onOpenHistory}
             onOpenSettings={onOpenSettings}
+            onOpenFeedback={onOpenFeedback}
           />
         </div>
       </div>
@@ -114,7 +115,7 @@ function SpeakerIcon({ muted }) {
   )
 }
 
-function OverflowMenu({ runActive, user, onRetire, onOpenCredits, onOpenDev, onOpenLogin, onSignOut, onOpenCardLibrary, onOpenHistory, onOpenSettings }) {
+function OverflowMenu({ runActive, user, onRetire, onOpenCredits, onOpenDev, onOpenLogin, onSignOut, onOpenCardLibrary, onOpenHistory, onOpenSettings, onOpenFeedback }) {
   const [open, setOpen] = useState(false)
   const ref = useRef(null)
 
@@ -226,6 +227,17 @@ function OverflowMenu({ runActive, user, onRetire, onOpenCredits, onOpenDev, onO
           >
             <span className="text-rune w-4 text-center">❧</span>
             <span>Run history</span>
+          </button>
+          <button
+            role="menuitem"
+            onClick={() => {
+              setOpen(false)
+              onOpenFeedback()
+            }}
+            className={itemClass}
+          >
+            <span className="text-rune w-4 text-center">✎</span>
+            <span>Send feedback</span>
           </button>
           <button
             role="menuitem"

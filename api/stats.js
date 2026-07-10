@@ -246,10 +246,25 @@ export default async function handler(req, res) {
       `,
     ])
 
+    // Recent player feedback: free-text notes, newest first. Separate from the
+    // run aggregations (different table, no version/dev scoping). The table is
+    // created lazily by /api/feedback, so tolerate its absence before the first
+    // note ever lands rather than 500 the whole dashboard.
+    let recentFeedback = []
+    try {
+      recentFeedback = await sql`
+        select id, account_id, kind, message, game_version, context, created_at
+        from feedback order by created_at desc limit 100
+      `
+    } catch {
+      recentFeedback = []
+    }
+
     return res.status(200).json({
       generatedAt: Date.now(),
       versions,
       versionsAvailable,
+      recentFeedback,
       overview: overview[0],
       winrateByBoon,
       winrateByBoonPair,

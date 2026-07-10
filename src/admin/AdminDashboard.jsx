@@ -2,6 +2,7 @@ import { useCallback, useEffect, useMemo, useState } from 'react'
 import { GAME_VERSION, VERSION_HISTORY } from '../games/scoundrel/constants'
 import { num, pct, boonName, themeName, frameName, modeName, cardLabel, fmtDuration } from './format'
 import { WinrateTable, CountTable, DescentFunnel, ThemeSurvival, PlayerTable, RunShape } from './tables'
+import { FeedbackPanel } from './feedback'
 
 /**
  * Admin-only analytics dashboard (route: /admin). Reads pre-aggregated stats
@@ -221,6 +222,7 @@ export default function AdminDashboard() {
 
         {data && (
           <div className="grid gap-4 lg:grid-cols-2">
+            <FeedbackPanel rows={data.recentFeedback || []} />
             <PlayerTable rows={data.playerActivity || []} minN={minN} />
             <WinrateTable
               title="Winrate by boon"

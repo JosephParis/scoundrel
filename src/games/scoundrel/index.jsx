@@ -9,6 +9,7 @@ import { DescentView } from './components/DescentView'
 import { OutcomeView } from './components/OutcomeView'
 import { LoginModal } from './components/LoginModal'
 import { HistoryModal } from './components/HistoryModal'
+import { FeedbackModal } from './components/FeedbackModal'
 import { HomeView } from './components/HomeView'
 import { loadUser, signOut as signOutUser } from '../../utils/auth'
 import {
@@ -192,6 +193,7 @@ export default function Scoundrel() {
   const [historyOpen, setHistoryOpen] = useState(false)
   const [homeOpen, setHomeOpen] = useState(false)
   const [settingsOpen, setSettingsOpen] = useState(false)
+  const [feedbackOpen, setFeedbackOpen] = useState(false)
 
   // savedAt of the run this device most recently wrote. A synced remote save is
   // only adopted when strictly newer than this, so an in-progress local run is
@@ -372,12 +374,13 @@ export default function Scoundrel() {
   }, [])
 
   useEffect(() => {
-    const anyOpen = rulesOpen || retireOpen || creditsOpen || devOpen || tutorialReplayOpen || loginOpen || cardLibraryOpen || historyOpen || homeOpen || settingsOpen
+    const anyOpen = rulesOpen || retireOpen || creditsOpen || devOpen || tutorialReplayOpen || loginOpen || cardLibraryOpen || historyOpen || homeOpen || settingsOpen || feedbackOpen
     if (!anyOpen) return
     const onKey = (e) => {
       if (e.key !== 'Escape') return
       if (devOpen) setDevOpen(false)
       else if (settingsOpen) setSettingsOpen(false)
+      else if (feedbackOpen) setFeedbackOpen(false)
       else if (creditsOpen) setCreditsOpen(false)
       else if (cardLibraryOpen) setCardLibraryOpen(false)
       else if (historyOpen) setHistoryOpen(false)
@@ -389,20 +392,20 @@ export default function Scoundrel() {
     }
     window.addEventListener('keydown', onKey)
     return () => window.removeEventListener('keydown', onKey)
-  }, [rulesOpen, retireOpen, creditsOpen, devOpen, tutorialReplayOpen, loginOpen, cardLibraryOpen, historyOpen, homeOpen, settingsOpen, resumeHome])
+  }, [rulesOpen, retireOpen, creditsOpen, devOpen, tutorialReplayOpen, loginOpen, cardLibraryOpen, historyOpen, homeOpen, settingsOpen, feedbackOpen, resumeHome])
 
   // Escape pauses an active run when nothing else is open, opening the pause
   // menu. (The overlay-close handler above owns Escape whenever a panel is up.)
   useEffect(() => {
     const runActive = game.phase === 'sanctuary' || game.phase === 'descent'
-    const anyOpen = rulesOpen || retireOpen || creditsOpen || devOpen || tutorialReplayOpen || loginOpen || cardLibraryOpen || historyOpen || homeOpen || settingsOpen
+    const anyOpen = rulesOpen || retireOpen || creditsOpen || devOpen || tutorialReplayOpen || loginOpen || cardLibraryOpen || historyOpen || homeOpen || settingsOpen || feedbackOpen
     if (!runActive || anyOpen) return
     const onKey = (e) => {
       if (e.key === 'Escape') openHome()
     }
     window.addEventListener('keydown', onKey)
     return () => window.removeEventListener('keydown', onKey)
-  }, [game.phase, rulesOpen, retireOpen, creditsOpen, devOpen, tutorialReplayOpen, loginOpen, cardLibraryOpen, historyOpen, homeOpen, settingsOpen, openHome])
+  }, [game.phase, rulesOpen, retireOpen, creditsOpen, devOpen, tutorialReplayOpen, loginOpen, cardLibraryOpen, historyOpen, homeOpen, settingsOpen, feedbackOpen, openHome])
 
   const confirmReplayTutorial = () => {
     setGame(createRun(Math.random, { tutorial: true, unlockedBoons: loadLibrary() }))
@@ -439,6 +442,7 @@ export default function Scoundrel() {
         onOpenHistory={() => setHistoryOpen(true)}
         onOpenHome={openHome}
         onOpenSettings={() => setSettingsOpen(true)}
+        onOpenFeedback={() => setFeedbackOpen(true)}
       />
       <RulesModal open={rulesOpen} onClose={() => setRulesOpen(false)} />
       <RetireModal
@@ -451,6 +455,7 @@ export default function Scoundrel() {
       <CreditsModal open={creditsOpen} onClose={() => setCreditsOpen(false)} />
       <SettingsModal open={settingsOpen} onClose={() => setSettingsOpen(false)} />
       <CardLibraryModal open={cardLibraryOpen} onClose={() => setCardLibraryOpen(false)} />
+      <FeedbackModal open={feedbackOpen} onClose={() => setFeedbackOpen(false)} game={game} user={user} />
       <DevModal open={devOpen} onClose={() => setDevOpen(false)} game={game} setGame={setGame} />
       <TutorialReplayModal
         open={tutorialReplayOpen}
