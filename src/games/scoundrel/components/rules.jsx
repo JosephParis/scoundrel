@@ -129,6 +129,12 @@ function RuleSection({ title, children }) {
 function RulesContentBrief() {
   return (
     <div className="text-[13px] leading-snug">
+      <div className="mb-4 rounded-md border border-rune/20 bg-stone-900/40 p-3">
+        <div className="text-rune text-[11px] font-semibold uppercase tracking-[0.2em] mb-1.5">The run</div>
+        <p className="text-slate-300">
+          Survive a descent to earn a <span className="text-rune">sigil</span> and rest to full. Each time you return you pick one <span className="text-rune">Boon</span> (a permanent perk) and <span className="text-rune">Forge</span> your kit; the next <span className="text-rune">Trial</span> is shown before you commit. Reach <span className="text-rune">{SIGIL_TARGET} sigils</span> to escape. Die in the dungeon and the run resets.
+        </p>
+      </div>
       <div className="grid grid-cols-1 md:grid-cols-2 gap-x-6 gap-y-4">
         <RuleSection title="The deck">
           <RuleRow term="Kit + dungeon">Each descent shuffles your kit (weapons ♦ and potions ♥) together with the dungeon's monsters (♣ ♠) into one deck.</RuleRow>
