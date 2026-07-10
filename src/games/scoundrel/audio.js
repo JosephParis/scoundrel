@@ -20,9 +20,32 @@ import { Howl, Howler } from 'howler'
 import { useSyncExternalStore } from 'react'
 
 const MUTE_KEY = 'scoundrel:muted'
-const MUSIC_VOLUME = 0.45
-const SFX_VOLUME = 0.7
+const MUSIC_VOL_KEY = 'scoundrel:musicVolume'
+const SFX_VOL_KEY = 'scoundrel:sfxVolume'
+const DEFAULT_MUSIC_VOLUME = 0.45
+const DEFAULT_SFX_VOLUME = 0.7
 const MUSIC_FADE_MS = 600
+
+const clamp01 = v => Math.max(0, Math.min(1, v))
+
+function loadVolume(key, fallback) {
+  try {
+    const raw = localStorage.getItem(key)
+    if (raw == null) return fallback
+    const v = parseFloat(raw)
+    return Number.isFinite(v) ? clamp01(v) : fallback
+  } catch {
+    return fallback
+  }
+}
+
+function storeVolume(key, v) {
+  try {
+    localStorage.setItem(key, String(v))
+  } catch {
+    // storage disabled; the volume still applies for this session
+  }
+}
 
 // Music beds, keyed to match game.phase exactly so phase changes map straight
 // to a track. victory/gameover are one-shot stings (loop off); the two live
@@ -68,6 +91,8 @@ function storeMuted(muted) {
 class AudioController {
   constructor() {
     this.muted = loadMuted()
+    this.musicVolume = loadVolume(MUSIC_VOL_KEY, DEFAULT_MUSIC_VOLUME)
+    this.sfxVolume = loadVolume(SFX_VOL_KEY, DEFAULT_SFX_VOLUME)
     this.listeners = new Set()
     this.howls = new Map() // cacheKey -> Howl
     this.currentMusicId = null
@@ -95,6 +120,30 @@ class AudioController {
     this.setMuted(!this.muted)
   }
 
+  // -- per-channel volume (0..1) ---------------------------------------
+
+  setMusicVolume(v) {
+    const next = clamp01(v)
+    if (next === this.musicVolume) return
+    this.musicVolume = next
+    storeVolume(MUSIC_VOL_KEY, next)
+    // Apply live to the bed that's currently playing so the change is instant.
+    if (this.currentMusicId) {
+      const howl = this.howls.get(`music:${this.currentMusicId}`)
+      if (howl && !howl._scoundrelFailed) howl.volume(next)
+    }
+    this.listeners.forEach(fn => fn())
+  }
+
+  setSfxVolume(v) {
+    const next = clamp01(v)
+    if (next === this.sfxVolume) return
+    this.sfxVolume = next
+    storeVolume(SFX_VOL_KEY, next)
+    // One-shots read the level at play time (see sfx), so nothing to apply now.
+    this.listeners.forEach(fn => fn())
+  }
+
   subscribe(fn) {
     this.listeners.add(fn)
     return () => this.listeners.delete(fn)
@@ -109,7 +158,7 @@ class AudioController {
     howl = new Howl({
       src: [config.src],
       loop: !!config.loop,
-      volume: kind === 'music' ? MUSIC_VOLUME : SFX_VOLUME,
+      volume: kind === 'music' ? this.musicVolume : this.sfxVolume,
       // Swallow load failures (e.g. file not added yet) so a missing cue is
       // silent rather than a thrown error. Mark it so we never re-fade to it.
       onloaderror: () => {
@@ -137,7 +186,7 @@ class AudioController {
     if (howl._scoundrelFailed) return
     howl.volume(0)
     howl.play()
-    howl.fade(0, MUSIC_VOLUME, MUSIC_FADE_MS)
+    howl.fade(0, this.musicVolume, MUSIC_FADE_MS)
   }
 
   stopMusic() {
@@ -158,18 +207,38 @@ class AudioController {
     if (!config) return
     const howl = this._howl('sfx', id, config)
     if (howl._scoundrelFailed) return
+    // Read the current level at play time so a volume change applies to the
+    // very next cue without touching the cached Howl elsewhere.
+    howl.volume(this.sfxVolume)
     howl.play()
   }
 }
 
 export const audio = new AudioController()
 
-// React binding: subscribe a component to the mute flag. Server snapshot
-// matches the client default (unmuted) to keep hydration consistent.
+// React bindings: subscribe a component to a piece of audio state. All three
+// share the one listener set, so any change re-renders the bound controls.
+// Server snapshots match the client defaults to keep hydration consistent.
 export function useMuted() {
   return useSyncExternalStore(
     fn => audio.subscribe(fn),
     () => audio.isMuted,
     () => false,
+  )
+}
+
+export function useMusicVolume() {
+  return useSyncExternalStore(
+    fn => audio.subscribe(fn),
+    () => audio.musicVolume,
+    () => DEFAULT_MUSIC_VOLUME,
+  )
+}
+
+export function useSfxVolume() {
+  return useSyncExternalStore(
+    fn => audio.subscribe(fn),
+    () => audio.sfxVolume,
+    () => DEFAULT_SFX_VOLUME,
   )
 }

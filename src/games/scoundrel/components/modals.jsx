@@ -5,6 +5,7 @@ import {
   FLAG_IDS, FLAG_META, getFlags, setFlag, resetAllFlags,
 } from '../logic'
 import { settings, useCardLayout } from '../settings'
+import { audio, useMuted, useMusicVolume, useSfxVolume } from '../audio'
 
 // -- Settings modal ----------------------------------------------------
 
@@ -23,6 +24,9 @@ const CARD_LAYOUT_OPTIONS = [
 
 export function SettingsModal({ open, onClose }) {
   const layout = useCardLayout()
+  const muted = useMuted()
+  const musicVolume = useMusicVolume()
+  const sfxVolume = useSfxVolume()
   if (!open) return null
   return (
     <div
@@ -76,8 +80,52 @@ export function SettingsModal({ open, onClose }) {
             })}
           </div>
         </section>
+
+        <section className="mt-6">
+          <div className="text-[10px] uppercase tracking-[0.3em] text-slate-500 mb-3">
+            Sound
+          </div>
+          <div className="space-y-4">
+            <VolumeSlider label="Music" value={musicVolume} onChange={v => audio.setMusicVolume(v)} />
+            <VolumeSlider
+              label="Effects"
+              value={sfxVolume}
+              onChange={v => audio.setSfxVolume(v)}
+              onPreview={() => audio.sfx('cardFlip')}
+            />
+          </div>
+          {muted && (
+            <p className="mt-3 text-[11px] text-amber-300/80">
+              Sound is muted. Toggle it with the speaker in the top bar.
+            </p>
+          )}
+        </section>
       </div>
     </div>
+  )
+}
+
+// A labelled 0-100% volume slider. onPreview (optional) fires on release so the
+// player can hear the new level once, rather than on every drag tick.
+function VolumeSlider({ label, value, onChange, onPreview }) {
+  const pct = Math.round(value * 100)
+  return (
+    <label className="block">
+      <div className="flex items-center justify-between mb-1.5">
+        <span className="text-[13px] text-parchment">{label}</span>
+        <span className="text-[11px] text-slate-500 tabular-nums">{pct}%</span>
+      </div>
+      <input
+        type="range"
+        min={0}
+        max={100}
+        value={pct}
+        onChange={e => onChange(Number(e.target.value) / 100)}
+        onMouseUp={onPreview}
+        onTouchEnd={onPreview}
+        className="w-full accent-amber-500 cursor-pointer"
+      />
+    </label>
   )
 }
 
