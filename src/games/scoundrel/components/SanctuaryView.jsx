@@ -47,6 +47,14 @@ export function SanctuaryView({ game, setGame, onSkipTutorial, ascensionUnlocked
     const showAscensionPicker = ascensionUnlocked > 0 && isEnabled('ascensions')
     actionSlot = (
       <>
+        {game.tutorialJustFinished && (
+          <section className="panel panel-warm p-4">
+            <div className="text-rune text-[11px] font-semibold uppercase tracking-[0.2em] mb-1">Tutorial complete</div>
+            <p className="text-[14px] text-slate-300 leading-relaxed">
+              You've got the moves. This is the real descent now: survive to earn your first sigil, then pick a Boon and forge your kit. The dungeon won't hold your hand from here.
+            </p>
+          </section>
+        )}
         <ModePickerPanel
           currentMode={game.mode}
           onSelect={(id) => { audio.sfx('cardFlip'); setGame(g => setRunMode(g, id)) }}

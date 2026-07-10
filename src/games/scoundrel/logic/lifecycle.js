@@ -246,6 +246,9 @@ export function descend(state) {
   let descentState = {
     ...state,
     phase: 'descent',
+    // The just-finished-tutorial acknowledgment is a one-shot for the opening
+    // sanctuary; clear it as the player leaves that visit.
+    tutorialJustFinished: false,
     hp: startHp,
     maxHp,
     deck,
@@ -402,6 +405,10 @@ export function endDescentVictory(state) {
       {
         ...state,
         tutorial: false,
+        // One-shot flag so the first real sanctuary can acknowledge the hand-off
+        // (the guided walk is over; the dungeon stops holding your hand). Cleared
+        // when the player descends into The Quiet.
+        tutorialJustFinished: true,
         phase: 'sanctuary',
         carriedWeapon: null,
         carriedSpareWeapon: null,

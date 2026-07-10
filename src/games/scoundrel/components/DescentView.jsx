@@ -155,10 +155,14 @@ export function DescentView({ game, setGame }) {
     .filter(Boolean)
 
   // Tutorial cue: recommends one card per turn based on game state.
-  // Recomputes whenever the room or weapon binding changes. Stops
-  // recommending (and hides hover tips) once the player has done
-  // every action the walkthrough exists to teach.
-  const tutorialActive = game.tutorial && !tutorialAllLessonsDone(game)
+  // Recomputes whenever the room or weapon binding changes. Runs for the
+  // whole tutorial descent (not only until the lessons are done): the tail
+  // after the last lesson holds the deck's biggest monsters, and leaving it
+  // unguided could kill a first-timer on their very first descent. Once the
+  // lessons are done the cue keeps pointing at a safe move to the exit; the
+  // banner just changes to acknowledge it.
+  const tutorialActive = game.tutorial
+  const lessonsDone = tutorialAllLessonsDone(game)
   const tutorialCue = useMemo(
     () => (tutorialActive ? computeTutorialCue(game) : null),
     [tutorialActive, game]
@@ -206,20 +210,19 @@ export function DescentView({ game, setGame }) {
             </div>
           </div>
           {game.tutorial && (
-            !tutorialActive ? (
-              <div className="mb-3 panel p-4 text-[14px] text-slate-400 leading-relaxed">
-                <span className="text-rune font-semibold uppercase text-[11px] tracking-[0.2em] mr-2">Tutorial</span>
-                Lessons complete. Finish the walk on your own; the next descent is The Quiet.
-              </div>
-            ) : cueHasTarget ? (
+            cueHasTarget ? (
               <div className="mb-3 panel panel-warm p-4 text-[14px] text-slate-300 leading-relaxed space-y-2">
                 <div>
                   <span className="text-rune font-semibold uppercase text-[11px] tracking-[0.2em] mr-2">Tutorial</span>
-                  Take the glowing move (explanation below it). Other actions are locked while you learn.
+                  {lessonsDone
+                    ? "You've learned every move. Keep taking the glowing one to reach the way out."
+                    : 'Take the glowing move (explanation below it). Other actions are locked while you learn.'}
                 </div>
-                <div className="text-slate-400 text-[13px]">
-                  When a room is unwinnable, the cue points at <span className="text-rune">Flee the room</span> instead. Fleeing sends all 4 cards to the bottom of the deck and deals 4 fresh; you can't flee twice in a row.
-                </div>
+                {!lessonsDone && (
+                  <div className="text-slate-400 text-[13px]">
+                    When a room is unwinnable, the cue points at <span className="text-rune">Flee the room</span> instead. Fleeing sends all 4 cards to the bottom of the deck and deals 4 fresh; you can't flee twice in a row.
+                  </div>
+                )}
               </div>
             ) : (
               // No card is worth a special cue (e.g. only wasteful potions left):
