@@ -240,6 +240,12 @@ export function CardSlot({ card, onClick, onBareHands, weaponDamage, bareDamage,
   // weapon is already locked out, clicking the card auto-bare-hands,
   // which is the same outcome as the button: don't grey it.
   const cardLockedForBare = !!bareRecommended && weaponDamage !== null
+  // The card itself is the cued action (so it should glow + show the arrow)
+  // whenever it's recommended AND it's the thing to click: a normal
+  // recommendation, or a bare-hand recommendation on a locked monster where
+  // there's no separate "Bare hands" button, so clicking the card bare-hands
+  // it. When a bare-hands button IS present, that button carries the cue.
+  const cardIsCue = recommended && (!bareRecommended || !onBareHands)
   const cardDisabled = reveal || blocked || cardLockedForBare
   const cardInteractive = reveal
     ? 'animate-card-reveal cursor-default ring-2 ring-rune/60'
@@ -261,7 +267,7 @@ export function CardSlot({ card, onClick, onBareHands, weaponDamage, bareDamage,
 
   return (
     <div className="group relative w-full max-w-[240px] flex flex-col animate-card-deal" style={dealStyle}>
-      {recommended && !bareRecommended && (
+      {cardIsCue && (
         <div
           className="absolute -top-7 left-1/2 -translate-x-1/2 z-20 text-rune text-2xl animate-bounce pointer-events-none drop-shadow-[0_0_6px_rgba(251,191,36,0.75)]"
           aria-hidden="true"
@@ -272,7 +278,7 @@ export function CardSlot({ card, onClick, onBareHands, weaponDamage, bareDamage,
       <button
         onClick={cardDisabled ? undefined : onClick}
         disabled={cardDisabled}
-        className={`aspect-[2/3] rounded-lg border-2 ${cardBorderTone(card)} card-face ${boss ? 'is-boss' : ''} text-stone-900 p-3 flex flex-col text-left transition-all ${cardInteractive} ${(recommended && !bareRecommended) ? 'tutorial-recommended' : ''}`}
+        className={`aspect-[2/3] rounded-lg border-2 ${cardBorderTone(card)} card-face ${boss ? 'is-boss' : ''} text-stone-900 p-3 flex flex-col text-left transition-all ${cardInteractive} ${cardIsCue ? 'tutorial-recommended' : ''}`}
       >
         {f.useModern ? <ModernFace f={f} /> : <ClassicFace f={f} />}
       </button>
