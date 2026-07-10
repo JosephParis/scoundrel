@@ -312,7 +312,7 @@ export function DescentView({ game, setGame }) {
                   className="absolute top-full left-1/2 -translate-x-1/2 mt-2 z-30 w-80 panel p-3 text-[13px] leading-relaxed text-slate-200 text-left pointer-events-none shadow-2xl border border-rune/40"
                   role="tooltip"
                 >
-                  Sends all 4 cards to the bottom of the deck and deals a fresh 4 from the top. No damage. Cooldown after: you must clear a fresh room first.
+                  The 4 cards you flee from go to the bottom of the deck, and a fresh 4 come off the top. No damage, but you'll meet those cards again later. Cooldown after: you must clear a fresh room first.
                 </div>
               )}
             </div>
