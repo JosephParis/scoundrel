@@ -1,59 +1,47 @@
 import { neon } from '@neondatabase/serverless'
+import { ensureRunsTable, runKeyFor } from './_lib/runsTable.js'
 
 /**
- * Vercel serverless function: persist one finished-run record into Postgres
- * (Neon) for cross-player analytics. The browser mirrors every fresh local
- * appendRun here best-effort, so this endpoint only needs to be correct and
- * idempotent, not defensive about client retries.
+ * Vercel serverless function: persist finished-run records into Postgres (Neon)
+ * for cross-player analytics. The browser mirrors runs here best-effort, so this
+ * endpoint only needs to be correct and idempotent, not defensive about retries.
+ *
+ * Accepts either one record or an array of them: a fresh run posts a single
+ * record, and the client's reconcile() sweep re-posts the whole backlog of
+ * unconfirmed runs as one batch (see historyStore.js). Every insert is
+ * on-conflict-do-nothing on the run key, so re-sending a run already stored is a
+ * harmless no-op; that idempotency is what makes the backlog resend cheap.
  *
  * Requires the DATABASE_URL env var (Neon connection string, sslmode=require)
  * in the Vercel project settings. Without it the endpoint 503s and the client
  * silently moves on; play is never affected.
  *
- * The full buildRunRecord blob is stored in a `record` jsonb column so the
- * schema never churns as records evolve (boons, upgrades, death context, ...).
- * Analytics is dev-only: query this table directly with SQL, e.g. winrate by
- * boon pair via jsonb_array_elements over record->'boons'.
+ * The full record blob is stored in a `record` jsonb column so the schema never
+ * churns as records evolve (boons, upgrades, death context, ...). Analytics is
+ * dev-only: query this table directly with SQL, e.g. winrate by boon pair via
+ * jsonb_array_elements over record->'boons'.
  */
 
 const sql = process.env.DATABASE_URL ? neon(process.env.DATABASE_URL) : null
 
-// Ensure the table exists once per warm instance. CREATE ... IF NOT EXISTS is
-// idempotent and cheap; caching the promise keeps it off the hot path after
-// the first call on a given lambda.
-let ready = null
-function ensureSchema() {
-  if (!ready) {
-    ready = sql`
-      create table if not exists runs (
-        run_key       text primary key,
-        account_id    text not null,
-        outcome       text not null,
-        mode          text,
-        ascension     integer,
-        sigils_earned integer,
-        started_at    bigint,
-        ended_at      bigint,
-        duration_ms   bigint,
-        record        jsonb not null,
-        created_at    timestamptz not null default now()
-      )
-    `
-      // game_version was added after the table shipped; bring existing
-      // deployments forward in place. Old rows keep a null version (they
-      // predate stamping) and fall outside any specific-version filter.
-      .then(() => sql`alter table runs add column if not exists game_version text`)
-      // dev marks runs that used the Dev overrides tool (test data). Legacy
-      // rows keep a null dev, which `dev is not true` reads as a real run.
-      .then(() => sql`alter table runs add column if not exists dev boolean`)
-      .then(() => Promise.all([
-        sql`create index if not exists runs_outcome_idx on runs (outcome)`,
-        sql`create index if not exists runs_account_idx on runs (account_id)`,
-        sql`create index if not exists runs_ended_idx on runs (ended_at)`,
-        sql`create index if not exists runs_version_idx on runs (game_version)`,
-      ]))
-  }
-  return ready
+function isValidRecord(record) {
+  return record && typeof record === 'object' && record.startedAt && record.accountId
+}
+
+async function insertRun(record) {
+  await sql`
+    insert into runs (
+      run_key, account_id, outcome, mode, ascension, sigils_earned,
+      started_at, ended_at, duration_ms, game_version, dev, record
+    ) values (
+      ${runKeyFor(record)}, ${record.accountId}, ${record.outcome},
+      ${record.mode?.id ?? null}, ${record.ascension ?? null},
+      ${record.sigilsEarned ?? null}, ${record.startedAt ?? null},
+      ${record.endedAt ?? null}, ${record.durationMs ?? null},
+      ${record.gameVersion ?? null}, ${record.dev === true}, ${JSON.stringify(record)}::jsonb
+    )
+    on conflict (run_key) do nothing
+  `
 }
 
 export default async function handler(req, res) {
@@ -63,35 +51,23 @@ export default async function handler(req, res) {
   }
   if (!sql) return res.status(503).json({ error: 'database_not_configured' })
 
-  let record = req.body
-  if (typeof record === 'string') {
-    try { record = JSON.parse(record) } catch { record = null }
+  let body = req.body
+  if (typeof body === 'string') {
+    try { body = JSON.parse(body) } catch { body = null }
   }
-  if (!record || typeof record !== 'object' || !record.startedAt || !record.accountId) {
+  // Normalize to an array: a batch resend posts many, a fresh run posts one.
+  const records = (Array.isArray(body) ? body : [body]).filter(isValidRecord)
+  if (records.length === 0) {
     return res.status(400).json({ error: 'invalid_record' })
   }
 
-  // Stable per-run key: a re-posted finished run (effect re-fire, reload of a
-  // finished save) collides here and is ignored, mirroring the client's own
-  // dedupe. record.id carries a random suffix, so it is NOT used as the key.
-  const runKey = `${record.accountId}:${record.startedAt}`
-
   try {
-    await ensureSchema()
-    await sql`
-      insert into runs (
-        run_key, account_id, outcome, mode, ascension, sigils_earned,
-        started_at, ended_at, duration_ms, game_version, dev, record
-      ) values (
-        ${runKey}, ${record.accountId}, ${record.outcome},
-        ${record.mode?.id ?? null}, ${record.ascension ?? null},
-        ${record.sigilsEarned ?? null}, ${record.startedAt ?? null},
-        ${record.endedAt ?? null}, ${record.durationMs ?? null},
-        ${record.gameVersion ?? null}, ${record.dev === true}, ${JSON.stringify(record)}::jsonb
-      )
-      on conflict (run_key) do nothing
-    `
-    return res.status(202).json({ ok: true })
+    await ensureRunsTable(sql)
+    // Sequential inserts keep this simple; batches are small in practice (a
+    // fresh run, or one device's short outage backlog) and each is a no-op when
+    // the run is already stored.
+    for (const record of records) await insertRun(record)
+    return res.status(202).json({ ok: true, count: records.length })
   } catch {
     return res.status(500).json({ error: 'insert_failed' })
   }

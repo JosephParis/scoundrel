@@ -270,6 +270,22 @@ export default function Scoundrel() {
     }
   }, [user])
 
+  // Drain the analytics mirror queue on mount and when the tab is hidden, for
+  // every player (guests included, unlike the signed-in save sync above). This
+  // retries any finished run whose end-of-run post was lost; it is a no-op when
+  // the queue is empty or in dev, so it costs nothing in the common case.
+  useEffect(() => {
+    historyStore.reconcile()
+    const flush = () => historyStore.reconcile({ keepalive: true })
+    const onVisibility = () => { if (document.visibilityState === 'hidden') flush() }
+    window.addEventListener('visibilitychange', onVisibility)
+    window.addEventListener('pagehide', flush)
+    return () => {
+      window.removeEventListener('visibilitychange', onVisibility)
+      window.removeEventListener('pagehide', flush)
+    }
+  }, [])
+
   useEffect(() => {
     saveGame(game)
     lastSaveAtRef.current = readSaveSavedAt()

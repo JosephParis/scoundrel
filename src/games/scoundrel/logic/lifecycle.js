@@ -105,6 +105,12 @@ export function createRun(rng = Math.random, options = {}) {
     // `{ ...state }` spreads in descend/endDescentVictory carry them forward)
     // and are snapshotted into a stored record by buildRunRecord at run end.
     runStartedAt: Date.now(),
+    // Stable per-run token minted once here and carried for the run's whole
+    // life (never reset, persisted in the save, snapshotted at run end). It
+    // disambiguates the run-dedupe key when two devices' guest runs happen to
+    // share a startedAt millisecond; re-recording the same run reuses it, so
+    // idempotency holds. Legacy runs lack it and fall back to the old key.
+    runSeed: Math.random().toString(36).slice(2, 10),
     // Wall-clock time spent paused (home/pause menu open), in ms. Subtracted
     // from the run's duration at record time so idling in the menu doesn't
     // inflate playtime. pausedAt holds the start of the current pause, or null.

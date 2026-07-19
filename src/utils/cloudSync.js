@@ -92,9 +92,15 @@ export function snapshotLocalState(accountId) {
 function foldWithLocal(accountId, server) {
   const local = snapshotLocalState(accountId)
   const union = (a, b) => Array.from(new Set([...(a || []), ...(b || [])]))
+  // Merge key: accountId + startedAt, plus the stable per-run seed when present
+  // so two devices' guest runs sharing a startedAt millisecond stay distinct.
+  // Legacy runs lack a seed and keep the old accountId:startedAt key. Keep this
+  // in step with runKeyOf in historyStore.js and the server's runKey.
   const byKey = new Map()
   for (const r of (local.history || []).concat(server.history || [])) {
-    if (r && (r.startedAt || r.accountId)) byKey.set(`${r.accountId ?? ''}:${r.startedAt ?? ''}`, r)
+    if (!r || !(r.startedAt || r.accountId)) continue
+    const base = `${r.accountId ?? ''}:${r.startedAt ?? ''}`
+    byKey.set(r.runSeed ? `${base}:${r.runSeed}` : base, r)
   }
   const history = Array.from(byKey.values())
     .sort((x, y) => (x.startedAt || 0) - (y.startedAt || 0))

@@ -76,6 +76,10 @@ export function buildRunRecord(state, user) {
     // test data: kept locally for the tester but excluded from admin stats.
     dev: state.devUsed === true,
     id: `run_${startedAt}_${Math.random().toString(36).slice(2, 8)}`,
+    // Stable per-run token (set at run start, unlike `id` which is fresh each
+    // build). Part of the dedupe key so two devices' guest runs can't collide
+    // on a shared startedAt. Absent on legacy runs; readers fall back then.
+    runSeed: state.runSeed || null,
     accountId: user?.sub || GUEST_ID,
     startedAt,
     endedAt: now,
