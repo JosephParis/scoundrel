@@ -172,8 +172,8 @@ export function CreditsModal({ open, onClose }) {
             Art
           </div>
           <p className="text-[11px] text-slate-500 leading-snug">
-            Card icons by Lorc via{' '}
-            <span className="text-slate-300">game-icons.net</span>, CC-BY 3.0.
+            Card icons by Lorc (
+            <span className="text-slate-300">game-icons.net</span>), CC-BY 3.0
           </p>
         </section>
         <section className="mt-6 pt-4 border-t border-stone-800">
@@ -181,8 +181,8 @@ export function CreditsModal({ open, onClose }) {
             Music
           </div>
           <p className="text-[11px] text-slate-500 leading-snug">
-            All music by Kevin MacLeod via{' '}
-            <span className="text-slate-300">incompetech.com</span>, CC-BY 3.0.
+            Music by Kevin MacLeod (
+            <span className="text-slate-300">incompetech.com</span>), CC-BY 3.0
           </p>
         </section>
         <section className="mt-6 pt-4 border-t border-stone-800">
@@ -190,8 +190,8 @@ export function CreditsModal({ open, onClose }) {
             Sound Effects
           </div>
           <p className="text-[11px] text-slate-500 leading-snug">
-            Combat sounds by Philippe Groarke, CC-BY-SA 3.0. Smithing sound by hjm, CC-BY 3.0.
-            Card sounds by Cockatrice, additional effects from Kenney and OpenGameArt, CC0.
+            Combat sounds by Philippe Groarke, CC-BY-SA 3.0; smithing by hjm, CC-BY 3.0;
+            card sounds by Cockatrice; additional effects from Kenney & OpenGameArt, CC0
           </p>
         </section>
       </div>
