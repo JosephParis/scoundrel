@@ -176,6 +176,24 @@ export function CreditsModal({ open, onClose }) {
             <span className="text-slate-300">game-icons.net</span>, CC-BY 3.0.
           </p>
         </section>
+        <section className="mt-6 pt-4 border-t border-stone-800">
+          <div className="text-[10px] uppercase tracking-[0.3em] text-slate-500 mb-2">
+            Music
+          </div>
+          <p className="text-[11px] text-slate-500 leading-snug">
+            All music by Kevin MacLeod via{' '}
+            <span className="text-slate-300">incompetech.com</span>, CC-BY 3.0.
+          </p>
+        </section>
+        <section className="mt-6 pt-4 border-t border-stone-800">
+          <div className="text-[10px] uppercase tracking-[0.3em] text-slate-500 mb-2">
+            Sound Effects
+          </div>
+          <p className="text-[11px] text-slate-500 leading-snug">
+            Combat sounds by Philippe Groarke, CC-BY-SA 3.0. Smithing sound by hjm, CC-BY 3.0.
+            Card sounds by Cockatrice, additional effects from Kenney and OpenGameArt, CC0.
+          </p>
+        </section>
       </div>
     </div>
   )
