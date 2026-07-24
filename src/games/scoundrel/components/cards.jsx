@@ -81,7 +81,7 @@ export function AfflictionBadges({ game }) {
             </div>
             <div
               role="tooltip"
-              className="pointer-events-none absolute left-0 top-full mt-1 z-40 w-56 rounded-md border border-red-700/60 bg-stone-950/95 p-2.5 text-left opacity-0 group-hover:opacity-100 transition"
+              className="pointer-events-none absolute left-0 top-full mt-1 z-[9999] w-56 rounded-md border border-red-700/60 bg-stone-950/95 p-2.5 text-left opacity-0 group-hover:opacity-100 transition"
             >
               <div className="flex items-center gap-1.5 mb-1">
                 <AfflictionIcon id={id} className="w-4 h-4 text-red-400 shrink-0" />

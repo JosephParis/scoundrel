@@ -30,7 +30,7 @@ export function BoonName({ boonId, className = '', muted = false }) {
       {muted && <span className="text-slate-500 italic"> (muted)</span>}
       <span
         role="tooltip"
-        className="pointer-events-none absolute left-0 top-full mt-1 z-50 w-64 rounded-md border border-rune/40 bg-stone-950/98 p-2.5 text-left opacity-0 group-hover:opacity-100 transition-opacity duration-150 shadow-xl"
+        className="pointer-events-none absolute left-0 top-full mt-1 z-[9999] w-64 rounded-md border border-rune/40 bg-stone-950/98 p-2.5 text-left opacity-0 group-hover:opacity-100 transition-opacity duration-150 shadow-xl"
       >
         <span className="text-rune font-semibold block mb-1">{boon.name}</span>
         <span className="text-[11px] text-slate-300 leading-snug block">{boon.description}</span>

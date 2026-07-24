@@ -315,7 +315,7 @@ export function CardSlot({ card, onClick, onBareHands, weaponDamage, bareDamage,
       )}
       {tutorialTip && (
         <div
-          className="absolute top-full left-1/2 -translate-x-1/2 mt-2 z-30 w-72 rounded-lg bg-[#0f1116] p-3 text-[13px] leading-relaxed text-slate-200 text-left pointer-events-none shadow-2xl border border-rune/40"
+          className="absolute top-full left-1/2 -translate-x-1/2 mt-2 z-[9999] w-72 rounded-lg bg-[#0f1116] p-3 text-[13px] leading-relaxed text-slate-200 text-left pointer-events-none shadow-2xl border border-rune/40"
           role="tooltip"
         >
           {tutorialTip}
@@ -331,7 +331,7 @@ export function CardSlot({ card, onClick, onBareHands, weaponDamage, bareDamage,
       {boss && bossDef && (
         <div
           role="tooltip"
-          className={`pointer-events-none absolute inset-x-0 top-0 aspect-[2/3] z-40 rounded-lg border-2 border-rune/60 bg-stone-950/95 p-3 flex flex-col items-center justify-center text-center opacity-0 group-hover:opacity-100 transition ${overlayLift}`}
+          className={`pointer-events-none absolute inset-x-0 top-0 aspect-[2/3] z-[9999] rounded-lg border-2 border-rune/60 bg-stone-950/95 p-3 flex flex-col items-center justify-center text-center opacity-0 group-hover:opacity-100 transition ${overlayLift}`}
         >
           <span className="font-display text-rune text-base mb-1.5">{bossDef.name}</span>
           <span className="text-[12.5px] leading-relaxed text-slate-200">{bossDef.description}</span>
@@ -342,7 +342,7 @@ export function CardSlot({ card, onClick, onBareHands, weaponDamage, bareDamage,
       {traitLabel && !boss && !inscribed && TRAITS[traitLabel] && (
         <div
           role="tooltip"
-          className={`pointer-events-none absolute inset-x-0 top-0 aspect-[2/3] z-40 rounded-lg border-2 border-red-700/60 bg-stone-950/95 p-3 flex flex-col items-center justify-center text-center opacity-0 group-hover:opacity-100 transition ${overlayLift}`}
+          className={`pointer-events-none absolute inset-x-0 top-0 aspect-[2/3] z-[9999] rounded-lg border-2 border-red-700/60 bg-stone-950/95 p-3 flex flex-col items-center justify-center text-center opacity-0 group-hover:opacity-100 transition ${overlayLift}`}
         >
           <TraitIcon trait={traitLabel} className="w-7 h-7 text-red-400 mb-2" />
           <span className="font-display text-red-300 text-base mb-1.5">{TRAITS[traitLabel].name}</span>
