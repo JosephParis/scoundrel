@@ -120,11 +120,8 @@ function BoonCard({ boon, selected, onPick }) {
 // -- Run state ---------------------------------------------------------
 
 export function RunStatePanel({ game }) {
-  const inscribedCount = (game.kit || []).filter(c => c.inscribed).length
-  const kitEdits = game.kitEdits || 0
   const empty =
     game.boons.length === 0 &&
-    kitEdits === 0 &&
     !game.carriedWeapon &&
     !game.carriedSpareWeapon
 
@@ -163,18 +160,6 @@ export function RunStatePanel({ game }) {
               <BoonName boonId={id} className="text-rune" />
             </span>
           ))}
-        </div>
-      )}
-      {kitEdits > 0 && (
-        <div className="text-slate-300">
-          <span className="text-slate-500">Kit edits:</span>{' '}
-          <span className="text-rune">{kitEdits}</span>
-        </div>
-      )}
-      {inscribedCount > 0 && (
-        <div className="text-slate-300">
-          <span className="text-slate-500">Inscribed:</span>{' '}
-          <span className="text-rune">{inscribedCount}</span>
         </div>
       )}
     </div>
