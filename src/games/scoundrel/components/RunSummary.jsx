@@ -1,6 +1,8 @@
+import { useState, useRef, useEffect } from 'react'
+import { createPortal } from 'react-dom'
 import { CardSuitFan } from './forge'
 import { BoonName } from './boons'
-import { BOONS } from '../logic'
+import { BOONS, THEMES, getTheme } from '../logic'
 
 // Presentational view of one stored run record. Reused by the end-of-run
 // screen (OutcomeView) and the expanded row in the history modal. Mechanical
@@ -53,6 +55,76 @@ function BoonList({ boons }) {
           <span key={i}>
             {i > 0 && <span className="text-rune/50 mx-2 select-none">✦</span>}
             {boonId ? <BoonName boonId={boonId} /> : boon.name}
+          </span>
+        )
+      })}
+    </p>
+  )
+}
+
+// Theme name with tooltip
+function ThemeName({ themeId, className = '' }) {
+  const theme = getTheme(themeId)
+  const [showTooltip, setShowTooltip] = useState(false)
+  const spanRef = useRef(null)
+  const [position, setPosition] = useState({ top: 0, left: 0 })
+
+  useEffect(() => {
+    if (showTooltip && spanRef.current) {
+      const rect = spanRef.current.getBoundingClientRect()
+      setPosition({
+        top: rect.bottom + window.scrollY + 4,
+        left: rect.left + window.scrollX
+      })
+    }
+  }, [showTooltip])
+
+  if (!theme) return null
+
+  return (
+    <>
+      <span
+        ref={spanRef}
+        onMouseEnter={() => setShowTooltip(true)}
+        onMouseLeave={() => setShowTooltip(false)}
+        className="cursor-help inline-block"
+      >
+        <span className={className || 'text-slate-300'}>
+          {theme.name}
+        </span>
+      </span>
+      {showTooltip && createPortal(
+        <div
+          role="tooltip"
+          style={{
+            position: 'absolute',
+            top: `${position.top}px`,
+            left: `${position.left}px`,
+            zIndex: 9999
+          }}
+          className="w-64 rounded-md border border-rune/40 bg-stone-950/98 p-2.5 text-left shadow-xl pointer-events-none"
+        >
+          <div className="text-rune font-semibold mb-1">{theme.name}</div>
+          <div className="text-[11px] text-slate-300 leading-snug">{theme.description}</div>
+        </div>,
+        document.body
+      )}
+    </>
+  )
+}
+
+// Theme/Trial list with tooltips - looks up themes by name or id
+function ThemeList({ themes }) {
+  if (!themes || themes.length === 0) return null
+  return (
+    <p className="text-[13px] text-slate-300 leading-relaxed">
+      {themes.map((theme, i) => {
+        // Support both {id: "..."} and {name: "..."} formats
+        const themeId = theme.id || Object.keys(THEMES).find(id => THEMES[id]?.name === theme.name)
+        return (
+          <span key={i}>
+            {i > 0 && <span className="text-rune/50 mx-2 select-none">✦</span>}
+            {themeId ? <ThemeName themeId={themeId} /> : theme.name}
           </span>
         )
       })}
@@ -132,7 +204,7 @@ export function RunSummary({ record, showDeck = true }) {
 
       {themesFaced?.length > 0 && (
         <Section title="Trials faced">
-          <RuneList items={themesFaced.map(t => t.name)} />
+          <ThemeList themes={themesFaced} />
         </Section>
       )}
 
