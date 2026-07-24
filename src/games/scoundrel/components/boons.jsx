@@ -16,6 +16,34 @@ const BOON_TAG_LABEL = {
   build: 'Build',
 }
 
+// -- Boon name with tooltip --------------------------------------------
+
+export function BoonName({ boonId, className = '', muted = false }) {
+  const boon = BOONS[boonId]
+  if (!boon) return null
+
+  return (
+    <span className="group relative inline-block">
+      <span className={`cursor-help ${muted ? 'text-slate-600 line-through font-semibold' : className || 'text-rune'}`}>
+        {boon.name}
+      </span>
+      {muted && <span className="text-slate-500 italic"> (muted)</span>}
+      <span
+        role="tooltip"
+        className="pointer-events-none absolute left-0 top-full mt-1 z-50 w-64 rounded-md border border-rune/40 bg-stone-950/98 p-2.5 text-left opacity-0 group-hover:opacity-100 transition-opacity duration-150 shadow-xl"
+      >
+        <span className="text-rune font-semibold block mb-1">{boon.name}</span>
+        <span className="text-[11px] text-slate-300 leading-snug block">{boon.description}</span>
+        {boon.example && (
+          <span className="mt-2 text-[10px] text-slate-400 italic leading-snug border-l-2 border-rune/30 pl-2 block">
+            {boon.example}
+          </span>
+        )}
+      </span>
+    </span>
+  )
+}
+
 // -- Boon picker -------------------------------------------------------
 
 export function BoonOfferPanel({ offers, onPick, forgeAfter = false }) {
@@ -132,7 +160,7 @@ export function RunStatePanel({ game }) {
           {game.boons.map((id, i) => (
             <span key={id}>
               {i > 0 && <span className="text-slate-600">, </span>}
-              <span className="text-rune">{BOONS[id]?.name}</span>
+              <BoonName boonId={id} className="text-rune" />
             </span>
           ))}
         </div>
@@ -334,7 +362,9 @@ export function LoadoutPanel({ game }) {
                     if (!b) return null
                     return (
                       <li key={id} className="text-[12px] leading-snug">
-                        <div className="text-rune font-semibold">{b.name}</div>
+                        <div className="text-rune font-semibold">
+                          <BoonName boonId={id} className="text-rune font-semibold" />
+                        </div>
                         <div className="text-slate-400">{b.description}</div>
                       </li>
                     )

@@ -7,6 +7,7 @@ import {
 } from '../logic'
 import { Formula } from './atoms'
 import { AfflictionIcon, cardBorderTone } from './SuitIcon'
+import { BoonName } from './boons'
 
 // The card-slot faces live in their own module; the classic/modern layout is
 // chosen from the player's display setting (see settings.js / useCardLayout).
@@ -193,30 +194,12 @@ export function ConditionsPanel({ game, theme }) {
       {game.boons.length > 0 && (
         <div>
           <div className="text-slate-500 text-[10px] uppercase tracking-wider mb-1">Boons</div>
-          <div className="space-y-1.5">
+          <div className="space-y-1.5 text-[11px]">
             {game.boons.map(id => {
-              const b = BOONS[id]
               const muted = game.mutedBoon === id
               return (
-                <div key={id} className="group relative inline-block">
-                  <div className="cursor-help text-[11px] leading-snug">
-                    <span className={muted ? 'text-slate-600 line-through font-semibold' : 'text-rune font-semibold'}>
-                      {b.name}
-                    </span>
-                    {muted && <span className="text-slate-500 italic"> (muted)</span>}
-                  </div>
-                  <div
-                    role="tooltip"
-                    className="pointer-events-none absolute left-0 top-full mt-1 z-50 w-64 rounded-md border border-rune/40 bg-stone-950/98 p-2.5 text-left opacity-0 group-hover:opacity-100 transition-opacity duration-150"
-                  >
-                    <div className="text-rune font-semibold mb-1">{b.name}</div>
-                    <div className="text-[11px] text-slate-300 leading-snug">{b.description}</div>
-                    {b.example && (
-                      <div className="mt-2 text-[10px] text-slate-400 italic leading-snug border-l-2 border-rune/30 pl-2">
-                        {b.example}
-                      </div>
-                    )}
-                  </div>
+                <div key={id}>
+                  <BoonName boonId={id} className="text-rune font-semibold" muted={muted} />
                 </div>
               )
             })}

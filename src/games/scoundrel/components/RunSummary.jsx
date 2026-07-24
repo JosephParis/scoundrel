@@ -1,4 +1,6 @@
 import { CardSuitFan } from './forge'
+import { BoonName } from './boons'
+import { BOONS } from '../logic'
 
 // Presentational view of one stored run record. Reused by the end-of-run
 // screen (OutcomeView) and the expanded row in the history modal. Mechanical
@@ -35,6 +37,25 @@ function RuneList({ items }) {
           {label}
         </span>
       ))}
+    </p>
+  )
+}
+
+// Boon list with tooltips - looks up boons by name or id
+function BoonList({ boons }) {
+  if (!boons || boons.length === 0) return null
+  return (
+    <p className="text-[13px] text-slate-300 leading-relaxed">
+      {boons.map((boon, i) => {
+        // Support both {id: "..."} and {name: "..."} formats
+        const boonId = boon.id || Object.keys(BOONS).find(id => BOONS[id].name === boon.name)
+        return (
+          <span key={i}>
+            {i > 0 && <span className="text-rune/50 mx-2 select-none">✦</span>}
+            {boonId ? <BoonName boonId={boonId} /> : boon.name}
+          </span>
+        )
+      })}
     </p>
   )
 }
@@ -117,7 +138,7 @@ export function RunSummary({ record, showDeck = true }) {
 
       {boons?.length > 0 && (
         <Section title="Boons">
-          <RuneList items={boons.map(b => b.name)} />
+          <BoonList boons={boons} />
         </Section>
       )}
 
