@@ -1,7 +1,8 @@
 import { LogPanel } from './atoms'
 import { ModeBadge } from './modes'
 import { AscensionBadge } from './ascensions'
-import { RunStatePanel, LibraryPanel, DeckPeekButton } from './boons'
+import { RunStatePanel, DeckPeekButton } from './boons'
+import { LibraryPanel } from './library'
 
 export function SanctuaryKitModal({ open, onClose, game, onOpenDeck }) {
   if (!open) return null
