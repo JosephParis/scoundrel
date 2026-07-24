@@ -142,13 +142,18 @@ export function RunStatePanel({ game }) {
         <div className="text-slate-300">
           <span className="text-slate-500">Weapon:</span>{' '}
           <span className="text-rune font-mono">{rankLabel(game.carriedWeapon.rank)}♦</span>
-          <span className="text-slate-500"> (rests this visit)</span>
+          {game.carriedWeapon.inscribed && BOONS[game.carriedWeapon.inscribed] && (
+            <span className="text-slate-400"> ({BOONS[game.carriedWeapon.inscribed].name})</span>
+          )}
         </div>
       )}
       {game.carriedSpareWeapon && (
         <div className="text-slate-300">
           <span className="text-slate-500">Spare:</span>{' '}
           <span className="text-rune font-mono">{rankLabel(game.carriedSpareWeapon.rank)}♦</span>
+          {game.carriedSpareWeapon.inscribed && BOONS[game.carriedSpareWeapon.inscribed] && (
+            <span className="text-slate-400"> ({BOONS[game.carriedSpareWeapon.inscribed].name})</span>
+          )}
         </div>
       )}
       {game.boons.length > 0 && (
