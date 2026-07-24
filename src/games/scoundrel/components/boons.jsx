@@ -1,4 +1,4 @@
-import { useState } from 'react'
+import { useState, useRef, useEffect } from 'react'
 import { createPortal } from 'react-dom'
 import {
   BOONS, getBoon, rankLabel,
@@ -20,27 +20,57 @@ const BOON_TAG_LABEL = {
 
 export function BoonName({ boonId, className = '', muted = false }) {
   const boon = BOONS[boonId]
+  const [showTooltip, setShowTooltip] = useState(false)
+  const spanRef = useRef(null)
+  const [position, setPosition] = useState({ top: 0, left: 0 })
+
+  useEffect(() => {
+    if (showTooltip && spanRef.current) {
+      const rect = spanRef.current.getBoundingClientRect()
+      setPosition({
+        top: rect.bottom + window.scrollY + 4,
+        left: rect.left + window.scrollX
+      })
+    }
+  }, [showTooltip])
+
   if (!boon) return null
 
   return (
-    <span className="group relative inline-block">
-      <span className={`cursor-help ${muted ? 'text-slate-600 line-through font-semibold' : className || 'text-rune'}`}>
-        {boon.name}
-      </span>
-      {muted && <span className="text-slate-500 italic"> (muted)</span>}
+    <>
       <span
-        role="tooltip"
-        className="pointer-events-none absolute left-0 top-full mt-1 z-[9999] w-64 rounded-md border border-rune/40 bg-stone-950/98 p-2.5 text-left opacity-0 group-hover:opacity-100 transition-opacity duration-150 shadow-xl"
+        ref={spanRef}
+        onMouseEnter={() => setShowTooltip(true)}
+        onMouseLeave={() => setShowTooltip(false)}
+        className="cursor-help inline-block"
       >
-        <span className="text-rune font-semibold block mb-1">{boon.name}</span>
-        <span className="text-[11px] text-slate-300 leading-snug block">{boon.description}</span>
-        {boon.example && (
-          <span className="mt-2 text-[10px] text-slate-400 italic leading-snug border-l-2 border-rune/30 pl-2 block">
-            {boon.example}
-          </span>
-        )}
+        <span className={muted ? 'text-slate-600 line-through font-semibold' : className || 'text-rune'}>
+          {boon.name}
+        </span>
+        {muted && <span className="text-slate-500 italic"> (muted)</span>}
       </span>
-    </span>
+      {showTooltip && createPortal(
+        <div
+          role="tooltip"
+          style={{
+            position: 'absolute',
+            top: `${position.top}px`,
+            left: `${position.left}px`,
+            zIndex: 9999
+          }}
+          className="w-64 rounded-md border border-rune/40 bg-stone-950/98 p-2.5 text-left shadow-xl pointer-events-none"
+        >
+          <div className="text-rune font-semibold mb-1">{boon.name}</div>
+          <div className="text-[11px] text-slate-300 leading-snug">{boon.description}</div>
+          {boon.example && (
+            <div className="mt-2 text-[10px] text-slate-400 italic leading-snug border-l-2 border-rune/30 pl-2">
+              {boon.example}
+            </div>
+          )}
+        </div>,
+        document.body
+      )}
+    </>
   )
 }
 
