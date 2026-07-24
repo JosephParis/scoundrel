@@ -197,12 +197,23 @@ export function ConditionsPanel({ game, theme }) {
               const b = BOONS[id]
               const muted = game.mutedBoon === id
               return (
-                <li key={id} className="text-[11px] leading-snug">
+                <li key={id} className="group relative text-[11px] leading-snug">
                   <span className={muted ? 'text-slate-600 line-through font-semibold' : 'text-rune font-semibold'}>
                     {b.name}
                   </span>
-                  <span className={muted ? 'text-slate-600' : 'text-slate-400'}>: {b.description}</span>
-                  {muted && <span className="text-slate-500 italic"> (muted by Wormwood)</span>}
+                  {muted && <span className="text-slate-500 italic"> (muted)</span>}
+                  <div
+                    role="tooltip"
+                    className="pointer-events-none absolute left-0 top-full mt-1 z-40 w-64 rounded-md border border-rune/40 bg-stone-950/95 backdrop-blur-sm p-2.5 text-left opacity-0 group-hover:opacity-100 transition shadow-xl"
+                  >
+                    <div className="text-rune font-semibold mb-1">{b.name}</div>
+                    <div className="text-[11px] text-slate-300 leading-snug">{b.description}</div>
+                    {b.example && (
+                      <div className="mt-2 text-[10px] text-slate-400 italic leading-snug border-l-2 border-rune/30 pl-2">
+                        {b.example}
+                      </div>
+                    )}
+                  </div>
                 </li>
               )
             })}
