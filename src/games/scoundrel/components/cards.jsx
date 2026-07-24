@@ -1,5 +1,4 @@
-import { useState, useRef, useEffect } from 'react'
-import { createPortal } from 'react-dom'
+import { useState } from 'react'
 import {
   HEART, DIAMOND, SUIT_GLYPH, rankLabel,
   describeMaxHp, describeWeaponStrength,
@@ -99,59 +98,6 @@ export function AfflictionBadges({ game }) {
   )
 }
 
-// -- Boon tooltip component --------------------------------------------
-
-function BoonItem({ boon, muted }) {
-  const [showTooltip, setShowTooltip] = useState(false)
-  const itemRef = useRef(null)
-  const [tooltipPos, setTooltipPos] = useState({ top: 0, left: 0 })
-
-  useEffect(() => {
-    if (showTooltip && itemRef.current) {
-      const rect = itemRef.current.getBoundingClientRect()
-      setTooltipPos({
-        top: rect.bottom + window.scrollY + 4,
-        left: rect.left + window.scrollX
-      })
-    }
-  }, [showTooltip])
-
-  return (
-    <>
-      <li
-        ref={itemRef}
-        onMouseEnter={() => setShowTooltip(true)}
-        onMouseLeave={() => setShowTooltip(false)}
-        className="cursor-help text-[11px] leading-snug py-0.5"
-      >
-        <span className={muted ? 'text-slate-600 line-through font-semibold' : 'text-rune font-semibold'}>
-          {boon.name}
-        </span>
-        {muted && <span className="text-slate-500 italic"> (muted)</span>}
-      </li>
-      {showTooltip && createPortal(
-        <div
-          role="tooltip"
-          style={{
-            position: 'absolute',
-            top: `${tooltipPos.top}px`,
-            left: `${tooltipPos.left}px`,
-          }}
-          className="z-[100] w-64 rounded-md border border-rune/40 bg-stone-950/98 backdrop-blur-sm p-2.5 text-left shadow-xl pointer-events-none"
-        >
-          <div className="text-rune font-semibold mb-1">{boon.name}</div>
-          <div className="text-[11px] text-slate-300 leading-snug">{boon.description}</div>
-          {boon.example && (
-            <div className="mt-2 text-[10px] text-slate-400 italic leading-snug border-l-2 border-rune/30 pl-2">
-              {boon.example}
-            </div>
-          )}
-        </div>,
-        document.body
-      )}
-    </>
-  )
-}
 
 // -- Conditions panel --------------------------------------------------
 
@@ -247,13 +193,34 @@ export function ConditionsPanel({ game, theme }) {
       {game.boons.length > 0 && (
         <div>
           <div className="text-slate-500 text-[10px] uppercase tracking-wider mb-1">Boons</div>
-          <ul className="space-y-1">
+          <div className="space-y-1.5">
             {game.boons.map(id => {
               const b = BOONS[id]
               const muted = game.mutedBoon === id
-              return <BoonItem key={id} boon={b} muted={muted} />
+              return (
+                <div key={id} className="group relative inline-block">
+                  <div className="cursor-help text-[11px] leading-snug">
+                    <span className={muted ? 'text-slate-600 line-through font-semibold' : 'text-rune font-semibold'}>
+                      {b.name}
+                    </span>
+                    {muted && <span className="text-slate-500 italic"> (muted)</span>}
+                  </div>
+                  <div
+                    role="tooltip"
+                    className="pointer-events-none absolute left-0 top-full mt-1 z-50 w-64 rounded-md border border-rune/40 bg-stone-950/98 p-2.5 text-left opacity-0 group-hover:opacity-100 transition-opacity duration-150"
+                  >
+                    <div className="text-rune font-semibold mb-1">{b.name}</div>
+                    <div className="text-[11px] text-slate-300 leading-snug">{b.description}</div>
+                    {b.example && (
+                      <div className="mt-2 text-[10px] text-slate-400 italic leading-snug border-l-2 border-rune/30 pl-2">
+                        {b.example}
+                      </div>
+                    )}
+                  </div>
+                </div>
+              )
             })}
-          </ul>
+          </div>
         </div>
       )}
     </div>
