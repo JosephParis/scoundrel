@@ -9,7 +9,8 @@
     "lint": "eslint .",
     "preview": "vite preview",
     "test": "playwright test",
-    "test:mobile": "playwright test visual/mobile-responsive.spec.js",
+    "test:mobile": "playwright test visual/mobile-responsive-simple.spec.js",
+    "test:mobile:full": "playwright test visual/mobile-responsive.spec.js",
     "test:mobile:ui": "playwright test visual/mobile-responsive.spec.js --ui",
     "test:mobile:headed": "playwright test visual/mobile-responsive.spec.js --headed"
   },
