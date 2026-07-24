@@ -121,7 +121,7 @@ function BoonCard({ boon, selected, onPick }) {
   return (
     <button
       onClick={onPick}
-      className={`group aspect-[2/3] w-full max-w-[240px] text-left rounded-lg border bg-gradient-to-b p-5 hover:-translate-y-1 transition-all duration-200 shadow-md flex flex-col relative overflow-hidden ${
+      className={`group aspect-[2/3] w-full max-w-[180px] sm:max-w-[220px] md:max-w-[240px] text-left rounded-lg border bg-gradient-to-b p-5 hover:-translate-y-1 transition-all duration-200 shadow-md flex flex-col relative overflow-hidden ${
         selected
           ? 'border-rune from-stone-800 to-stone-900 shadow-[0_0_24px_-8px_rgba(251,191,36,0.6)]'
           : 'border-stone-700 from-stone-900 to-stone-950 hover:border-rune hover:from-stone-800 hover:to-stone-900 hover:shadow-[0_0_24px_-8px_rgba(251,191,36,0.5)]'

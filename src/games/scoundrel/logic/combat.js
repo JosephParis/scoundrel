@@ -5,11 +5,11 @@ import {
 } from '../constants'
 import { BOONS } from '../boons'
 import { isEnabled as isFlagEnabled } from '../flags'
-import { isBoss, makeBroodSpawn, getBoss, BOSSES } from '../bosses'
+import { makeBroodSpawn, getBoss, BOSSES } from '../bosses'
 import { hasAffliction, BLEEDING_DAMAGE } from '../afflictions'
 import {
   appendLog, fmt,
-  activeThemes, themesFor, themeFieldSum, themeFlagAny, getRoomSize,
+  activeThemes, themeFieldSum, themeFlagAny, getRoomSize,
   effectiveMonsterRank,
   activeBoons, hasBoon, maxBoonField, sumBoonField,
   computePotionsPerRoomLimit, effectiveWeaponRank, bonusVsSuitFor,
@@ -294,7 +294,8 @@ function applyMonsterFight(state, monsterCard, index, useWeapon) {
       else next.spareWeapon = null
     } else {
       const crushed = hasBoon(state, 'crushing_blow') && damage === 0
-      if (!crushed) {
+      const cracked = themeFlagAny(themes, 'crackedBlade')
+      if (!crushed && !cracked) {
         const updated = { ...weaponUsed, lastSlain: { rank: monsterCard.rank } }
         if (chosen.slot === 'primary') next.weapon = updated
         else next.spareWeapon = updated
@@ -713,7 +714,7 @@ function playSkeletonKey(state, index, card) {
     .map(c => {
       // Strip the Oath face-down flag so cards don't return permanently hidden.
       if (!c.faceDown) return c
-      const { faceDown, ...rest } = c
+      const { faceDown: _faceDown, ...rest } = c
       return rest
     })
   const newRoom = state.room.map(() => null)

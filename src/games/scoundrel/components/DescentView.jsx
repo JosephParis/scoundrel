@@ -1,4 +1,4 @@
-import { useCallback, useEffect, useMemo, useRef, useState } from 'react'
+import { useCallback, useEffect, useMemo, useState } from 'react'
 import {
   playCard, playCardBare, fleeRoom,
   dismissMapPeek,
@@ -18,6 +18,7 @@ import { ModeBadge } from './modes'
 import { AscensionBadge } from './ascensions'
 import { CardSlot, HpBar, AfflictionBadges, WeaponPanel, ConditionsPanel, ForesightPanel } from './cards'
 import { MapPeekModal } from './boons'
+import { KitModal } from './KitModal'
 import { SuitIcon, TraitIcon, cardBorderTone, suitIconTone } from './SuitIcon'
 import { getSeenSpecials, markSpecialsSeen } from '../seenSpecials'
 import { audio } from '../audio'
@@ -64,15 +65,15 @@ export function DescentView({ game, setGame }) {
   // player can tap to skip ahead. Themes that show a deck-changes animation
   // need a longer window so the last card finishes flipping before dismissal.
   const [introOpen, setIntroOpen] = useState(true)
+  // Kit modal: shows full game state on mobile (weapon, conditions, log, etc.)
+  const [kitOpen, setKitOpen] = useState(false)
   // First-encounter explainers: bosses/traits in this descent the player has
   // never had explained. Computed once at mount from the descent-start deck;
   // marked seen when the intro is dismissed so each fires exactly once ever.
-  const newSpecialsRef = useRef(null)
-  if (newSpecialsRef.current === null) {
+  const newSpecials = useMemo(() => {
     const seen = new Set(getSeenSpecials())
-    newSpecialsRef.current = collectPresentSpecials(game).filter(s => !seen.has(s.id))
-  }
-  const newSpecials = newSpecialsRef.current
+    return collectPresentSpecials(game).filter(s => !seen.has(s.id))
+  }, [game])
   const dismissIntro = useCallback(() => {
     setIntroOpen(false)
     markSpecialsSeen(newSpecials.map(s => s.id))
@@ -143,6 +144,13 @@ export function DescentView({ game, setGame }) {
     return () => window.removeEventListener('keydown', onKey)
   }, [game.mapPeek, onCloseMapPeek])
 
+  useEffect(() => {
+    if (!kitOpen) return
+    const onKey = (e) => { if (e.key === 'Escape') setKitOpen(false) }
+    window.addEventListener('keydown', onKey)
+    return () => window.removeEventListener('keydown', onKey)
+  }, [kitOpen])
+
   const theme = getTheme(game.theme)
 
   const themeIronBones = (game.themeChildren
@@ -153,6 +161,12 @@ export function DescentView({ game, setGame }) {
   const childNames = (game.themeChildren || [])
     .map(id => getTheme(id)?.name)
     .filter(Boolean)
+
+  // Determine room size from theme (default 4, cramped halls has 5)
+  const roomSize = (game.themeChildren
+    ? game.themeChildren.map(id => getTheme(id))
+    : [theme]
+  ).reduce((size, t) => t?.roomSize || size, 4)
 
   // Tutorial cue: recommends one card per turn based on game state.
   // Recomputes whenever the room or weapon binding changes. Runs for the
@@ -173,7 +187,7 @@ export function DescentView({ game, setGame }) {
   const cueHasTarget = tutorialActive && !!tutorialCue && (tutorialCue.recommendedId != null || tutorialCue.recommendFlee)
 
   return (
-    <div className="grid grid-cols-1 md:grid-cols-[300px_minmax(0,1fr)] gap-6 animate-fade-in items-start">
+    <div className="animate-fade-in">
       {introOpen && (
         <ThemeIntroOverlay
           theme={theme}
@@ -185,23 +199,58 @@ export function DescentView({ game, setGame }) {
       )}
 
       <MapPeekModal cards={game.mapPeek} onClose={onCloseMapPeek} />
+      <KitModal open={kitOpen} onClose={() => setKitOpen(false)} game={game} theme={theme} />
 
-      <PhaseRail
-        title={theme?.name || 'Descent'}
-        subtitle={childNames.length > 0 ? childNames.join(' + ') : null}
-        sigilsEarned={game.sigilsEarned}
-        sigilTarget={game.sigilTarget}
-      >
+      {/* Mobile compact header - shows only on small screens */}
+      <div className="md:hidden mb-4 space-y-3">
+        <div className="flex items-start justify-between gap-3">
+          <div className="flex-1 min-w-0">
+            <h1 className="font-display text-2xl text-rune leading-tight">{theme?.name || 'Descent'}</h1>
+            {childNames.length > 0 && (
+              <p className="text-[11px] text-slate-400 mt-1">{childNames.join(' + ')}</p>
+            )}
+          </div>
+          <button
+            onClick={() => setKitOpen(true)}
+            className="shrink-0 px-3 py-2 rounded-md bg-stone-800 hover:bg-stone-700 text-[12px] font-medium border border-stone-700 transition"
+            aria-label="View kit"
+          >
+            Kit
+          </button>
+        </div>
         <HpBar hp={game.hp} maxHp={game.maxHp} />
-        <AfflictionBadges game={game} />
-        <WeaponPanel game={game} />
-        <ConditionsPanel game={game} theme={theme} />
-        <AscensionBadge level={game.ascension} />
-        <ModeBadge modeId={game.mode} />
-        <LogPanel lines={game.log} collapsible />
-      </PhaseRail>
+        <div className="flex items-center justify-between text-[12px] text-slate-400">
+          <span>
+            Sigils: {game.sigilsEarned}/{game.sigilTarget}
+          </span>
+          {game.weapon && (
+            <span>
+              Weapon: {game.weapon.rank} {game.weapon.lastSlain ? `(bound ${game.weapon.lastSlain.rank})` : '(fresh)'}
+            </span>
+          )}
+        </div>
+      </div>
 
-      <div className="space-y-5 min-w-0">
+      {/* Desktop layout with sidebar - shows only on medium+ screens */}
+      <div className="grid grid-cols-1 md:grid-cols-[300px_minmax(0,1fr)] gap-6 items-start">
+        <div className="hidden md:block">
+          <PhaseRail
+            title={theme?.name || 'Descent'}
+            subtitle={childNames.length > 0 ? childNames.join(' + ') : null}
+            sigilsEarned={game.sigilsEarned}
+            sigilTarget={game.sigilTarget}
+          >
+            <HpBar hp={game.hp} maxHp={game.maxHp} />
+            <AfflictionBadges game={game} />
+            <WeaponPanel game={game} />
+            <ConditionsPanel game={game} theme={theme} />
+            <AscensionBadge level={game.ascension} />
+            <ModeBadge modeId={game.mode} />
+            <LogPanel lines={game.log} collapsible />
+          </PhaseRail>
+        </div>
+
+        <div className="space-y-5 min-w-0">
         <section>
           <div className="flex items-baseline justify-between mb-3">
             <h2 className="text-[10px] uppercase tracking-[0.3em] text-slate-500">The room</h2>
@@ -238,7 +287,7 @@ export function DescentView({ game, setGame }) {
               animation traps the tooltip's z-index inside the card's own
               stacking context, so without this the flee button (a later DOM
               sibling) paints on top of the opaque tooltip and shows through. */}
-          <div className="relative z-10 grid grid-cols-2 sm:grid-cols-4 gap-4 justify-items-center">
+          <div className={`relative z-10 grid grid-cols-2 ${roomSize === 5 ? 'sm:grid-cols-5' : 'sm:grid-cols-4'} gap-4 justify-items-center`}>
             {(() => { const blind = hasAffliction(game, 'blind'); const obscured = hasAffliction(game, 'obscured'); return game.room.map((c, i) => {
               let weaponDamage = null
               let bareDamage = null
@@ -325,6 +374,7 @@ export function DescentView({ game, setGame }) {
         </section>
 
         <ForesightPanel game={game} />
+      </div>
       </div>
     </div>
   )

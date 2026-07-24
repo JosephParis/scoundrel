@@ -23,7 +23,7 @@
   }
 
   html, body, #root {
-    min-height: 100vh;
+    min-height: 100dvh;
     height: 100%;
   }
 
@@ -38,6 +38,9 @@
     font-family: var(--font-sans);
     overflow-x: hidden;
     font-feature-settings: 'kern' 1, 'liga' 1;
+    /* Safe area insets for devices with notches/home indicators */
+    padding-left: env(safe-area-inset-left);
+    padding-right: env(safe-area-inset-right);
   }
 
   h1, h2, h3, h4, h5, h6, p, ul, ol, dl, dd, figure, blockquote {
@@ -51,6 +54,14 @@
 
   button {
     font-family: inherit;
+  }
+
+  /* Improve touch targets on mobile devices */
+  @media (pointer: coarse) {
+    button:not(.card-face):not([aria-hidden="true"]),
+    a:not([aria-hidden="true"]) {
+      min-height: 44px;
+    }
   }
 }
 
@@ -378,6 +389,18 @@
   40%  { opacity: 1; transform: scale(1.2) rotate(-8deg); }
   70%  { opacity: 1; transform: scale(1) rotate(-8deg); }
   100% { opacity: 0.7; transform: scale(1) rotate(-8deg); }
+}
+
+/* Landscape mode optimizations for mobile devices */
+@media (max-height: 500px) and (orientation: landscape) {
+  .panel {
+    padding: 0.75rem !important;
+  }
+
+  /* Reduce top padding in landscape to maximize viewport */
+  main {
+    padding-top: 0.5rem !important;
+  }
 }
 
 ::-webkit-scrollbar { width: 8px; height: 8px; }

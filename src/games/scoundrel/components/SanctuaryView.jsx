@@ -11,6 +11,7 @@ import { RulesInlinePanel, TutorialIntroPanel } from './rules'
 import { ModePickerPanel, ModeBadge } from './modes'
 import { LibraryPanel } from './library'
 import { AscensionPickerPanel, AscensionBadge } from './ascensions'
+import { SanctuaryKitModal } from './SanctuaryKitModal'
 import { audio } from '../audio'
 
 export function SanctuaryView({ game, setGame, onSkipTutorial, ascensionUnlocked = 0, celebrateSigil = false, onSigilCelebrated }) {
@@ -22,6 +23,7 @@ export function SanctuaryView({ game, setGame, onSkipTutorial, ascensionUnlocked
   const showForge = !needsBoon && forgeActive(game)
   const showDescend = !needsBoon && !showForge
   const [deckOpen, setDeckOpen] = useState(false)
+  const [kitOpen, setKitOpen] = useState(false)
 
   useEffect(() => {
     if (!deckOpen) return
@@ -29,6 +31,13 @@ export function SanctuaryView({ game, setGame, onSkipTutorial, ascensionUnlocked
     window.addEventListener('keydown', onKey)
     return () => window.removeEventListener('keydown', onKey)
   }, [deckOpen])
+
+  useEffect(() => {
+    if (!kitOpen) return
+    const onKey = (e) => { if (e.key === 'Escape') setKitOpen(false) }
+    window.addEventListener('keydown', onKey)
+    return () => window.removeEventListener('keydown', onKey)
+  }, [kitOpen])
 
   // Exactly one panel renders in the action slot (or none, when the
   // player is idle and ready to descend).
@@ -91,37 +100,86 @@ export function SanctuaryView({ game, setGame, onSkipTutorial, ascensionUnlocked
   }
 
   return (
-    <div className="grid grid-cols-1 md:grid-cols-[300px_minmax(0,1fr)] gap-6 animate-fade-in items-start">
-      <PhaseRail
-        title="Sanctuary"
-        subtitle={isOpeningVisit
-          ? 'You wake in a quiet chamber. The only way out leads down.'
-          : 'The chamber is still. Below, the dark waits.'}
-        sigilsEarned={game.sigilsEarned}
-        sigilTarget={game.sigilTarget}
-        celebrateSigil={celebrateSigil}
-        onSigilCelebrated={onSigilCelebrated}
-      >
+    <div className="animate-fade-in">
+      <DeckModal open={deckOpen} onClose={() => setDeckOpen(false)} game={game} />
+      <SanctuaryKitModal
+        open={kitOpen}
+        onClose={() => setKitOpen(false)}
+        game={game}
+        onOpenDeck={() => setDeckOpen(true)}
+      />
+
+      {/* Mobile compact header - shows only on small screens */}
+      <div className="md:hidden mb-4 space-y-3">
+        <div className="flex items-start justify-between gap-3">
+          <div className="flex-1 min-w-0">
+            <h1 className="font-display text-2xl text-rune leading-tight">Sanctuary</h1>
+            <p className="text-[11px] text-slate-400 mt-1">
+              {isOpeningVisit
+                ? 'You wake in a quiet chamber.'
+                : 'The chamber is still.'}
+            </p>
+          </div>
+          <button
+            onClick={() => setKitOpen(true)}
+            className="shrink-0 px-3 py-2 rounded-md bg-stone-800 hover:bg-stone-700 text-[12px] font-medium border border-stone-700 transition"
+            aria-label="View progress"
+          >
+            Progress
+          </button>
+        </div>
         <div className="panel p-3">
-          <div className="text-[10px] uppercase tracking-widest text-slate-500 mb-1">Lifeblood</div>
-          <div className="font-mono text-parchment text-base">
-            {/* Before the first descent maxHp is still 0 (computed on descend),
-                so fall back to the base so the opening visit never reads "0/0". */}
-            {game.maxHp || BASE_MAX_HP}<span className="text-slate-500 text-sm">/{game.maxHp || BASE_MAX_HP}</span>
-            <span className="ml-2 text-[10px] uppercase tracking-widest text-rune/70">Rested</span>
+          <div className="flex items-center justify-between">
+            <div>
+              <div className="text-[10px] uppercase tracking-widest text-slate-500 mb-1">HP</div>
+              <div className="font-mono text-parchment text-base">
+                {game.maxHp || BASE_MAX_HP}
+                <span className="text-slate-500 text-sm">/{game.maxHp || BASE_MAX_HP}</span>
+                <span className="ml-2 text-[10px] uppercase tracking-widest text-rune/70">Rested</span>
+              </div>
+            </div>
+            <div>
+              <div className="text-[10px] uppercase tracking-widest text-slate-500 mb-1 text-right">Sigils</div>
+              <div className="font-mono text-parchment text-base text-right">
+                {game.sigilsEarned}<span className="text-slate-500 text-sm">/{game.sigilTarget}</span>
+              </div>
+            </div>
           </div>
         </div>
-        <AscensionBadge level={game.ascension} />
-        <ModeBadge modeId={game.mode} />
-        <RunStatePanel game={game} />
-        <LibraryPanel unlockedBoons={game.unlockedBoons} />
-        <DeckPeekButton game={game} onClick={() => setDeckOpen(true)} />
-        <LogPanel lines={game.log} collapsible />
-      </PhaseRail>
+      </div>
 
-      <DeckModal open={deckOpen} onClose={() => setDeckOpen(false)} game={game} />
+      {/* Desktop layout with sidebar - shows only on medium+ screens */}
+      <div className="grid grid-cols-1 md:grid-cols-[300px_minmax(0,1fr)] gap-6 items-start">
+        <div className="hidden md:block">
+          <PhaseRail
+            title="Sanctuary"
+            subtitle={isOpeningVisit
+              ? 'You wake in a quiet chamber. The only way out leads down.'
+              : 'The chamber is still. Below, the dark waits.'}
+            sigilsEarned={game.sigilsEarned}
+            sigilTarget={game.sigilTarget}
+            celebrateSigil={celebrateSigil}
+            onSigilCelebrated={onSigilCelebrated}
+          >
+            <div className="panel p-3">
+              <div className="text-[10px] uppercase tracking-widest text-slate-500 mb-1">Lifeblood</div>
+              <div className="font-mono text-parchment text-base">
+                {/* Before the first descent maxHp is still 0 (computed on descend),
+                    so fall back to the base so the opening visit never reads "0/0". */}
+                {game.maxHp || BASE_MAX_HP}<span className="text-slate-500 text-sm">/{game.maxHp || BASE_MAX_HP}</span>
+                <span className="ml-2 text-[10px] uppercase tracking-widest text-rune/70">Rested</span>
+              </div>
+            </div>
+            <AscensionBadge level={game.ascension} />
+            <ModeBadge modeId={game.mode} />
+            <RunStatePanel game={game} />
+            <LibraryPanel unlockedBoons={game.unlockedBoons} />
+            <DeckPeekButton game={game} onClick={() => setDeckOpen(true)} />
+            <LogPanel lines={game.log} collapsible />
+          </PhaseRail>
+        </div>
 
-      <div className="space-y-5 min-w-0">
+        <div className="space-y-5 min-w-0">
         {actionSlot}
 
         {showDescend && (
@@ -141,6 +199,7 @@ export function SanctuaryView({ game, setGame, onSkipTutorial, ascensionUnlocked
             )}
           </div>
         )}
+      </div>
       </div>
     </div>
   )

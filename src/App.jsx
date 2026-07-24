@@ -20,7 +20,7 @@ function App() {
 
 function PageLoading() {
   return (
-    <div className="min-h-screen flex items-center justify-center bg-dungeon">
+    <div className="min-h-dvh flex items-center justify-center bg-dungeon">
       <div className="h-10 w-10 rounded-full border-2 border-stone-700 border-t-rune animate-spin" />
     </div>
   )

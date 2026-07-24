@@ -8,7 +8,10 @@
     "build": "vite build",
     "lint": "eslint .",
     "preview": "vite preview",
-    "test": "playwright test"
+    "test": "playwright test",
+    "test:mobile": "playwright test visual/mobile-responsive.spec.js",
+    "test:mobile:ui": "playwright test visual/mobile-responsive.spec.js --ui",
+    "test:mobile:headed": "playwright test visual/mobile-responsive.spec.js --headed"
   },
   "dependencies": {
     "@neondatabase/serverless": "^1.1.0",

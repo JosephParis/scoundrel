@@ -214,6 +214,8 @@ export function DevModal({ open, onClose, game, setGame }) {
 
   // When the modal re-opens, seed local form state from current game state
   // so it reflects whatever the player just did.
+  // Intentional: synchronize form state when modal opens
+  /* eslint-disable react-hooks/set-state-in-effect, react-hooks/exhaustive-deps */
   useEffect(() => {
     if (!open) return
     setSigils(game.sigilsEarned)
@@ -221,7 +223,8 @@ export function DevModal({ open, onClose, game, setGame }) {
     setChild1(game.nextThemeChildren?.[0] || tier3Ids[0] || '')
     setChild2(game.nextThemeChildren?.[1] || tier3Ids[1] || '')
     setSelectedBoons(new Set(game.boons))
-  }, [open, game.sigilsEarned, game.nextTheme, game.nextThemeChildren, game.boons, tier3Ids])
+  }, [open])
+  /* eslint-enable react-hooks/set-state-in-effect, react-hooks/exhaustive-deps */
 
   if (!open) return null
 

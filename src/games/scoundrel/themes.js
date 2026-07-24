@@ -380,7 +380,7 @@ export const THEMES = {
   carrion: {
     id: 'carrion',
     name: 'Carrion',
-    description: 'Each slain monster returns to the deck once, as a rank-2 of its suit.',
+    description: 'Each slain monster returns to the deck once, as a 2 of its suit.',
     tier: 5,
     carrion: true,
   },

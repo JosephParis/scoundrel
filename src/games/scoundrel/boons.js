@@ -197,7 +197,7 @@ export const BOONS = {
   stoic: {
     id: 'stoic',
     name: 'Stoic',
-    description: "Max HP +10. You heal to full on your next descent, then no longer heal between descents.",
+    description: "Max HP +10. After future descents you no longer heal to full.",
     example: 'Your next descent begins at 30, full. Take 8 damage and end at 22; the descent after begins at 22, not full.',
     tag: 'build',
     noSanctuaryHeal: true,

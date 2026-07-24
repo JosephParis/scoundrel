@@ -346,6 +346,8 @@ export default function Scoundrel() {
   // On victory, raise the unlocked ceiling so the next level becomes
   // pickable. Winning at level N exposes level N+1 (capped at the max).
   // Partial wins at lower levels do not push the ladder backward.
+  // Intentional: update unlocked level on victory
+  /* eslint-disable react-hooks/set-state-in-effect, react-hooks/exhaustive-deps */
   useEffect(() => {
     if (game.phase !== 'victory') return
     const cleared = game.ascension || 0
@@ -354,7 +356,8 @@ export default function Scoundrel() {
       setAscensionUnlocked(newUnlocked)
       saveAscensionUnlocked(newUnlocked)
     }
-  }, [game.phase, game.ascension, ascensionUnlocked])
+  }, [game.phase])
+  /* eslint-enable react-hooks/set-state-in-effect, react-hooks/exhaustive-deps */
 
   // Mark the tutorial as completed when the player finishes the
   // curated descent (tutorial flag flips off via endDescentVictory and
@@ -443,7 +446,7 @@ export default function Scoundrel() {
   }
 
   return (
-    <div className="min-h-screen text-parchment flex flex-col items-center">
+    <div className="min-h-dvh text-parchment flex flex-col items-center">
       <TopBar
         game={game}
         user={user}

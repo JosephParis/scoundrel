@@ -568,7 +568,7 @@ export function endDescentVictory(state) {
 // stays face-down on its next redraw and stacks with the new room's Oath card.
 function stripFaceDown(card) {
   if (!card || !card.faceDown) return card
-  const { faceDown, ...rest } = card
+  const { faceDown: _faceDown, ...rest } = card
   return rest
 }
 
