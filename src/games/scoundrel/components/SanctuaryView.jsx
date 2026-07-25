@@ -110,40 +110,32 @@ export function SanctuaryView({ game, setGame, onSkipTutorial, ascensionUnlocked
       />
 
       {/* Mobile compact header - shows only on small screens */}
-      <div className="md:hidden mb-4 space-y-3">
-        <div className="flex items-start justify-between gap-3">
-          <div className="flex-1 min-w-0">
-            <h1 className="font-display text-2xl text-rune leading-tight">Sanctuary</h1>
-            <p className="text-[11px] text-slate-400 mt-1">
-              {isOpeningVisit
-                ? 'You wake in a quiet chamber.'
-                : 'The chamber is still.'}
-            </p>
+      <div className="md:hidden mb-3">
+        {/* Top row: Title, Sigils, Menu */}
+        <div className="flex items-center justify-between mb-2">
+          <h1 className="font-display text-xl text-rune">SANCTUARY</h1>
+          <div className="flex items-center gap-3">
+            <span className="text-[11px] text-slate-400">
+              Sigils: <span className="text-rune font-semibold">{game.sigilsEarned}/{game.sigilTarget}</span>
+            </span>
+            <button
+              onClick={() => setKitOpen(true)}
+              className="w-8 h-8 rounded-md bg-stone-800 hover:bg-stone-700 border border-stone-700 transition flex items-center justify-center"
+              aria-label="View progress"
+            >
+              <span className="text-slate-400 text-lg leading-none">⋮</span>
+            </button>
           </div>
-          <button
-            onClick={() => setKitOpen(true)}
-            className="shrink-0 px-3 py-2 rounded-md bg-stone-800 hover:bg-stone-700 text-[12px] font-medium border border-stone-700 transition"
-            aria-label="View progress"
-          >
-            Progress
-          </button>
         </div>
-        <div className="panel p-3">
-          <div className="flex items-center justify-between">
-            <div>
-              <div className="text-[10px] uppercase tracking-widest text-slate-500 mb-1">HP</div>
-              <div className="font-mono text-parchment text-base">
-                {game.maxHp || BASE_MAX_HP}
-                <span className="text-slate-500 text-sm">/{game.maxHp || BASE_MAX_HP}</span>
-                <span className="ml-2 text-[10px] uppercase tracking-widest text-rune/70">Rested</span>
-              </div>
-            </div>
-            <div>
-              <div className="text-[10px] uppercase tracking-widest text-slate-500 mb-1 text-right">Sigils</div>
-              <div className="font-mono text-parchment text-base text-right">
-                {game.sigilsEarned}<span className="text-slate-500 text-sm">/{game.sigilTarget}</span>
-              </div>
-            </div>
+
+        {/* Stats row: HP (Rested) */}
+        <div className="flex items-center gap-3 text-[13px]">
+          <div className="flex items-center gap-1.5">
+            <span className="text-[10px] uppercase tracking-wider text-slate-500">HP</span>
+            <span className="font-mono text-parchment">
+              {game.maxHp || BASE_MAX_HP}<span className="text-slate-500">/{game.maxHp || BASE_MAX_HP}</span>
+              <span className="ml-2 text-[10px] uppercase tracking-wider text-rune/70">Rested</span>
+            </span>
           </div>
         </div>
       </div>

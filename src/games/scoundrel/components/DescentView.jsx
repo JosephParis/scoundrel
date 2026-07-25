@@ -202,32 +202,52 @@ export function DescentView({ game, setGame }) {
       <KitModal open={kitOpen} onClose={() => setKitOpen(false)} game={game} theme={theme} />
 
       {/* Mobile compact header - shows only on small screens */}
-      <div className="md:hidden mb-4 space-y-3">
-        <div className="flex items-start justify-between gap-3">
-          <div className="flex-1 min-w-0">
-            <h1 className="font-display text-2xl text-rune leading-tight">{theme?.name || 'Descent'}</h1>
-            {childNames.length > 0 && (
-              <p className="text-[11px] text-slate-400 mt-1">{childNames.join(' + ')}</p>
-            )}
-          </div>
-          <button
-            onClick={() => setKitOpen(true)}
-            className="shrink-0 px-3 py-2 rounded-md bg-stone-800 hover:bg-stone-700 text-[12px] font-medium border border-stone-700 transition"
-            aria-label="View kit"
-          >
-            Kit
-          </button>
-        </div>
-        <HpBar hp={game.hp} maxHp={game.maxHp} />
-        <div className="flex items-center justify-between text-[12px] text-slate-400">
-          <span>
-            Sigils: {game.sigilsEarned}/{game.sigilTarget}
-          </span>
-          {game.weapon && (
-            <span>
-              Weapon: {game.weapon.rank} {game.weapon.lastSlain ? `(bound ${game.weapon.lastSlain.rank})` : '(fresh)'}
+      <div className="md:hidden mb-3">
+        {/* Top row: Title, Sigils, Menu */}
+        <div className="flex items-center justify-between mb-2">
+          <h1 className="font-display text-xl text-rune">SCOUNDREL</h1>
+          <div className="flex items-center gap-3">
+            <span className="text-[11px] text-slate-400">
+              Sigils: <span className="text-rune font-semibold">{game.sigilsEarned}/{game.sigilTarget}</span>
             </span>
+            <button
+              onClick={() => setKitOpen(true)}
+              className="w-8 h-8 rounded-md bg-stone-800 hover:bg-stone-700 border border-stone-700 transition flex items-center justify-center"
+              aria-label="View kit"
+            >
+              <span className="text-slate-400 text-lg leading-none">⋮</span>
+            </button>
+          </div>
+        </div>
+
+        {/* Stats row: HP, Weapon, Deck */}
+        <div className="flex items-center gap-3 text-[13px]">
+          <div className="flex items-center gap-1.5">
+            <span className="text-[10px] uppercase tracking-wider text-slate-500">HP</span>
+            <span className="font-mono text-parchment">
+              {game.hp}<span className="text-slate-500">/{game.maxHp}</span>
+            </span>
+          </div>
+
+          {game.weapon && (
+            <div className="flex items-center gap-1.5">
+              <span className="text-[10px] uppercase tracking-wider text-slate-500">Weapon</span>
+              <span className="font-mono text-parchment">
+                {game.weapon.rank}
+                {game.weapon.lastSlain && (
+                  <span className="text-slate-500"> (bound {game.weapon.lastSlain.rank})</span>
+                )}
+                {!game.weapon.lastSlain && (
+                  <span className="text-emerald-400"> (fresh)</span>
+                )}
+              </span>
+            </div>
           )}
+
+          <div className="flex items-center gap-1.5">
+            <span className="text-[10px] uppercase tracking-wider text-slate-500">Deck</span>
+            <span className="font-mono text-parchment">{game.deck.length}</span>
+          </div>
         </div>
       </div>
 
