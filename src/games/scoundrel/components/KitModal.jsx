@@ -1,4 +1,4 @@
-import { WeaponPanel, ConditionsPanel, AfflictionBadges } from './cards'
+import { WeaponPanel, ConditionsPanel, AfflictionBadges, HpBar } from './cards'
 import { LogPanel } from './atoms'
 import { ModeBadge } from './modes'
 import { AscensionBadge } from './ascensions'
@@ -25,10 +25,11 @@ export function KitModal({ open, onClose, game, theme }) {
 
         <h2 className="font-display text-rune text-2xl mb-1">Your kit</h2>
         <p className="text-[12px] text-slate-500 mb-4">
-          Current status and equipment
+          Everything you have for this descent
         </p>
 
         <div className="space-y-4">
+          <HpBar hp={game.hp} maxHp={game.maxHp} />
           <AfflictionBadges game={game} />
           <WeaponPanel game={game} />
           <ConditionsPanel game={game} theme={theme} />

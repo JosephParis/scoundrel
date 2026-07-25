@@ -3,6 +3,7 @@ import { ModeBadge } from './modes'
 import { AscensionBadge } from './ascensions'
 import { RunStatePanel, DeckPeekButton } from './boons'
 import { LibraryPanel } from './library'
+import { BASE_MAX_HP } from '../logic'
 
 export function SanctuaryKitModal({ open, onClose, game, onOpenDeck }) {
   if (!open) return null
@@ -30,6 +31,13 @@ export function SanctuaryKitModal({ open, onClose, game, onOpenDeck }) {
         </p>
 
         <div className="space-y-4">
+          <div className="panel p-3">
+            <div className="text-[10px] uppercase tracking-widest text-slate-500 mb-1">Lifeblood</div>
+            <div className="font-mono text-parchment text-base">
+              {game.maxHp || BASE_MAX_HP}<span className="text-slate-500 text-sm">/{game.maxHp || BASE_MAX_HP}</span>
+              <span className="ml-2 text-[10px] uppercase tracking-widest text-rune/70">Rested</span>
+            </div>
+          </div>
           <AscensionBadge level={game.ascension} />
           <ModeBadge modeId={game.mode} />
           <RunStatePanel game={game} />
