@@ -111,32 +111,29 @@ export function SanctuaryView({ game, setGame, onSkipTutorial, ascensionUnlocked
 
       {/* Mobile compact header - shows only on small screens */}
       <div className="md:hidden mb-3">
-        {/* Top row: Title, Sigils, Menu */}
-        <div className="flex items-center justify-between mb-2">
-          <h1 className="font-display text-xl text-rune">SANCTUARY</h1>
-          <div className="flex items-center gap-3">
-            <span className="text-[11px] text-slate-400">
-              Sigils: <span className="text-rune font-semibold">{game.sigilsEarned}/{game.sigilTarget}</span>
-            </span>
-            <button
-              onClick={() => setKitOpen(true)}
-              className="w-8 h-8 rounded-md bg-stone-800 hover:bg-stone-700 border border-stone-700 transition flex items-center justify-center"
-              aria-label="View progress"
-            >
-              <span className="text-slate-400 text-lg leading-none">⋮</span>
-            </button>
-          </div>
-        </div>
+        <div className="flex items-center justify-between gap-2 text-[12px]">
+          <div className="flex items-center gap-2 flex-wrap">
+            <div className="flex items-center gap-1">
+              <span className="text-[9px] uppercase tracking-wider text-slate-500">HP</span>
+              <span className="font-mono text-parchment">
+                {game.maxHp || BASE_MAX_HP}<span className="text-slate-500">/{game.maxHp || BASE_MAX_HP}</span>
+                <span className="ml-1 text-[9px] uppercase tracking-wider text-rune/70">Rested</span>
+              </span>
+            </div>
 
-        {/* Stats row: HP (Rested) */}
-        <div className="flex items-center gap-3 text-[13px]">
-          <div className="flex items-center gap-1.5">
-            <span className="text-[10px] uppercase tracking-wider text-slate-500">HP</span>
-            <span className="font-mono text-parchment">
-              {game.maxHp || BASE_MAX_HP}<span className="text-slate-500">/{game.maxHp || BASE_MAX_HP}</span>
-              <span className="ml-2 text-[10px] uppercase tracking-wider text-rune/70">Rested</span>
-            </span>
+            <div className="flex items-center gap-1">
+              <span className="text-[9px] uppercase tracking-wider text-slate-500">Sigils</span>
+              <span className="font-mono text-rune">{game.sigilsEarned}/{game.sigilTarget}</span>
+            </div>
           </div>
+
+          <button
+            onClick={() => setKitOpen(true)}
+            className="shrink-0 w-7 h-7 rounded-md bg-stone-800 hover:bg-stone-700 border border-stone-700 transition flex items-center justify-center"
+            aria-label="View progress"
+          >
+            <span className="text-slate-400 text-base leading-none">⋮</span>
+          </button>
         </div>
       </div>
 
