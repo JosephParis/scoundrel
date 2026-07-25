@@ -269,7 +269,7 @@ export function DescentView({ game, setGame }) {
 
         <div className="space-y-5 min-w-0">
         <section>
-          <div className="flex items-baseline justify-between mb-3">
+          <div className="hidden md:flex items-baseline justify-between mb-3">
             <h2 className="text-[10px] uppercase tracking-[0.3em] text-slate-500">The room</h2>
             <div className="text-[13px] text-slate-500">
               Deck <span className="font-mono text-slate-300">{game.deck.length}</span> remain
