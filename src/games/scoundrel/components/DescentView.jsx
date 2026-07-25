@@ -202,7 +202,7 @@ export function DescentView({ game, setGame }) {
       <KitModal open={kitOpen} onClose={() => setKitOpen(false)} game={game} theme={theme} />
 
       {/* Mobile compact header - shows only on small screens */}
-      <div className="md:hidden mb-3">
+      <div className="md:hidden mb-3 space-y-2">
         <div className="flex items-center justify-between gap-2 text-[12px]">
           <div className="flex items-center gap-2 flex-wrap">
             <div className="flex items-center gap-1">
@@ -211,21 +211,6 @@ export function DescentView({ game, setGame }) {
                 {game.hp}<span className="text-slate-500">/{game.maxHp}</span>
               </span>
             </div>
-
-            {game.weapon && (
-              <div className="flex items-center gap-1">
-                <span className="text-[9px] uppercase tracking-wider text-slate-500">Wpn</span>
-                <span className="font-mono text-parchment">
-                  {game.weapon.rank}
-                  {game.weapon.lastSlain && (
-                    <span className="text-slate-500"> ({game.weapon.lastSlain.rank})</span>
-                  )}
-                  {!game.weapon.lastSlain && (
-                    <span className="text-emerald-400">*</span>
-                  )}
-                </span>
-              </div>
-            )}
 
             <div className="flex items-center gap-1">
               <span className="text-[9px] uppercase tracking-wider text-slate-500">Deck</span>
@@ -246,6 +231,9 @@ export function DescentView({ game, setGame }) {
             <span className="text-slate-400 text-base leading-none">⋮</span>
           </button>
         </div>
+
+        {/* Full weapon panel on mobile */}
+        <WeaponPanel game={game} />
       </div>
 
       {/* Desktop layout with sidebar - shows only on medium+ screens */}
