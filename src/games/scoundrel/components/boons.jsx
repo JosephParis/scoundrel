@@ -93,14 +93,16 @@ export function BoonOfferPanel({ offers, onPick, forgeAfter = false }) {
         )}
       </div>
       <div className="grid grid-cols-2 sm:grid-cols-3 gap-2 sm:gap-3 justify-items-center">
-        {offers.map(id => {
+        {offers.map((id, index) => {
           const boon = getBoon(id)
+          const isLast = index === offers.length - 1
           return (
             <BoonCard
               key={id}
               boon={boon}
               selected={selectedId === id}
               onPick={() => setSelectedId(id)}
+              className={isLast ? 'col-span-2 sm:col-span-1' : ''}
             />
           )
         })}
@@ -116,7 +118,7 @@ export function BoonOfferPanel({ offers, onPick, forgeAfter = false }) {
   )
 }
 
-function BoonCard({ boon, selected, onPick }) {
+function BoonCard({ boon, selected, onPick, className = '' }) {
   const tag = BOON_TAG_LABEL[boon.tag] || ''
   return (
     <button
@@ -125,7 +127,7 @@ function BoonCard({ boon, selected, onPick }) {
         selected
           ? 'border-rune from-stone-800 to-stone-900 shadow-[0_0_24px_-8px_rgba(251,191,36,0.6)]'
           : 'border-stone-700 from-stone-900 to-stone-950 hover:border-rune hover:from-stone-800 hover:to-stone-900 hover:shadow-[0_0_24px_-8px_rgba(251,191,36,0.5)]'
-      }`}
+      } ${className}`}
     >
       <div className="absolute top-0 left-0 right-0 h-px bg-gradient-to-r from-transparent via-rune/40 to-transparent" />
       <div className="absolute bottom-0 left-0 right-0 h-px bg-gradient-to-r from-transparent via-rune/20 to-transparent" />
