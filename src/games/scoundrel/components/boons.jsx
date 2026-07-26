@@ -92,7 +92,7 @@ export function BoonOfferPanel({ offers, onPick, forgeAfter = false }) {
           </div>
         )}
       </div>
-      <div className="grid grid-cols-3 gap-2 sm:gap-3 justify-items-center">
+      <div className="grid grid-cols-2 sm:grid-cols-3 gap-2 sm:gap-3 justify-items-center">
         {offers.map(id => {
           const boon = getBoon(id)
           return (
@@ -121,7 +121,7 @@ function BoonCard({ boon, selected, onPick }) {
   return (
     <button
       onClick={onPick}
-      className={`group aspect-[2/3] w-full max-w-[110px] sm:max-w-[190px] md:max-w-[210px] text-left rounded-lg border bg-gradient-to-b p-2 sm:p-3.5 hover:-translate-y-1 transition-all duration-200 shadow-md flex flex-col relative overflow-hidden ${
+      className={`group aspect-[2/3] w-full max-w-[160px] sm:max-w-[190px] md:max-w-[210px] text-left rounded-lg border bg-gradient-to-b p-2.5 sm:p-3.5 hover:-translate-y-1 transition-all duration-200 shadow-md flex flex-col relative overflow-hidden ${
         selected
           ? 'border-rune from-stone-800 to-stone-900 shadow-[0_0_24px_-8px_rgba(251,191,36,0.6)]'
           : 'border-stone-700 from-stone-900 to-stone-950 hover:border-rune hover:from-stone-800 hover:to-stone-900 hover:shadow-[0_0_24px_-8px_rgba(251,191,36,0.5)]'
@@ -129,17 +129,17 @@ function BoonCard({ boon, selected, onPick }) {
     >
       <div className="absolute top-0 left-0 right-0 h-px bg-gradient-to-r from-transparent via-rune/40 to-transparent" />
       <div className="absolute bottom-0 left-0 right-0 h-px bg-gradient-to-r from-transparent via-rune/20 to-transparent" />
-      <div className="font-display text-rune text-[13px] sm:text-base leading-tight">{boon.name}</div>
-      <div className="h-px bg-stone-700 my-1 sm:my-2" />
-      <div className="text-[10px] sm:text-[12px] text-slate-200 leading-snug">{boon.description}</div>
+      <div className="font-display text-rune text-sm sm:text-base leading-tight">{boon.name}</div>
+      <div className="h-px bg-stone-700 my-1.5 sm:my-2" />
+      <div className="text-[11px] sm:text-[12px] text-slate-200 leading-snug">{boon.description}</div>
       {boon.example && (
-        <div className="mt-1 sm:mt-2 text-[9px] sm:text-[11px] text-slate-400 italic leading-snug border-l-2 border-rune/30 pl-1.5 sm:pl-2">
+        <div className="mt-1.5 sm:mt-2 text-[10px] sm:text-[11px] text-slate-400 italic leading-snug border-l-2 border-rune/30 pl-1.5 sm:pl-2">
           {boon.example}
         </div>
       )}
       <div className="flex-1" />
       {tag && (
-        <div className="mt-1 sm:mt-2 pt-1 sm:pt-2 border-t border-stone-800 text-[8px] sm:text-[9px] uppercase tracking-[0.2em] text-slate-500 group-hover:text-rune/70 transition">
+        <div className="mt-1.5 sm:mt-2 pt-1.5 sm:pt-2 border-t border-stone-800 text-[8.5px] sm:text-[9px] uppercase tracking-[0.2em] text-slate-500 group-hover:text-rune/70 transition">
           {tag}
         </div>
       )}
