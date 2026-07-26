@@ -5,13 +5,12 @@ import {
   isEnabled, BASE_MAX_HP,
 } from '../logic'
 import { PhaseRail, LogPanel, DescendAction } from './atoms'
-import { BoonOfferPanel, RunStatePanel, DeckPeekButton, DeckModal, LoadoutPanel } from './boons'
+import { BoonOfferPanel, RunStatePanel, DeckPeekButton, DeckModal, LoadoutPanel, RunBoonsModal } from './boons'
 import { EditOfferPanel } from './forge'
 import { RulesInlinePanel, TutorialIntroPanel } from './rules'
 import { ModePickerPanel, ModeBadge } from './modes'
-import { LibraryPanel, LibraryModal } from './library'
+import { LibraryPanel } from './library'
 import { AscensionPickerPanel, AscensionBadge } from './ascensions'
-import { SanctuaryKitModal } from './SanctuaryKitModal'
 import { audio } from '../audio'
 import { rankLabel, SUIT_GLYPH } from '../logic'
 
@@ -24,8 +23,7 @@ export function SanctuaryView({ game, setGame, onSkipTutorial, ascensionUnlocked
   const showForge = !needsBoon && forgeActive(game)
   const showDescend = !needsBoon && !showForge
   const [deckOpen, setDeckOpen] = useState(false)
-  const [kitOpen, setKitOpen] = useState(false)
-  const [libraryOpen, setLibraryOpen] = useState(false)
+  const [boonsOpen, setBoonsOpen] = useState(false)
 
   useEffect(() => {
     if (!deckOpen) return
@@ -35,11 +33,11 @@ export function SanctuaryView({ game, setGame, onSkipTutorial, ascensionUnlocked
   }, [deckOpen])
 
   useEffect(() => {
-    if (!kitOpen) return
-    const onKey = (e) => { if (e.key === 'Escape') setKitOpen(false) }
+    if (!boonsOpen) return
+    const onKey = (e) => { if (e.key === 'Escape') setBoonsOpen(false) }
     window.addEventListener('keydown', onKey)
     return () => window.removeEventListener('keydown', onKey)
-  }, [kitOpen])
+  }, [boonsOpen])
 
   // Exactly one panel renders in the action slot (or none, when the
   // player is idle and ready to descend).
@@ -104,40 +102,34 @@ export function SanctuaryView({ game, setGame, onSkipTutorial, ascensionUnlocked
   return (
     <div className="animate-fade-in">
       <DeckModal open={deckOpen} onClose={() => setDeckOpen(false)} game={game} />
-      <SanctuaryKitModal
-        open={kitOpen}
-        onClose={() => setKitOpen(false)}
+      <RunBoonsModal
+        open={boonsOpen}
+        onClose={() => setBoonsOpen(false)}
         game={game}
-        onOpenDeck={() => setDeckOpen(true)}
-      />
-      <LibraryModal
-        open={libraryOpen}
-        onClose={() => setLibraryOpen(false)}
-        unlockedBoons={game.unlockedBoons}
       />
 
       {/* Mobile compact header - shows only on small screens */}
       <div className="md:hidden mb-3">
-        <div className="flex items-center gap-1.5 text-[11px]">
+        <div className="flex items-center gap-2">
           {/* HP */}
-          <div className="flex items-center gap-0.5">
-            <span className="text-[8px] uppercase tracking-wider text-slate-500">HP</span>
-            <span className="font-mono text-parchment text-[11px]">
+          <div className="flex items-center gap-1">
+            <span className="text-[9px] uppercase tracking-wider text-slate-500">HP</span>
+            <span className="font-mono text-parchment text-sm">
               {game.maxHp || BASE_MAX_HP}
             </span>
           </div>
 
           {/* Sigils */}
-          <div className="flex items-center gap-0.5">
-            <span className="text-[8px] uppercase tracking-wider text-slate-500">Sigils</span>
-            <span className="font-mono text-rune text-[11px]">{game.sigilsEarned}/{game.sigilTarget}</span>
+          <div className="flex items-center gap-1">
+            <span className="text-[9px] uppercase tracking-wider text-slate-500">Sigils</span>
+            <span className="font-mono text-rune text-sm">{game.sigilsEarned}/{game.sigilTarget}</span>
           </div>
 
           {/* Weapon display (not clickable) */}
           {game.carriedWeapon && (
-            <div className="flex items-center gap-0.5">
-              <span className="text-[8px] uppercase tracking-wider text-slate-500">Wpn</span>
-              <span className="font-mono text-parchment text-[11px]">
+            <div className="flex items-center gap-1">
+              <span className="text-[9px] uppercase tracking-wider text-slate-500">Weapon</span>
+              <span className="font-mono text-parchment text-sm">
                 {rankLabel(game.carriedWeapon.rank)}{SUIT_GLYPH[game.carriedWeapon.suit]}
               </span>
             </div>
@@ -146,17 +138,17 @@ export function SanctuaryView({ game, setGame, onSkipTutorial, ascensionUnlocked
           {/* Spacer */}
           <div className="flex-1" />
 
-          {/* Boons button */}
+          {/* Boons button — this run's boons */}
           <button
-            onClick={() => setLibraryOpen(true)}
+            onClick={() => setBoonsOpen(true)}
             className="px-3 py-1.5 rounded-md border border-rune/40 bg-gradient-to-b from-stone-800 to-stone-900 hover:from-stone-700 hover:to-stone-800 hover:border-rune/60 transition text-[11px] font-medium text-rune"
           >
             Boons
           </button>
 
-          {/* Kit button */}
+          {/* Kit button — same card fan the rail's "View kit" opens */}
           <button
-            onClick={() => setKitOpen(true)}
+            onClick={() => setDeckOpen(true)}
             className="px-3 py-1.5 rounded-md border border-rune/40 bg-gradient-to-b from-stone-800 to-stone-900 hover:from-stone-700 hover:to-stone-800 hover:border-rune/60 transition text-[11px] font-medium text-rune"
           >
             Kit

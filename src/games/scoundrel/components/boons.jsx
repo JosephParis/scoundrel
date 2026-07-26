@@ -203,6 +203,58 @@ export function RunStatePanel({ game }) {
   )
 }
 
+// Current-run boons, listed in full. The rail shows these inline; on mobile
+// there's no rail, so the header's Boons button opens this instead. Portaled
+// to body for the same reason the library modal is: it opens from a header
+// that sits inside other stacking contexts.
+export function RunBoonsModal({ open, onClose, game }) {
+  if (!open) return null
+  const boons = game.boons || []
+  return createPortal((
+    <div
+      className="fixed inset-0 z-50 bg-black/80 backdrop-blur-sm flex items-start sm:items-center justify-center p-4 overflow-y-auto"
+      onClick={onClose}
+    >
+      <div
+        className="panel max-w-md w-full p-6 my-4 sm:my-auto relative shadow-2xl"
+        onClick={e => e.stopPropagation()}
+      >
+        <button
+          onClick={onClose}
+          className="absolute top-3 right-3 w-9 h-9 rounded-full bg-stone-800 hover:bg-stone-700 text-parchment text-xl leading-none flex items-center justify-center border border-stone-700"
+          aria-label="Close boons"
+        >
+          ×
+        </button>
+        <div className="mb-4">
+          <div className="text-[10px] uppercase tracking-[0.3em] text-slate-500">This run</div>
+          <h2 className="font-display text-rune text-2xl mt-1">
+            {boons.length} <span className="text-slate-400 text-base">{boons.length === 1 ? 'Boon' : 'Boons'}</span>
+          </h2>
+        </div>
+        {boons.length === 0 ? (
+          <div className="text-[13px] text-slate-500 italic">
+            No boons yet. Survive a descent to earn your first.
+          </div>
+        ) : (
+          <ul className="space-y-2 max-h-[60vh] overflow-y-auto pr-1">
+            {boons.map(id => {
+              const boon = getBoon(id)
+              if (!boon) return null
+              return (
+                <li key={id} className="rounded-md border border-stone-700 bg-stone-900/40 p-3">
+                  <div className="text-rune font-display text-sm">{boon.name}</div>
+                  <div className="text-[12px] text-slate-300 mt-1 leading-snug">{boon.description}</div>
+                </li>
+              )
+            })}
+          </ul>
+        )}
+      </div>
+    </div>
+  ), document.body)
+}
+
 // -- Deck peek ---------------------------------------------------------
 
 export function DeckPeekButton({ game, onClick }) {
