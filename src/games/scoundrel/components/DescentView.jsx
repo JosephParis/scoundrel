@@ -204,10 +204,9 @@ export function DescentView({ game, setGame }) {
 
       {/* Mobile compact header - shows only on small screens */}
       <div className="md:hidden mb-2">
-        <div className="flex items-center justify-between gap-3">
-          {/* Left side: HP, Deck, Weapon */}
-          <div className="flex items-center gap-2 min-w-0">
-            {/* HP */}
+        <div className="flex items-center gap-2">
+          {/* HP + Deck */}
+          <div className="flex items-center gap-2">
             <div className="flex flex-col items-center justify-center">
               <div className="text-[8px] uppercase tracking-wider text-slate-500 leading-none mb-0.5">HP</div>
               <div className="font-mono font-bold text-parchment text-lg leading-none">
@@ -215,23 +214,25 @@ export function DescentView({ game, setGame }) {
               </div>
             </div>
 
-            {/* Deck */}
             <div className="flex flex-col items-center justify-center">
               <div className="text-[8px] uppercase tracking-wider text-slate-500 leading-none mb-0.5">Deck</div>
               <div className="font-mono font-bold text-parchment text-lg leading-none">{game.deck.length}</div>
             </div>
+          </div>
 
-            {/* Weapon - larger format */}
-            {game.weapon ? (
-              <div className="flex items-center gap-2 border-l border-stone-700 pl-2">
-                <div>
-                  <div className="text-[8px] uppercase tracking-wider text-slate-500 leading-none">Strikes</div>
+          {/* Weapon panel - gets its own ~1/3 width */}
+          {game.weapon ? (
+            <div className="panel p-2 flex-1 min-w-0">
+              <div className="text-[8px] uppercase tracking-widest text-slate-500 mb-1">Weapon</div>
+              <div className="flex items-center gap-3">
+                <div className="flex-1 min-w-0">
+                  <div className="text-[8px] uppercase tracking-wider text-slate-500 leading-none">Strikes as</div>
                   <div className="font-mono font-bold text-parchment text-3xl leading-none">
                     {describeWeaponStrength(game, game.weapon).value}
                   </div>
                 </div>
-                <div>
-                  <div className="text-[8px] uppercase tracking-wider text-slate-500 leading-none">Bound</div>
+                <div className="text-center">
+                  <div className="text-[8px] uppercase tracking-wider text-slate-500 leading-none">Bound to</div>
                   <div className={`font-mono font-bold leading-none text-3xl ${
                     game.weapon.lastSlain ? 'text-parchment' : 'text-stone-700'
                   }`}>
@@ -239,15 +240,15 @@ export function DescentView({ game, setGame }) {
                   </div>
                 </div>
               </div>
-            ) : (
-              <div className="flex flex-col items-center justify-center border-l border-stone-700 pl-2">
-                <div className="text-[8px] uppercase tracking-wider text-slate-500 leading-none mb-0.5">Weapon</div>
-                <div className="text-sm text-slate-500 italic leading-none">Bare</div>
-              </div>
-            )}
-          </div>
+            </div>
+          ) : (
+            <div className="panel p-2 flex-1 min-w-0">
+              <div className="text-[8px] uppercase tracking-widest text-slate-500 mb-1">Weapon</div>
+              <div className="text-sm text-slate-500 italic">Bare-handed.</div>
+            </div>
+          )}
 
-          {/* Right side: Sigils and menu */}
+          {/* Sigils and menu */}
           <div className="flex items-center gap-2 shrink-0">
             <div className="flex items-center gap-1">
               <span className="text-[9px] uppercase tracking-wider text-slate-500">Sigils</span>
