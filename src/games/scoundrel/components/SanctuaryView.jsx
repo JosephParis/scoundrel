@@ -117,46 +117,47 @@ export function SanctuaryView({ game, setGame, onSkipTutorial, ascensionUnlocked
       />
 
       {/* Mobile compact header - shows only on small screens */}
-      <div className="md:hidden mb-3 space-y-2">
-        {/* Top row: HP, Sigils, Weapon display */}
-        <div className="flex items-center justify-between gap-2">
-          <div className="flex items-center gap-2 flex-wrap">
-            <div className="flex items-center gap-1">
-              <span className="text-[9px] uppercase tracking-wider text-slate-500">HP</span>
-              <span className="font-mono text-parchment">
-                {game.maxHp || BASE_MAX_HP}<span className="text-slate-500">/{game.maxHp || BASE_MAX_HP}</span>
-                <span className="ml-1 text-[9px] uppercase tracking-wider text-rune/70">Rested</span>
-              </span>
-            </div>
+      <div className="md:hidden mb-3">
+        <div className="flex items-center gap-1.5 text-[11px]">
+          {/* HP */}
+          <div className="flex items-center gap-0.5">
+            <span className="text-[8px] uppercase tracking-wider text-slate-500">HP</span>
+            <span className="font-mono text-parchment text-[11px]">
+              {game.maxHp || BASE_MAX_HP}
+            </span>
+          </div>
 
-            <div className="flex items-center gap-1">
-              <span className="text-[9px] uppercase tracking-wider text-slate-500">Sigils</span>
-              <span className="font-mono text-rune">{game.sigilsEarned}/{game.sigilTarget}</span>
-            </div>
+          {/* Sigils */}
+          <div className="flex items-center gap-0.5">
+            <span className="text-[8px] uppercase tracking-wider text-slate-500">Sigils</span>
+            <span className="font-mono text-rune text-[11px]">{game.sigilsEarned}/{game.sigilTarget}</span>
           </div>
 
           {/* Weapon display (not clickable) */}
           {game.carriedWeapon && (
-            <div className="flex items-center gap-1 text-[11px]">
-              <span className="text-[8px] uppercase tracking-wider text-slate-500">Weapon</span>
-              <span className="font-mono text-parchment">
+            <div className="flex items-center gap-0.5">
+              <span className="text-[8px] uppercase tracking-wider text-slate-500">Wpn</span>
+              <span className="font-mono text-parchment text-[11px]">
                 {rankLabel(game.carriedWeapon.rank)}{SUIT_GLYPH[game.carriedWeapon.suit]}
               </span>
             </div>
           )}
-        </div>
 
-        {/* Bottom row: Boons and Kit buttons */}
-        <div className="flex items-center gap-2">
+          {/* Spacer */}
+          <div className="flex-1" />
+
+          {/* Boons button */}
           <button
             onClick={() => setLibraryOpen(true)}
-            className="flex-1 px-3 py-1.5 rounded-md bg-stone-800 hover:bg-stone-700 border border-stone-700 transition text-[11px] font-medium text-slate-300"
+            className="px-2 py-1 rounded-md bg-stone-800 hover:bg-stone-700 border border-stone-700 transition text-[10px] font-medium text-slate-300"
           >
             Boons
           </button>
+
+          {/* Kit button */}
           <button
             onClick={() => setKitOpen(true)}
-            className="flex-1 px-3 py-1.5 rounded-md bg-stone-800 hover:bg-stone-700 border border-stone-700 transition text-[11px] font-medium text-slate-300"
+            className="px-2 py-1 rounded-md bg-stone-800 hover:bg-stone-700 border border-stone-700 transition text-[10px] font-medium text-slate-300"
           >
             Kit
           </button>
