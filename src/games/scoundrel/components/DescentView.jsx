@@ -203,63 +203,59 @@ export function DescentView({ game, setGame }) {
       <KitModal open={kitOpen} onClose={() => setKitOpen(false)} game={game} theme={theme} />
 
       {/* Mobile compact header - shows only on small screens */}
-      <div className="md:hidden mb-2 space-y-1">
-        <div className="flex items-center justify-between gap-2 text-[12px]">
-          <div className="flex items-center gap-2 flex-wrap">
-            <div className="flex items-center gap-1">
-              <span className="text-[9px] uppercase tracking-wider text-slate-500">HP</span>
-              <span className="font-mono text-parchment">
-                {game.hp}<span className="text-slate-500">/{game.maxHp}</span>
-              </span>
+      <div className="md:hidden mb-2">
+        <div className="flex items-center justify-between gap-2">
+          {/* Left third: HP, Deck, Weapon - larger, more prominent */}
+          <div className="flex items-center gap-2 min-w-0" style={{ flexBasis: '33%' }}>
+            {/* HP */}
+            <div className="flex flex-col items-center justify-center">
+              <div className="text-[8px] uppercase tracking-wider text-slate-500 leading-none mb-0.5">HP</div>
+              <div className="font-mono font-bold text-parchment text-lg leading-none">
+                {game.hp}<span className="text-slate-500 text-sm">/{game.maxHp}</span>
+              </div>
             </div>
 
-            <div className="flex items-center gap-1">
-              <span className="text-[9px] uppercase tracking-wider text-slate-500">Deck</span>
-              <span className="font-mono text-parchment">{game.deck.length}</span>
+            {/* Deck */}
+            <div className="flex flex-col items-center justify-center">
+              <div className="text-[8px] uppercase tracking-wider text-slate-500 leading-none mb-0.5">Deck</div>
+              <div className="font-mono font-bold text-parchment text-lg leading-none">{game.deck.length}</div>
             </div>
 
+            {/* Weapon */}
+            {game.weapon ? (
+              <div className="flex flex-col items-center justify-center border-l border-stone-700 pl-2">
+                <div className="text-[8px] uppercase tracking-wider text-slate-500 leading-none mb-0.5">Weapon</div>
+                <div className="font-mono font-bold text-parchment text-lg leading-none">
+                  {describeWeaponStrength(game, game.weapon).value}
+                  <span className="text-slate-500 text-sm">
+                    →{game.weapon.lastSlain ? rankLabel(game.weapon.lastSlain.rank) : '∞'}
+                  </span>
+                </div>
+              </div>
+            ) : (
+              <div className="flex flex-col items-center justify-center border-l border-stone-700 pl-2">
+                <div className="text-[8px] uppercase tracking-wider text-slate-500 leading-none mb-0.5">Weapon</div>
+                <div className="text-sm text-slate-500 italic leading-none">Bare</div>
+              </div>
+            )}
+          </div>
+
+          {/* Right side: Sigils and menu */}
+          <div className="flex items-center gap-2 shrink-0">
             <div className="flex items-center gap-1">
               <span className="text-[9px] uppercase tracking-wider text-slate-500">Sigils</span>
-              <span className="font-mono text-rune">{game.sigilsEarned}/{game.sigilTarget}</span>
+              <span className="font-mono text-rune font-medium">{game.sigilsEarned}/{game.sigilTarget}</span>
             </div>
-          </div>
 
-          <button
-            onClick={() => setKitOpen(true)}
-            className="shrink-0 w-7 h-7 rounded-md bg-stone-800 hover:bg-stone-700 border border-stone-700 transition flex items-center justify-center"
-            aria-label="View kit"
-          >
-            <span className="text-slate-400 text-base leading-none">⋮</span>
-          </button>
+            <button
+              onClick={() => setKitOpen(true)}
+              className="shrink-0 w-7 h-7 rounded-md bg-stone-800 hover:bg-stone-700 border border-stone-700 transition flex items-center justify-center"
+              aria-label="View kit"
+            >
+              <span className="text-slate-400 text-base leading-none">⋮</span>
+            </button>
+          </div>
         </div>
-
-        {/* Compact weapon display on mobile */}
-        {game.weapon ? (
-          <div className="panel p-2">
-            <div className="text-[9px] uppercase tracking-widest text-slate-500 mb-1">Weapon</div>
-            <div className="flex items-center gap-3">
-              <div className="flex-1">
-                <div className="text-[9px] uppercase tracking-wider text-slate-500">Strikes as</div>
-                <div className="font-mono font-bold text-parchment text-3xl leading-none">
-                  {describeWeaponStrength(game, game.weapon).value}
-                </div>
-              </div>
-              <div className="text-center">
-                <div className="text-[9px] uppercase tracking-wider text-slate-500">Bound to</div>
-                <div className={`font-mono font-bold leading-none text-3xl ${
-                  game.weapon.lastSlain ? 'text-parchment' : 'text-stone-700'
-                }`}>
-                  {game.weapon.lastSlain ? rankLabel(game.weapon.lastSlain.rank) : '–'}
-                </div>
-              </div>
-            </div>
-          </div>
-        ) : (
-          <div className="panel p-2">
-            <div className="text-[9px] uppercase tracking-widest text-slate-500 mb-1">Weapon</div>
-            <div className="text-sm text-slate-500 italic">Bare-handed.</div>
-          </div>
-        )}
       </div>
 
       {/* Desktop layout with sidebar - shows only on medium+ screens */}
