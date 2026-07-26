@@ -17,26 +17,27 @@ export function TopBar({ game, user, onOpenRules, onRetire, onOpenCredits, onOpe
           </button>
         </div>
         <div className="flex items-center gap-1.5 sm:gap-2 shrink-0">
+          {/* Desktop-only buttons - hidden on mobile, shown in menu instead */}
           {runActive && (
             <button
               onClick={onOpenHome}
               aria-label="Pause"
               title="Pause (Esc)"
-              className="w-8 h-8 sm:w-9 sm:h-9 grid place-items-center rounded-md border border-stone-700 hover:border-rune/60 text-slate-400 hover:text-parchment transition"
+              className="hidden md:grid w-8 h-8 sm:w-9 sm:h-9 place-items-center rounded-md border border-stone-700 hover:border-rune/60 text-slate-400 hover:text-parchment transition"
             >
               <PauseIcon />
             </button>
           )}
-          <MuteButton />
+          <MuteButton className="hidden md:grid" />
           <button
             onClick={onOpenRules}
-            className="px-3 py-1.5 rounded-md border border-stone-700 hover:border-rune/60 text-slate-300 hover:text-parchment text-xs sm:text-sm font-medium transition"
+            className="hidden md:flex px-3 py-1.5 rounded-md border border-stone-700 hover:border-rune/60 text-slate-300 hover:text-parchment text-xs sm:text-sm font-medium transition"
           >
             How to play
           </button>
           <button
             onClick={onReplayTutorial}
-            className="px-3 py-1.5 rounded-md border border-stone-700 hover:border-rune/60 text-slate-300 hover:text-parchment text-xs sm:text-sm font-medium transition"
+            className="hidden md:flex px-3 py-1.5 rounded-md border border-stone-700 hover:border-rune/60 text-slate-300 hover:text-parchment text-xs sm:text-sm font-medium transition"
           >
             Tutorial
           </button>
@@ -52,6 +53,9 @@ export function TopBar({ game, user, onOpenRules, onRetire, onOpenCredits, onOpe
             onOpenHistory={onOpenHistory}
             onOpenSettings={onOpenSettings}
             onOpenFeedback={onOpenFeedback}
+            onOpenHome={onOpenHome}
+            onOpenRules={onOpenRules}
+            onReplayTutorial={onReplayTutorial}
           />
         </div>
       </div>
@@ -75,7 +79,7 @@ function PauseIcon() {
 
 // Global sound toggle. Reads the mute flag straight from the audio store so it
 // stays in sync no matter what flips it, and persists across visits.
-function MuteButton() {
+function MuteButton({ className = '' }) {
   const muted = useMuted()
   return (
     <button
@@ -83,7 +87,7 @@ function MuteButton() {
       aria-label={muted ? 'Unmute sound' : 'Mute sound'}
       aria-pressed={muted}
       title={muted ? 'Sound off' : 'Sound on'}
-      className="w-8 h-8 sm:w-9 sm:h-9 grid place-items-center rounded-md border border-stone-700 hover:border-rune/60 text-slate-400 hover:text-parchment transition"
+      className={`w-8 h-8 sm:w-9 sm:h-9 grid place-items-center rounded-md border border-stone-700 hover:border-rune/60 text-slate-400 hover:text-parchment transition ${className}`}
     >
       <SpeakerIcon muted={muted} />
     </button>
@@ -115,9 +119,10 @@ function SpeakerIcon({ muted }) {
   )
 }
 
-function OverflowMenu({ runActive, user, onRetire, onOpenCredits, onOpenDev, onOpenLogin, onSignOut, onOpenCardLibrary, onOpenHistory, onOpenSettings, onOpenFeedback }) {
+function OverflowMenu({ runActive, user, onRetire, onOpenCredits, onOpenDev, onOpenLogin, onSignOut, onOpenCardLibrary, onOpenHistory, onOpenSettings, onOpenFeedback, onOpenHome, onOpenRules, onReplayTutorial }) {
   const [open, setOpen] = useState(false)
   const ref = useRef(null)
+  const muted = useMuted()
 
   useEffect(() => {
     if (!open) return
@@ -155,6 +160,56 @@ function OverflowMenu({ runActive, user, onRetire, onOpenCredits, onOpenDev, onO
           role="menu"
           className="absolute right-0 mt-2 w-56 rounded-md border border-stone-700 bg-dungeon/95 backdrop-blur-md shadow-2xl overflow-hidden z-40"
         >
+          {/* Mobile-only menu items - shown only on small screens */}
+          <div className="md:hidden">
+            {runActive && (
+              <button
+                role="menuitem"
+                onClick={() => {
+                  setOpen(false)
+                  onOpenHome()
+                }}
+                className={itemClass}
+              >
+                <span className="text-slate-400 w-4 text-center">⏸</span>
+                <span>Pause</span>
+              </button>
+            )}
+            <button
+              role="menuitem"
+              onClick={() => {
+                setOpen(false)
+                audio.toggleMuted()
+              }}
+              className={itemClass}
+            >
+              <span className="text-slate-400 w-4 text-center">{muted ? '🔇' : '🔊'}</span>
+              <span>{muted ? 'Unmute' : 'Mute'}</span>
+            </button>
+            <button
+              role="menuitem"
+              onClick={() => {
+                setOpen(false)
+                onOpenRules()
+              }}
+              className={itemClass}
+            >
+              <span className="text-rune w-4 text-center">?</span>
+              <span>How to play</span>
+            </button>
+            <button
+              role="menuitem"
+              onClick={() => {
+                setOpen(false)
+                onReplayTutorial()
+              }}
+              className={itemClass}
+            >
+              <span className="text-rune w-4 text-center">◆</span>
+              <span>Tutorial</span>
+            </button>
+            <div className="h-px bg-stone-800" />
+          </div>
           {user ? (
             <>
               <div className="px-3 py-2 flex items-center gap-2 border-b border-stone-800">
