@@ -9,10 +9,11 @@ import { BoonOfferPanel, RunStatePanel, DeckPeekButton, DeckModal, LoadoutPanel 
 import { EditOfferPanel } from './forge'
 import { RulesInlinePanel, TutorialIntroPanel } from './rules'
 import { ModePickerPanel, ModeBadge } from './modes'
-import { LibraryPanel } from './library'
+import { LibraryPanel, LibraryModal } from './library'
 import { AscensionPickerPanel, AscensionBadge } from './ascensions'
 import { SanctuaryKitModal } from './SanctuaryKitModal'
 import { audio } from '../audio'
+import { rankLabel, SUIT_GLYPH } from '../logic'
 
 export function SanctuaryView({ game, setGame, onSkipTutorial, ascensionUnlocked = 0, celebrateSigil = false, onSigilCelebrated }) {
   const isOpeningVisit = game.sigilsEarned === 0
@@ -24,6 +25,7 @@ export function SanctuaryView({ game, setGame, onSkipTutorial, ascensionUnlocked
   const showDescend = !needsBoon && !showForge
   const [deckOpen, setDeckOpen] = useState(false)
   const [kitOpen, setKitOpen] = useState(false)
+  const [libraryOpen, setLibraryOpen] = useState(false)
 
   useEffect(() => {
     if (!deckOpen) return
@@ -108,10 +110,16 @@ export function SanctuaryView({ game, setGame, onSkipTutorial, ascensionUnlocked
         game={game}
         onOpenDeck={() => setDeckOpen(true)}
       />
+      <LibraryModal
+        open={libraryOpen}
+        onClose={() => setLibraryOpen(false)}
+        unlockedBoons={game.unlockedBoons}
+      />
 
       {/* Mobile compact header - shows only on small screens */}
-      <div className="md:hidden mb-3">
-        <div className="flex items-center justify-between gap-2 text-[12px]">
+      <div className="md:hidden mb-3 space-y-2">
+        {/* Top row: HP, Sigils, Weapon display */}
+        <div className="flex items-center justify-between gap-2">
           <div className="flex items-center gap-2 flex-wrap">
             <div className="flex items-center gap-1">
               <span className="text-[9px] uppercase tracking-wider text-slate-500">HP</span>
@@ -127,12 +135,30 @@ export function SanctuaryView({ game, setGame, onSkipTutorial, ascensionUnlocked
             </div>
           </div>
 
+          {/* Weapon display (not clickable) */}
+          {game.carriedWeapon && (
+            <div className="flex items-center gap-1 text-[11px]">
+              <span className="text-[8px] uppercase tracking-wider text-slate-500">Weapon</span>
+              <span className="font-mono text-parchment">
+                {rankLabel(game.carriedWeapon.rank)}{SUIT_GLYPH[game.carriedWeapon.suit]}
+              </span>
+            </div>
+          )}
+        </div>
+
+        {/* Bottom row: Boons and Kit buttons */}
+        <div className="flex items-center gap-2">
+          <button
+            onClick={() => setLibraryOpen(true)}
+            className="flex-1 px-3 py-1.5 rounded-md bg-stone-800 hover:bg-stone-700 border border-stone-700 transition text-[11px] font-medium text-slate-300"
+          >
+            Boons
+          </button>
           <button
             onClick={() => setKitOpen(true)}
-            className="shrink-0 w-7 h-7 rounded-md bg-stone-800 hover:bg-stone-700 border border-stone-700 transition flex items-center justify-center"
-            aria-label="View progress"
+            className="flex-1 px-3 py-1.5 rounded-md bg-stone-800 hover:bg-stone-700 border border-stone-700 transition text-[11px] font-medium text-slate-300"
           >
-            <span className="text-slate-400 text-base leading-none">⋮</span>
+            Kit
           </button>
         </div>
       </div>
