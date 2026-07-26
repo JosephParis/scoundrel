@@ -149,7 +149,7 @@ export function SanctuaryView({ game, setGame, onSkipTutorial, ascensionUnlocked
           {/* Boons button */}
           <button
             onClick={() => setLibraryOpen(true)}
-            className="px-2 py-1 rounded-md bg-stone-800 hover:bg-stone-700 border border-stone-700 transition text-[10px] font-medium text-slate-300"
+            className="px-3 py-1.5 rounded-md border border-rune/40 bg-gradient-to-b from-stone-800 to-stone-900 hover:from-stone-700 hover:to-stone-800 hover:border-rune/60 transition text-[11px] font-medium text-rune"
           >
             Boons
           </button>
@@ -157,7 +157,7 @@ export function SanctuaryView({ game, setGame, onSkipTutorial, ascensionUnlocked
           {/* Kit button */}
           <button
             onClick={() => setKitOpen(true)}
-            className="px-2 py-1 rounded-md bg-stone-800 hover:bg-stone-700 border border-stone-700 transition text-[10px] font-medium text-slate-300"
+            className="px-3 py-1.5 rounded-md border border-rune/40 bg-gradient-to-b from-stone-800 to-stone-900 hover:from-stone-700 hover:to-stone-800 hover:border-rune/60 transition text-[11px] font-medium text-rune"
           >
             Kit
           </button>
