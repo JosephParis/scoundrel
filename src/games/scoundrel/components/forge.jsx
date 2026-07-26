@@ -44,21 +44,21 @@ export function EditOfferPanel({ game, onPick, onSkip }) {
   const selCard = choices.find(c => c.id === selected)
 
   return (
-    <section className="panel panel-warm p-6">
-      <div className="text-center mb-5">
-        <div className="text-[10px] uppercase tracking-[0.3em] text-amber-200/70">
+    <section className="panel panel-warm p-4">
+      <div className="text-center mb-3">
+        <div className="text-[9px] uppercase tracking-[0.3em] text-amber-200/70">
           The Forge · edit {idx + 1} of {grants.length}
         </div>
-        <h2 className="font-display text-rune text-xl mt-1">{meta.title}</h2>
-        <p className="text-[12px] text-slate-400 mt-1 max-w-md mx-auto">{meta.blurb}</p>
+        <h2 className="font-display text-rune text-lg mt-0.5">{meta.title}</h2>
+        <p className="text-[11px] text-slate-400 mt-0.5 max-w-md mx-auto">{meta.blurb}</p>
       </div>
 
       {choices.length === 0 ? (
-        <div className="text-center text-[12px] text-slate-500 italic">
+        <div className="text-center text-[11px] text-slate-500 italic">
           Nothing to {type} right now. Step away.
         </div>
       ) : (
-        <div className="grid grid-cols-2 sm:grid-cols-4 gap-3 justify-items-center">
+        <div className="grid grid-cols-2 sm:grid-cols-4 gap-2.5 justify-items-center">
           {choices.map(c => (
             <EditChoiceCard
               key={c.id}
@@ -71,7 +71,7 @@ export function EditOfferPanel({ game, onPick, onSkip }) {
         </div>
       )}
 
-      <div className="flex justify-center items-center gap-3 mt-5 flex-wrap">
+      <div className="flex justify-center items-center gap-3 mt-3 flex-wrap">
         <ConfirmButton
           onClick={() => selCard && onPick(selCard.id)}
           disabled={!selCard}
@@ -79,7 +79,7 @@ export function EditOfferPanel({ game, onPick, onSkip }) {
         />
         <button
           onClick={onSkip}
-          className="text-[11px] uppercase tracking-widest text-slate-500 hover:text-parchment transition px-3 py-2"
+          className="text-[10px] uppercase tracking-widest text-slate-500 hover:text-parchment transition px-2.5 py-1.5"
         >
           Skip this edit
         </button>
@@ -119,7 +119,7 @@ function EditChoiceCard({ card, mode, selected, onPick }) {
       <button
         onClick={onPick}
         {...infoHandlers}
-        className={`relative w-full max-w-[240px] aspect-[2/3] rounded-lg border-2 card-face text-stone-900 p-2.5 flex flex-col text-left transition-all ${
+        className={`relative w-full max-w-[200px] aspect-[2/3] rounded-lg border-2 card-face text-stone-900 p-2 flex flex-col text-left transition-all ${
           selected
             ? 'border-rune ring-2 ring-rune/60 -translate-y-1'
             : `${cardBorderTone(card)} hover:-translate-y-1 hover:shadow-lg`
