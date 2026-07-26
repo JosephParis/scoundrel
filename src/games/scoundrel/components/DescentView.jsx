@@ -204,9 +204,9 @@ export function DescentView({ game, setGame }) {
 
       {/* Mobile compact header - shows only on small screens */}
       <div className="md:hidden mb-2">
-        <div className="flex items-center justify-between gap-2">
-          {/* Left third: HP, Deck, Weapon - larger, more prominent */}
-          <div className="flex items-center gap-2 min-w-0" style={{ flexBasis: '33%' }}>
+        <div className="flex items-center justify-between gap-3">
+          {/* Left side: HP, Deck, Weapon */}
+          <div className="flex items-center gap-2 min-w-0">
             {/* HP */}
             <div className="flex flex-col items-center justify-center">
               <div className="text-[8px] uppercase tracking-wider text-slate-500 leading-none mb-0.5">HP</div>
@@ -221,15 +221,22 @@ export function DescentView({ game, setGame }) {
               <div className="font-mono font-bold text-parchment text-lg leading-none">{game.deck.length}</div>
             </div>
 
-            {/* Weapon */}
+            {/* Weapon - larger format */}
             {game.weapon ? (
-              <div className="flex flex-col items-center justify-center border-l border-stone-700 pl-2">
-                <div className="text-[8px] uppercase tracking-wider text-slate-500 leading-none mb-0.5">Weapon</div>
-                <div className="font-mono font-bold text-parchment text-lg leading-none">
-                  {describeWeaponStrength(game, game.weapon).value}
-                  <span className="text-slate-500 text-sm">
-                    →{game.weapon.lastSlain ? rankLabel(game.weapon.lastSlain.rank) : '∞'}
-                  </span>
+              <div className="flex items-center gap-2 border-l border-stone-700 pl-2">
+                <div>
+                  <div className="text-[8px] uppercase tracking-wider text-slate-500 leading-none">Strikes</div>
+                  <div className="font-mono font-bold text-parchment text-3xl leading-none">
+                    {describeWeaponStrength(game, game.weapon).value}
+                  </div>
+                </div>
+                <div>
+                  <div className="text-[8px] uppercase tracking-wider text-slate-500 leading-none">Bound</div>
+                  <div className={`font-mono font-bold leading-none text-3xl ${
+                    game.weapon.lastSlain ? 'text-parchment' : 'text-stone-700'
+                  }`}>
+                    {game.weapon.lastSlain ? rankLabel(game.weapon.lastSlain.rank) : '–'}
+                  </div>
                 </div>
               </div>
             ) : (
