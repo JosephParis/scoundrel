@@ -6,6 +6,7 @@ import {
   isMonster, isWeapon, isPotion,
   previewMonsterDamage,
   describePotion,
+  describeWeaponStrength,
   canFleeRoom,
   tutorialAllLessonsDone,
   devourerEffectiveRank,
@@ -202,7 +203,7 @@ export function DescentView({ game, setGame }) {
       <KitModal open={kitOpen} onClose={() => setKitOpen(false)} game={game} theme={theme} />
 
       {/* Mobile compact header - shows only on small screens */}
-      <div className="md:hidden mb-3 space-y-2">
+      <div className="md:hidden mb-2 space-y-1">
         <div className="flex items-center justify-between gap-2 text-[12px]">
           <div className="flex items-center gap-2 flex-wrap">
             <div className="flex items-center gap-1">
@@ -232,8 +233,33 @@ export function DescentView({ game, setGame }) {
           </button>
         </div>
 
-        {/* Full weapon panel on mobile */}
-        <WeaponPanel game={game} />
+        {/* Compact weapon display on mobile */}
+        {game.weapon ? (
+          <div className="panel p-2">
+            <div className="text-[9px] uppercase tracking-widest text-slate-500 mb-1">Weapon</div>
+            <div className="flex items-center gap-3">
+              <div className="flex-1">
+                <div className="text-[9px] uppercase tracking-wider text-slate-500">Strikes as</div>
+                <div className="font-mono font-bold text-parchment text-3xl leading-none">
+                  {describeWeaponStrength(game, game.weapon).value}
+                </div>
+              </div>
+              <div className="text-center">
+                <div className="text-[9px] uppercase tracking-wider text-slate-500">Bound to</div>
+                <div className={`font-mono font-bold leading-none text-3xl ${
+                  game.weapon.lastSlain ? 'text-parchment' : 'text-stone-700'
+                }`}>
+                  {game.weapon.lastSlain ? rankLabel(game.weapon.lastSlain.rank) : '–'}
+                </div>
+              </div>
+            </div>
+          </div>
+        ) : (
+          <div className="panel p-2">
+            <div className="text-[9px] uppercase tracking-widest text-slate-500 mb-1">Weapon</div>
+            <div className="text-sm text-slate-500 italic">Bare-handed.</div>
+          </div>
+        )}
       </div>
 
       {/* Desktop layout with sidebar - shows only on medium+ screens */}
@@ -255,7 +281,7 @@ export function DescentView({ game, setGame }) {
           </PhaseRail>
         </div>
 
-        <div className="space-y-5 min-w-0">
+        <div className="space-y-3 md:space-y-5 min-w-0">
         <section>
           <div className="hidden md:flex items-baseline justify-between mb-3">
             <h2 className="text-[10px] uppercase tracking-[0.3em] text-slate-500">The room</h2>
@@ -292,7 +318,7 @@ export function DescentView({ game, setGame }) {
               animation traps the tooltip's z-index inside the card's own
               stacking context, so without this the flee button (a later DOM
               sibling) paints on top of the opaque tooltip and shows through. */}
-          <div className={`relative z-10 grid grid-cols-2 ${roomSize === 5 ? 'sm:grid-cols-5' : 'sm:grid-cols-4'} gap-4 justify-items-center`}>
+          <div className={`relative z-10 grid grid-cols-2 ${roomSize === 5 ? 'sm:grid-cols-5' : 'sm:grid-cols-4'} gap-3 md:gap-4 justify-items-center`}>
             {(() => { const blind = hasAffliction(game, 'blind'); const obscured = hasAffliction(game, 'obscured'); return game.room.map((c, i) => {
               let weaponDamage = null
               let bareDamage = null
@@ -349,7 +375,7 @@ export function DescentView({ game, setGame }) {
             }) })()}
           </div>
 
-          <div className="mt-4 flex justify-center">
+          <div className="mt-2 md:mt-4 flex justify-center">
             <div className="group relative">
               {tutorialCue?.recommendFlee && (
                 <div
@@ -362,7 +388,7 @@ export function DescentView({ game, setGame }) {
               <button
                 onClick={onFlee}
                 disabled={!canFleeRoom(game) || (tutorialActive && tutorialCue?.recommendedId != null)}
-                className={`px-6 py-2.5 rounded-md bg-stone-800 hover:bg-stone-700 disabled:opacity-40 disabled:cursor-not-allowed text-sm font-medium border border-stone-700 transition ${tutorialCue?.recommendFlee ? 'tutorial-recommended' : ''}`}
+                className={`px-4 py-2 md:px-6 md:py-2.5 rounded-md bg-stone-800 hover:bg-stone-700 disabled:opacity-40 disabled:cursor-not-allowed text-sm font-medium border border-stone-700 transition ${tutorialCue?.recommendFlee ? 'tutorial-recommended' : ''}`}
               >
                 Flee the room
               </button>
