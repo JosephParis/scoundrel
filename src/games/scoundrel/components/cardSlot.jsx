@@ -288,30 +288,25 @@ export function CardSlot({ card, onClick, onBareHands, weaponDamage, bareDamage,
         <TraitIcon trait={traitLabel} className="absolute top-3 right-3 z-20 w-6 h-6 text-red-800" />
       )}
       {onBareHands && (
-        <div className="relative mt-2">
+        <>
           {bareRecommended && (
             <div
-              className="absolute -top-6 left-1/2 -translate-x-1/2 z-20 text-rune text-2xl animate-bounce pointer-events-none drop-shadow-[0_0_6px_rgba(251,191,36,0.75)]"
+              className="absolute top-[calc(100%-3rem)] left-1/2 -translate-x-1/2 z-30 text-rune text-2xl animate-bounce pointer-events-none drop-shadow-[0_0_6px_rgba(251,191,36,0.75)]"
               aria-hidden="true"
             >
               ▼
             </div>
           )}
-        <button
-          onClick={(blocked || bareBlocked) ? undefined : onBareHands}
-          disabled={blocked || bareBlocked}
-          className={`w-full py-2.5 px-3 rounded-md bg-stone-800 text-parchment text-sm font-medium border border-stone-700 transition flex flex-col text-center ${(blocked || bareBlocked) ? 'cursor-not-allowed opacity-40' : 'hover:bg-stone-700'} ${bareRecommended ? 'tutorial-recommended' : ''}`}
-        >
-          <span className="flex items-center justify-center gap-1">
-            <HelperIcon kind="bare" /> Bare hands · take {bareDamage.value}
-          </span>
-          {bareDamage.parts.length > 1 && (
-            <span className="text-[10px] text-stone-400 leading-tight">
-              ({formatFormula(bareDamage.parts)})
+          <button
+            onClick={(blocked || bareBlocked) ? undefined : onBareHands}
+            disabled={blocked || bareBlocked}
+            className={`absolute bottom-3 left-3 right-3 z-20 py-2 px-2.5 rounded-md bg-stone-800/95 backdrop-blur-sm text-parchment text-xs font-medium border border-stone-700 transition text-center ${(blocked || bareBlocked) ? 'cursor-not-allowed opacity-40' : 'hover:bg-stone-700'} ${bareRecommended ? 'tutorial-recommended' : ''}`}
+          >
+            <span className="flex items-center justify-center gap-1">
+              <HelperIcon kind="bare" /> Bare hands · take {bareDamage.value}
             </span>
-          )}
-        </button>
-        </div>
+          </button>
+        </>
       )}
       {tutorialTip && (
         <div
