@@ -14,7 +14,7 @@ import { AscensionPickerPanel, AscensionBadge } from './ascensions'
 import { audio } from '../audio'
 import { rankLabel, SUIT_GLYPH } from '../logic'
 
-export function SanctuaryView({ game, setGame, onSkipTutorial, ascensionUnlocked = 0, celebrateSigil = false, onSigilCelebrated }) {
+export function SanctuaryView({ game, setGame, onSkipTutorial, ascensionUnlocked = 0, celebrateSigil = false, onSigilCelebrated, onOpenRules }) {
   const isOpeningVisit = game.sigilsEarned === 0
   const needsBoon = !isOpeningVisit && !game.boonChosen && game.boonOffers.length > 0
   // Sequence is boon → forge edits → descend. The Forge grants a batch of edits
@@ -46,7 +46,7 @@ export function SanctuaryView({ game, setGame, onSkipTutorial, ascensionUnlocked
     actionSlot = (
       <>
         <TutorialIntroPanel />
-        <RulesInlinePanel />
+        <RulesInlinePanel onOpenFull={onOpenRules} />
       </>
     )
   } else if (isOpeningVisit) {
@@ -75,7 +75,7 @@ export function SanctuaryView({ game, setGame, onSkipTutorial, ascensionUnlocked
             onSelect={(level) => { audio.sfx('cardFlip'); setGame(g => setRunAscension(g, level)) }}
           />
         )}
-        {!showAscensionPicker && <RulesInlinePanel />}
+        {!showAscensionPicker && <RulesInlinePanel onOpenFull={onOpenRules} />}
       </>
     )
   } else if (needsBoon) {

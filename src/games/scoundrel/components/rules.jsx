@@ -21,17 +21,38 @@ export function TutorialIntroPanel() {
 
 // -- Inline opening-visit rules panel ----------------------------------
 
-export function RulesInlinePanel() {
+// Printed in full on desktop, where the rail leaves room for it. On mobile the
+// brief rules run ~620px on their own and push Descend two screens down, so
+// they collapse to a prompt that opens the same rules the top bar does (the
+// long-form version, which reads better on a phone anyway).
+export function RulesInlinePanel({ onOpenFull }) {
   return (
-    <section className="panel panel-warm p-5">
-      <div className="flex items-baseline justify-between mb-4 gap-3 flex-wrap">
-        <h2 className="font-display text-rune text-xl">How to play</h2>
-        <span className="text-[11px] text-slate-500">
-          The button up top brings this back any time.
+    <>
+      <section className="panel panel-warm p-5 hidden md:block">
+        <div className="flex items-baseline justify-between mb-4 gap-3 flex-wrap">
+          <h2 className="font-display text-rune text-xl">How to play</h2>
+          <span className="text-[11px] text-slate-500">
+            The button up top brings this back any time.
+          </span>
+        </div>
+        <RulesContentBrief />
+      </section>
+      <button
+        onClick={onOpenFull}
+        className="md:hidden panel panel-warm w-full p-3 flex items-center gap-3 text-left hover:border-rune/40 transition"
+      >
+        <span className="shrink-0 w-7 h-7 rounded-full border border-rune/40 text-rune grid place-items-center text-sm">
+          ?
         </span>
-      </div>
-      <RulesContentBrief />
-    </section>
+        <span className="min-w-0 flex-1">
+          <span className="block font-display text-rune text-sm">How to play</span>
+          <span className="block text-[11px] text-slate-500 leading-snug">
+            New here? The rules, in about a minute.
+          </span>
+        </span>
+        <span className="shrink-0 text-rune text-lg leading-none" aria-hidden="true">›</span>
+      </button>
+    </>
   )
 }
 
