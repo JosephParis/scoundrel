@@ -58,14 +58,21 @@ export function RulesInlinePanel({ onOpenFull }) {
 
 // -- Rules modal -------------------------------------------------------
 
+// TEMPORARY: the Boons / Trials / Card library tabs are parked while we decide
+// whether "How to play" should carry reference material at all. Re-enable by
+// uncommenting the three entries below; the panels they render are untouched
+// (see RulesModal). Card library also lives in the overflow menu, so nothing
+// here is the sole route to its content.
 const RULES_TABS = [
   { id: 'rules', label: 'How to play' },
-  { id: 'boons', label: 'Boons' },
-  { id: 'themes', label: 'Trials' },
-  { id: 'library', label: 'Card library' },
+  // { id: 'boons', label: 'Boons' },
+  // { id: 'themes', label: 'Trials' },
+  // { id: 'library', label: 'Card library' },
 ]
 
 function RulesTabBar({ tab, setTab }) {
+  // A one-item tab bar is just a label that looks clickable.
+  if (RULES_TABS.length < 2) return null
   return (
     <div className="flex flex-wrap gap-1 mb-5 border-b border-stone-800">
       {RULES_TABS.map(t => {
