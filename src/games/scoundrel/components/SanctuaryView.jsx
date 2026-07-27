@@ -108,7 +108,10 @@ export function SanctuaryView({ game, setGame, onSkipTutorial, ascensionUnlocked
         game={game}
       />
 
-      {/* Mobile compact header - shows only on small screens */}
+      {/* Mobile compact header - shows only on small screens. Skipped on the
+          opening visit: with no sigils, no boons, and an empty kit there is
+          nothing here a first-time player can act on or learn from. */}
+      {!isOpeningVisit && (
       <div className="md:hidden mb-3">
         <div className="flex items-center gap-2">
           {/* HP */}
@@ -155,6 +158,7 @@ export function SanctuaryView({ game, setGame, onSkipTutorial, ascensionUnlocked
           </button>
         </div>
       </div>
+      )}
 
       {/* Desktop layout with sidebar - shows only on medium+ screens */}
       <div className="grid grid-cols-1 md:grid-cols-[300px_minmax(0,1fr)] gap-6 items-start">
