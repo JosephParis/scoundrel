@@ -119,6 +119,9 @@ function SpeakerIcon({ muted }) {
   )
 }
 
+// onOpenCardLibrary is still wired from index.jsx for the parked Card library
+// item below, so it reads as unused until that item comes back.
+// eslint-disable-next-line no-unused-vars
 function OverflowMenu({ runActive, user, onRetire, onOpenCredits, onOpenDev, onOpenLogin, onSignOut, onOpenCardLibrary, onOpenHistory, onOpenSettings, onOpenFeedback, onOpenHome, onOpenRules, onReplayTutorial }) {
   const [open, setOpen] = useState(false)
   const ref = useRef(null)
@@ -261,6 +264,9 @@ function OverflowMenu({ runActive, user, onRetire, onOpenCredits, onOpenDev, onO
               <div className="h-px bg-stone-800" />
             </>
           )}
+          {/* TEMPORARY: Card library is parked alongside the rules modal's
+              reference tabs. Restore by uncommenting; onOpenCardLibrary is
+              still threaded in from index.jsx.
           <button
             role="menuitem"
             onClick={() => {
@@ -272,6 +278,7 @@ function OverflowMenu({ runActive, user, onRetire, onOpenCredits, onOpenDev, onO
             <span className="text-rune w-4 text-center">☷</span>
             <span>Card library</span>
           </button>
+          */}
           <button
             role="menuitem"
             onClick={() => {

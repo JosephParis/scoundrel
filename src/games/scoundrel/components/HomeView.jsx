@@ -2,14 +2,20 @@
 // the top bar. It's an overlay rather than a game phase, so the live run is
 // untouched underneath: "Resume" just closes it. Menu entries hand off to the
 // same modals the top bar opens.
+// onOpenCardLibrary is still wired from index.jsx for the parked Card library
+// entry below, so it reads as unused until that entry comes back.
+// eslint-disable-next-line no-unused-vars
 export function HomeView({ open, onResume, onOpenRules, onOpenHistory, onOpenCardLibrary, onReplayTutorial, onOpenCredits }) {
   if (!open) return null
 
+  // TEMPORARY: Card library is parked alongside the rules modal's reference
+  // tabs. Restore by uncommenting the entry below; onOpenCardLibrary is still
+  // threaded in from index.jsx.
   const items = [
     { label: 'Resume', hint: 'Back to your run', onClick: onResume, accent: true },
-    { label: 'How to play', hint: 'Rules, boons, trials', onClick: onOpenRules },
+    { label: 'How to play', hint: 'The rules', onClick: onOpenRules },
     { label: 'Run history', hint: 'Past descents', onClick: onOpenHistory },
-    { label: 'Card library', hint: 'Every card in the deck', onClick: onOpenCardLibrary },
+    // { label: 'Card library', hint: 'Every card in the deck', onClick: onOpenCardLibrary },
     { label: 'Tutorial', hint: 'A guided walkthrough', onClick: onReplayTutorial },
     { label: 'Credits', hint: 'Who built this', onClick: onOpenCredits },
   ]

@@ -63,23 +63,21 @@ test('home-menu', async ({ page }) => {
   await page.screenshot({ path: shot('home-menu'), fullPage: true })
 })
 
+// The Boons / Trials / Card library tabs are parked, so this covers the rules
+// content alone. Restore the per-tab shots alongside the tabs themselves.
 test('rules', async ({ page }) => {
   await page.goto('/')
   await page.getByRole('button', { name: 'How to play' }).first().click()
-  await page.getByRole('button', { name: 'Boons', exact: true }).waitFor()
+  // The inline sanctuary panel carries the same heading, so key off the
+  // modal's own close button to know the overlay is up.
+  await page.getByRole('button', { name: 'Close rules' }).waitFor()
   await settle(page)
   await page.screenshot({ path: shot('rules-howto'), fullPage: true })
-
-  await page.getByRole('button', { name: 'Boons', exact: true }).click()
-  await settle(page)
-  await page.screenshot({ path: shot('rules-boons'), fullPage: true })
-
-  await page.getByRole('button', { name: 'Themes', exact: true }).click()
-  await settle(page)
-  await page.screenshot({ path: shot('rules-themes'), fullPage: true })
 })
 
-test('card-library', async ({ page }) => {
+// Parked with the Card library entry points in TopBar and HomeView. The modal
+// and its content still exist; nothing mounts them.
+test.skip('card-library', async ({ page }) => {
   await page.goto('/')
   await page.getByRole('button', { name: 'More options' }).click()
   await page.getByRole('menuitem', { name: 'Card library' }).click()
