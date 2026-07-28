@@ -5,7 +5,7 @@
 // onOpenCardLibrary is still wired from index.jsx for the parked Card library
 // entry below, so it reads as unused until that entry comes back.
 // eslint-disable-next-line no-unused-vars
-export function HomeView({ open, onResume, onOpenRules, onOpenHistory, onOpenCardLibrary, onReplayTutorial, onOpenCredits }) {
+export function HomeView({ open, onResume, onOpenRules, onOpenHistory, onOpenLeaderboard, onOpenCardLibrary, onReplayTutorial, onOpenCredits }) {
   if (!open) return null
 
   // TEMPORARY: Card library is parked alongside the rules modal's reference
@@ -15,6 +15,7 @@ export function HomeView({ open, onResume, onOpenRules, onOpenHistory, onOpenCar
     { label: 'Resume', hint: 'Back to your run', onClick: onResume, accent: true },
     { label: 'How to play', hint: 'The rules', onClick: onOpenRules },
     { label: 'Run history', hint: 'Past descents', onClick: onOpenHistory },
+    { label: 'Leaderboard', hint: 'Fastest victories', onClick: onOpenLeaderboard },
     // { label: 'Card library', hint: 'Every card in the deck', onClick: onOpenCardLibrary },
     { label: 'Tutorial', hint: 'A guided walkthrough', onClick: onReplayTutorial },
     { label: 'Credits', hint: 'Who built this', onClick: onOpenCredits },

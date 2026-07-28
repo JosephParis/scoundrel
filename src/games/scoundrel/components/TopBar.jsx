@@ -1,7 +1,7 @@
 import { useEffect, useRef, useState } from 'react'
 import { audio, useMuted } from '../audio'
 
-export function TopBar({ game, user, onOpenRules, onRetire, onOpenCredits, onOpenDev, onReplayTutorial, onOpenLogin, onSignOut, onOpenCardLibrary, onOpenHistory, onOpenHome, onOpenSettings, onOpenFeedback }) {
+export function TopBar({ game, user, onOpenRules, onRetire, onOpenCredits, onOpenDev, onReplayTutorial, onOpenLogin, onSignOut, onOpenCardLibrary, onOpenHistory, onOpenLeaderboard, onOpenHome, onOpenSettings, onOpenFeedback }) {
   const runActive = game.phase === 'sanctuary' || game.phase === 'descent'
   return (
     <header className="fixed top-0 left-0 right-0 z-30 border-b border-stone-800/80 bg-dungeon/85 backdrop-blur-md flex justify-center">
@@ -51,6 +51,7 @@ export function TopBar({ game, user, onOpenRules, onRetire, onOpenCredits, onOpe
             onSignOut={onSignOut}
             onOpenCardLibrary={onOpenCardLibrary}
             onOpenHistory={onOpenHistory}
+            onOpenLeaderboard={onOpenLeaderboard}
             onOpenSettings={onOpenSettings}
             onOpenFeedback={onOpenFeedback}
             onOpenHome={onOpenHome}
@@ -122,7 +123,7 @@ function SpeakerIcon({ muted }) {
 // onOpenCardLibrary is still wired from index.jsx for the parked Card library
 // item below, so it reads as unused until that item comes back.
 // eslint-disable-next-line no-unused-vars
-function OverflowMenu({ runActive, user, onRetire, onOpenCredits, onOpenDev, onOpenLogin, onSignOut, onOpenCardLibrary, onOpenHistory, onOpenSettings, onOpenFeedback, onOpenHome, onOpenRules, onReplayTutorial }) {
+function OverflowMenu({ runActive, user, onRetire, onOpenCredits, onOpenDev, onOpenLogin, onSignOut, onOpenCardLibrary, onOpenHistory, onOpenLeaderboard, onOpenSettings, onOpenFeedback, onOpenHome, onOpenRules, onReplayTutorial }) {
   const [open, setOpen] = useState(false)
   const ref = useRef(null)
   const muted = useMuted()
@@ -289,6 +290,17 @@ function OverflowMenu({ runActive, user, onRetire, onOpenCredits, onOpenDev, onO
           >
             <span className="text-rune w-4 text-center">❧</span>
             <span>Run history</span>
+          </button>
+          <button
+            role="menuitem"
+            onClick={() => {
+              setOpen(false)
+              onOpenLeaderboard()
+            }}
+            className={itemClass}
+          >
+            <span className="text-rune w-4 text-center">★</span>
+            <span>Leaderboard</span>
           </button>
           <button
             role="menuitem"

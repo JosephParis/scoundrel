@@ -15,9 +15,10 @@ import { getTheme } from './themes'
 // death), the per-descent `descents` timeline, and denormalized run-shape
 // counts. v5 added `gameVersion` (the balance version stamp, for filtering
 // analytics by ruleset). v6 added `dev` (the run touched the Dev overrides
-// tool, so it is test data and admin stats exclude it). Older records simply
-// lack the newer fields; readers treat them as null/[]/0/false.
-const RECORD_VERSION = 6
+// tool, so it is test data and admin stats exclude it). v7 added `playerName`
+// (the abbreviated display name shown on the public leaderboard). Older
+// records simply lack the newer fields; readers treat them as null/[]/0/false.
+const RECORD_VERSION = 7
 const GUEST_ID = 'guest'
 
 function outcomeOf(state) {
@@ -46,6 +47,28 @@ function namedThemes(state) {
 
 function namedBoons(state) {
   return (state.boons || []).map(id => ({ id, name: BOONS[id]?.name || id }))
+}
+
+/**
+ * The name a run is credited to on the public leaderboard. Abbreviated to a
+ * first name plus a last initial ("Alex Rivera" → "Alex R.") so the board
+ * stays readable without publishing anyone's full Google profile name, and so
+ * only the shortened form is ever stored in the record we mirror to the
+ * server. Guests get null; the leaderboard renders those as "Anonymous".
+ *
+ * A name containing '@' is an email: initGoogleSignIn falls back to the email
+ * when a Google profile carries no display name, and an email address must
+ * never reach a public board. Those runs stay anonymous.
+ * @param {object|null} user - signed-in user ({ name, email }) or null
+ */
+export function leaderboardName(user) {
+  const raw = (user?.name || '').trim()
+  if (!raw || raw.includes('@')) return null
+  const parts = raw.split(/\s+/)
+  if (parts.length === 1) return parts[0].slice(0, 24)
+  const first = parts[0].slice(0, 24)
+  const initial = parts[parts.length - 1][0]
+  return `${first} ${initial.toUpperCase()}.`
 }
 
 function finalWeaponOf(state) {
@@ -81,6 +104,8 @@ export function buildRunRecord(state, user) {
     // on a shared startedAt. Absent on legacy runs; readers fall back then.
     runSeed: state.runSeed || null,
     accountId: user?.sub || GUEST_ID,
+    // Abbreviated display name for the public leaderboard. Null for guests.
+    playerName: leaderboardName(user),
     startedAt,
     endedAt: now,
     durationMs: Math.max(0, now - startedAt - pausedMs),

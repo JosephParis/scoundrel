@@ -9,6 +9,7 @@ import { DescentView } from './components/DescentView'
 import { OutcomeView } from './components/OutcomeView'
 import { LoginModal } from './components/LoginModal'
 import { HistoryModal } from './components/HistoryModal'
+import { LeaderboardModal } from './components/LeaderboardModal'
 import { FeedbackModal } from './components/FeedbackModal'
 import { HomeView } from './components/HomeView'
 import { loadUser, signOut as signOutUser } from '../../utils/auth'
@@ -191,6 +192,7 @@ export default function Scoundrel() {
   const [loginOpen, setLoginOpen] = useState(false)
   const [cardLibraryOpen, setCardLibraryOpen] = useState(false)
   const [historyOpen, setHistoryOpen] = useState(false)
+  const [leaderboardOpen, setLeaderboardOpen] = useState(false)
   const [homeOpen, setHomeOpen] = useState(false)
   const [settingsOpen, setSettingsOpen] = useState(false)
   const [feedbackOpen, setFeedbackOpen] = useState(false)
@@ -393,7 +395,7 @@ export default function Scoundrel() {
   }, [])
 
   useEffect(() => {
-    const anyOpen = rulesOpen || retireOpen || creditsOpen || devOpen || tutorialReplayOpen || loginOpen || cardLibraryOpen || historyOpen || homeOpen || settingsOpen || feedbackOpen
+    const anyOpen = rulesOpen || retireOpen || creditsOpen || devOpen || tutorialReplayOpen || loginOpen || cardLibraryOpen || historyOpen || leaderboardOpen || homeOpen || settingsOpen || feedbackOpen
     if (!anyOpen) return
     const onKey = (e) => {
       if (e.key !== 'Escape') return
@@ -403,6 +405,7 @@ export default function Scoundrel() {
       else if (creditsOpen) setCreditsOpen(false)
       else if (cardLibraryOpen) setCardLibraryOpen(false)
       else if (historyOpen) setHistoryOpen(false)
+      else if (leaderboardOpen) setLeaderboardOpen(false)
       else if (retireOpen) setRetireOpen(false)
       else if (tutorialReplayOpen) setTutorialReplayOpen(false)
       else if (loginOpen) setLoginOpen(false)
@@ -411,20 +414,20 @@ export default function Scoundrel() {
     }
     window.addEventListener('keydown', onKey)
     return () => window.removeEventListener('keydown', onKey)
-  }, [rulesOpen, retireOpen, creditsOpen, devOpen, tutorialReplayOpen, loginOpen, cardLibraryOpen, historyOpen, homeOpen, settingsOpen, feedbackOpen, resumeHome])
+  }, [rulesOpen, retireOpen, creditsOpen, devOpen, tutorialReplayOpen, loginOpen, cardLibraryOpen, historyOpen, leaderboardOpen, homeOpen, settingsOpen, feedbackOpen, resumeHome])
 
   // Escape pauses an active run when nothing else is open, opening the pause
   // menu. (The overlay-close handler above owns Escape whenever a panel is up.)
   useEffect(() => {
     const runActive = game.phase === 'sanctuary' || game.phase === 'descent'
-    const anyOpen = rulesOpen || retireOpen || creditsOpen || devOpen || tutorialReplayOpen || loginOpen || cardLibraryOpen || historyOpen || homeOpen || settingsOpen || feedbackOpen
+    const anyOpen = rulesOpen || retireOpen || creditsOpen || devOpen || tutorialReplayOpen || loginOpen || cardLibraryOpen || historyOpen || leaderboardOpen || homeOpen || settingsOpen || feedbackOpen
     if (!runActive || anyOpen) return
     const onKey = (e) => {
       if (e.key === 'Escape') openHome()
     }
     window.addEventListener('keydown', onKey)
     return () => window.removeEventListener('keydown', onKey)
-  }, [game.phase, rulesOpen, retireOpen, creditsOpen, devOpen, tutorialReplayOpen, loginOpen, cardLibraryOpen, historyOpen, homeOpen, settingsOpen, feedbackOpen, openHome])
+  }, [game.phase, rulesOpen, retireOpen, creditsOpen, devOpen, tutorialReplayOpen, loginOpen, cardLibraryOpen, historyOpen, leaderboardOpen, homeOpen, settingsOpen, feedbackOpen, openHome])
 
   const confirmReplayTutorial = () => {
     setGame(createRun(Math.random, { tutorial: true, unlockedBoons: loadLibrary() }))
@@ -459,6 +462,7 @@ export default function Scoundrel() {
         onSignOut={handleSignOut}
         onOpenCardLibrary={() => setCardLibraryOpen(true)}
         onOpenHistory={() => setHistoryOpen(true)}
+        onOpenLeaderboard={() => setLeaderboardOpen(true)}
         onOpenHome={openHome}
         onOpenSettings={() => setSettingsOpen(true)}
         onOpenFeedback={() => setFeedbackOpen(true)}
@@ -491,11 +495,17 @@ export default function Scoundrel() {
         user={user}
         onClose={() => setHistoryOpen(false)}
       />
+      <LeaderboardModal
+        open={leaderboardOpen}
+        user={user}
+        onClose={() => setLeaderboardOpen(false)}
+      />
       <HomeView
         open={homeOpen}
         onResume={resumeHome}
         onOpenRules={() => setRulesOpen(true)}
         onOpenHistory={() => setHistoryOpen(true)}
+        onOpenLeaderboard={() => setLeaderboardOpen(true)}
         onOpenCardLibrary={() => setCardLibraryOpen(true)}
         onReplayTutorial={() => setTutorialReplayOpen(true)}
         onOpenCredits={() => setCreditsOpen(true)}
