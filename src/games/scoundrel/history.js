@@ -16,7 +16,7 @@ import { getTheme } from './themes'
 // counts. v5 added `gameVersion` (the balance version stamp, for filtering
 // analytics by ruleset). v6 added `dev` (the run touched the Dev overrides
 // tool, so it is test data and admin stats exclude it). v7 added `playerName`
-// (the abbreviated display name shown on the public leaderboard). Older
+// (the opt-in handle shown on the public leaderboard; null unless set). Older
 // records simply lack the newer fields; readers treat them as null/[]/0/false.
 const RECORD_VERSION = 7
 const GUEST_ID = 'guest'
@@ -49,26 +49,21 @@ function namedBoons(state) {
   return (state.boons || []).map(id => ({ id, name: BOONS[id]?.name || id }))
 }
 
+// Longest handle the record will carry. Mirrors MAX_HANDLE_LENGTH in
+// settings.js, restated rather than imported so this module stays free of the
+// localStorage-backed settings singleton. The caller passes an already
+// sanitized handle; this is the last clamp before it is stored.
+const MAX_HANDLE_LENGTH = 16
+
 /**
- * The name a run is credited to on the public leaderboard. Abbreviated to a
- * first name plus a last initial ("Alex Rivera" → "Alex R.") so the board
- * stays readable without publishing anyone's full Google profile name, and so
- * only the shortened form is ever stored in the record we mirror to the
- * server. Guests get null; the leaderboard renders those as "Anonymous".
- *
- * A name containing '@' is an email: initGoogleSignIn falls back to the email
- * when a Google profile carries no display name, and an email address must
- * never reach a public board. Those runs stay anonymous.
- * @param {object|null} user - signed-in user ({ name, email }) or null
+ * The name a run is credited to on the public leaderboard, or null for
+ * "Anonymous". Nothing is derived from the player's Google profile: the only
+ * source is the handle they typed into Settings, which is empty by default, so
+ * a name reaches the public board only because its owner chose to put it there.
+ * @param {string} handle - the player's opt-in handle ('' when unset)
  */
-export function leaderboardName(user) {
-  const raw = (user?.name || '').trim()
-  if (!raw || raw.includes('@')) return null
-  const parts = raw.split(/\s+/)
-  if (parts.length === 1) return parts[0].slice(0, 24)
-  const first = parts[0].slice(0, 24)
-  const initial = parts[parts.length - 1][0]
-  return `${first} ${initial.toUpperCase()}.`
+function leaderboardName(handle) {
+  return String(handle ?? '').trim().slice(0, MAX_HANDLE_LENGTH).trim() || null
 }
 
 function finalWeaponOf(state) {
@@ -82,8 +77,11 @@ function finalWeaponOf(state) {
  * Build a stored record from a terminal game state.
  * @param {object} state - game state with phase 'victory' or 'gameover'
  * @param {object|null} user - signed-in user ({ sub }) or null for guest
+ * @param {string} [handle] - the player's opt-in leaderboard handle. Omitted
+ *   by callers that only need the record for display or analytics, which
+ *   leaves the run anonymous on the board.
  */
-export function buildRunRecord(state, user) {
+export function buildRunRecord(state, user, handle = '') {
   const now = Date.now()
   const startedAt = state.runStartedAt || now
   // Paused wall-clock: accumulated total plus any pause still open at run end.
@@ -104,8 +102,9 @@ export function buildRunRecord(state, user) {
     // on a shared startedAt. Absent on legacy runs; readers fall back then.
     runSeed: state.runSeed || null,
     accountId: user?.sub || GUEST_ID,
-    // Abbreviated display name for the public leaderboard. Null for guests.
-    playerName: leaderboardName(user),
+    // Opt-in display name for the public leaderboard. Null unless the player
+    // set a handle in Settings.
+    playerName: leaderboardName(handle),
     startedAt,
     endedAt: now,
     durationMs: Math.max(0, now - startedAt - pausedMs),

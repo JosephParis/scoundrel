@@ -9,11 +9,39 @@
 import { useSyncExternalStore } from 'react'
 
 const CARD_LAYOUT_KEY = 'scoundrel:cardLayout'
+const HANDLE_KEY = 'scoundrel:leaderboardHandle'
 
 // 'modern' prints rules text on the face of bosses/inscribed/trait cards;
 // 'classic' is the original art-centered face with rules on hover only.
 export const CARD_LAYOUTS = ['modern', 'classic']
 const DEFAULT_CARD_LAYOUT = 'modern'
+
+// The public leaderboard credits runs to this handle. Empty is the default and
+// means "post my runs as Anonymous": appearing on the board by name is an
+// opt-in the player performs, never something derived from their Google
+// profile. Kept deliberately narrow so nothing resembling contact details can
+// be typed in — no '@', no dots, no slashes.
+export const MAX_HANDLE_LENGTH = 16
+
+/**
+ * Normalize a typed handle: drop anything outside letters, digits, spaces,
+ * hyphens and underscores, collapse runs of whitespace, and clamp the length.
+ * Returns '' for a handle that is empty or made entirely of rejected
+ * characters, which every reader treats as "anonymous".
+ *
+ * Leading whitespace is dropped but a single trailing space is kept: this runs
+ * on every keystroke of a controlled input, and trimming the end would eat the
+ * space the moment it is typed, making a two-word handle impossible to enter.
+ * Readers trim before storing or displaying, and since a leading space can
+ * never survive, no handle can consist only of whitespace.
+ */
+export function sanitizeHandle(raw) {
+  return String(raw ?? '')
+    .replace(/[^A-Za-z0-9 _-]/g, '')
+    .replace(/\s+/g, ' ')
+    .trimStart()
+    .slice(0, MAX_HANDLE_LENGTH)
+}
 
 function loadCardLayout() {
   try {
@@ -24,14 +52,41 @@ function loadCardLayout() {
   }
 }
 
+function loadHandle() {
+  try {
+    return sanitizeHandle(localStorage.getItem(HANDLE_KEY))
+  } catch {
+    return ''
+  }
+}
+
 class Settings {
   constructor() {
     this.cardLayout = loadCardLayout()
+    this.leaderboardHandle = loadHandle()
     this.listeners = new Set()
   }
 
   get layout() {
     return this.cardLayout
+  }
+
+  /** The opt-in leaderboard handle, or '' when the player has not set one. */
+  get handle() {
+    return this.leaderboardHandle
+  }
+
+  setHandle(raw) {
+    const next = sanitizeHandle(raw)
+    if (next === this.leaderboardHandle) return
+    this.leaderboardHandle = next
+    try {
+      if (next) localStorage.setItem(HANDLE_KEY, next)
+      else localStorage.removeItem(HANDLE_KEY)
+    } catch {
+      // storage disabled; the choice still holds for the session
+    }
+    this.listeners.forEach(fn => fn())
   }
 
   setCardLayout(layout) {
@@ -61,5 +116,15 @@ export function useCardLayout() {
     fn => settings.subscribe(fn),
     () => settings.layout,
     () => DEFAULT_CARD_LAYOUT,
+  )
+}
+
+// React binding for the leaderboard handle. Empty string = post as Anonymous,
+// which is also the server snapshot so hydration stays consistent.
+export function useHandle() {
+  return useSyncExternalStore(
+    fn => settings.subscribe(fn),
+    () => settings.handle,
+    () => '',
   )
 }

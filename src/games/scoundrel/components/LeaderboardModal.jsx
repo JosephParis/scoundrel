@@ -1,6 +1,7 @@
 import { useEffect, useState } from 'react'
 import { fetchLeaderboard } from '../../../utils/leaderboard'
 import { getMode } from '../constants'
+import { useHandle } from '../settings'
 
 // The public fastest-victory board. Only wins are ranked, one entry per
 // player, fastest first. Data comes from /api/leaderboard, which is absent in
@@ -92,6 +93,7 @@ export function LeaderboardModal({ open, onClose, user }) {
 
 function LeaderboardBody({ onClose, user }) {
   const [state, setState] = useState({ status: 'loading' })
+  const handle = useHandle()
 
   // Refetch on mount and whenever the account changes: it decides which rows
   // come back marked as yours.
@@ -137,7 +139,7 @@ function LeaderboardBody({ onClose, user }) {
         <h2 className="font-display text-rune text-2xl mb-1">Fastest descents</h2>
         <p className="text-[12px] text-slate-500 mb-4">
           Victories only, fastest first, one entry per player.
-          {!user && ' Sign in to be named here instead of Anonymous.'}
+          {!handle.trim() && ' Your runs post as Anonymous until you set a leaderboard name in Settings.'}
           {' '}Press <span className="font-mono text-slate-300">Esc</span> or click outside to close.
         </p>
 

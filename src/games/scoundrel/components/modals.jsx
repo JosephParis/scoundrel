@@ -4,7 +4,7 @@ import {
   rollForgeGrants, initForgeBatch,
   FLAG_IDS, FLAG_META, getFlags, setFlag, resetAllFlags,
 } from '../logic'
-import { settings, useCardLayout } from '../settings'
+import { settings, useCardLayout, useHandle, MAX_HANDLE_LENGTH } from '../settings'
 import { audio, useMuted, useMusicVolume, useSfxVolume } from '../audio'
 
 // -- Settings modal ----------------------------------------------------
@@ -21,6 +21,46 @@ const CARD_LAYOUT_OPTIONS = [
     blurb: 'Art centered with just the name and category. Rules text shows on hover only.',
   },
 ]
+
+// Opt-in name for the public leaderboard. Empty is the default and the whole
+// point: a run is posted as Anonymous unless the player types something here,
+// so nobody is ever named on a public page without choosing to be. The field
+// is write-through — settings.setHandle sanitizes on every keystroke, so what
+// is shown is exactly what a future run would carry.
+function LeaderboardHandleSection() {
+  const handle = useHandle()
+  // What a run would actually be credited to: sanitizeHandle keeps a trailing
+  // space so it can be typed, but nothing is ever posted under one.
+  const credited = handle.trim()
+  return (
+    <section className="mt-6">
+      <div className="text-[10px] uppercase tracking-[0.3em] text-slate-500 mb-3">
+        Leaderboard name
+      </div>
+      <input
+        type="text"
+        value={handle}
+        onChange={e => settings.setHandle(e.target.value)}
+        maxLength={MAX_HANDLE_LENGTH}
+        placeholder="Anonymous"
+        aria-label="Leaderboard name"
+        autoComplete="off"
+        spellCheck={false}
+        className="w-full rounded-md border border-stone-700 bg-stone-900 px-3 py-2 text-sm text-parchment placeholder:text-slate-600 focus:border-rune focus:outline-none transition"
+      />
+      <p className="text-[11.5px] text-slate-400 leading-snug mt-2">
+        {credited
+          ? <>Victories are credited to <span className="text-rune">{credited}</span> on the public leaderboard, visible to everyone.</>
+          : 'Leave this empty and your runs are posted as Anonymous. Set a name only if you want to be identifiable on the public leaderboard.'}
+      </p>
+      <p className="text-[11px] text-slate-500 leading-snug mt-1.5">
+        Letters, numbers, spaces, - and _ only, up to {MAX_HANDLE_LENGTH} characters.
+        Applies to runs you finish from now on; runs already recorded keep the
+        name they were posted under.
+      </p>
+    </section>
+  )
+}
 
 export function SettingsModal({ open, onClose }) {
   const layout = useCardLayout()
@@ -100,6 +140,8 @@ export function SettingsModal({ open, onClose }) {
             </p>
           )}
         </section>
+
+        <LeaderboardHandleSection />
       </div>
     </div>
   )

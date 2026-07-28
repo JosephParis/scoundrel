@@ -21,6 +21,7 @@ import { historyStore } from '../../utils/historyStore'
 import { buildRunRecord } from './history'
 import { useRunAnalytics } from './analytics'
 import { audio } from './audio'
+import { settings } from './settings'
 
 // -- Save / load -------------------------------------------------------
 // Bump SAVE_VERSION whenever the shape of game state in logic.js changes
@@ -336,7 +337,10 @@ export default function Scoundrel() {
     const terminal = game.phase === 'gameover' || game.phase === 'victory'
     if (!terminal || game.tutorial) return
     const accountId = user?.sub || 'guest'
-    historyStore.appendRun(accountId, buildRunRecord(game, user))
+    // Read the handle live rather than through a hook: what matters is the
+    // opt-in as it stood when the run ended, and this is the only record that
+    // is mirrored to the public board.
+    historyStore.appendRun(accountId, buildRunRecord(game, user, settings.handle))
   }, [game, user])
 
   // Persist the Boon library on every change so unlocks survive even if
