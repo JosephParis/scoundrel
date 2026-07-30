@@ -23,16 +23,28 @@ export default function VersionBadge() {
     date && `built ${date}`,
   ].filter(Boolean).join(' · ')
 
+  // The app has no footer, so this corner is the one always-visible slot for
+  // site-level links. The privacy policy has to be reachable from anywhere
+  // without opening a modal first (issue 06), so it lives here beside the stamp.
   return (
-    <a
-      href={href}
-      target="_blank"
-      rel="noopener noreferrer"
-      title={title}
-      aria-label={title}
-      className="fixed bottom-1 right-2 z-50 font-mono text-[10px] leading-none text-slate-600/70 hover:text-rune transition-colors select-none"
-    >
-      {SHA}
-    </a>
+    <div className="fixed bottom-1 right-2 z-50 flex items-center gap-2 text-[10px] leading-none select-none">
+      <a
+        href="/privacy"
+        className="text-slate-600/70 hover:text-rune transition-colors"
+      >
+        Privacy
+      </a>
+      <span className="text-slate-700/60" aria-hidden="true">·</span>
+      <a
+        href={href}
+        target="_blank"
+        rel="noopener noreferrer"
+        title={title}
+        aria-label={title}
+        className="font-mono text-slate-600/70 hover:text-rune transition-colors"
+      >
+        {SHA}
+      </a>
+    </div>
   )
 }

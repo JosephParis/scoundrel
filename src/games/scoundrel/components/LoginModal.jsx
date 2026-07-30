@@ -92,9 +92,6 @@ export function LoginModal({ open, onLogin, onClose }) {
                 <span className="font-semibold">Error: </span>{error}
               </div>
             )}
-            <p className="text-[11px] text-slate-500 italic text-center">
-              We use your name and profile picture, and store your game progress so it follows you across devices.
-            </p>
           </div>
         ) : (
           <form onSubmit={handleDevSignIn} className="flex flex-col gap-3">
@@ -115,6 +112,24 @@ export function LoginModal({ open, onLogin, onClose }) {
             </button>
           </form>
         )}
+
+        {/* Outside the branch on purpose: the disclosure has to be present
+            whichever sign-in path is showing, including the local dev fallback.
+            New tab so reading it does not close the modal or reload the run
+            behind it. */}
+        <p className="text-[11px] text-slate-500 text-center mt-5">
+          We use your name and profile picture, and store your game progress so it follows
+          you across devices. Your name is never posted publicly unless you choose a
+          leaderboard handle in Settings.{' '}
+          <a
+            href="/privacy"
+            target="_blank"
+            rel="noopener noreferrer"
+            className="text-rune/80 hover:text-rune underline"
+          >
+            What is collected
+          </a>
+        </p>
 
         <div className="flex items-center justify-end gap-2 mt-6">
           <button

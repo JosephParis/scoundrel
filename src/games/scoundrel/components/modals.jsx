@@ -143,6 +143,19 @@ export function SettingsModal({ open, onClose }) {
         </section>
 
         <LeaderboardHandleSection />
+
+        <div className="mt-6 pt-4 border-t border-stone-800 text-[11px] text-slate-500">
+          {/* New tab so reading the policy does not discard the open run behind
+              this modal. */}
+          <a
+            href="/privacy"
+            target="_blank"
+            rel="noopener noreferrer"
+            className="hover:text-rune transition"
+          >
+            Privacy &amp; what data is collected
+          </a>
+        </div>
       </div>
     </div>
   )

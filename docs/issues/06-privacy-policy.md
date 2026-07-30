@@ -4,8 +4,74 @@ title: "No privacy policy despite Google sign-in, email storage, and PostHog ide
 priority: P0
 area: legal
 effort: M
-status: open
+status: done
 ---
+
+## Resolution
+
+`/privacy` route (`src/PrivacyPolicy.jsx`, lazy-loaded), reachable from three
+places. Written in plain language rather than legalese, and deliberately specific:
+every processor is named, and the genuinely-private parts are stated as plainly as
+the public ones.
+
+Covers what is collected and why, who holds each item, what is public, retention,
+deletion, children, and that guest play needs no sign-in at all.
+
+### PostHog no longer receives any personal data
+
+Was `identify(user.sub, { email, name })`. Now `identify(user.sub, { pseudonym })`.
+
+The reasoning, since the ask was whether identity could be anonymous: **the Google
+`sub` is already pseudonymous** — it is an opaque per-application identifier
+containing no personal data, and it cannot be resolved to a person without Google.
+So it was kept as the `distinct_id` rather than replaced, for two reasons: a
+random new id would break cross-device identity, and keeping `sub` means PostHog
+events can still be joined to the `runs` table, which keys on the same value as
+`accountId`.
+
+What was lost by dropping the name is a readable PostHog UI — every person would
+show as a long number. `src/utils/pseudonym.js` restores that without restoring
+the data: a stable label derived from the id via FNV-1a, e.g. "Ashen Vagrant 47",
+in the game's own register. Same player always gets the same pseudonym; nothing
+about it reveals who they are. Collisions are possible and harmless, since
+identity is the `distinct_id` and this is only a label beside it.
+
+### Entry points
+
+The app has no footer, so the always-visible slot is the version-badge corner —
+`VersionBadge.jsx` now renders "Privacy · &lt;sha&gt;". Plus `SettingsModal` and
+`LoginModal`.
+
+Both modal links open in a new tab on purpose: reading the policy must not discard
+the run behind the modal. The `LoginModal` disclosure was initially placed inside
+the Google-sign-in branch, which meant it did not render at all on the local
+dev-fallback path; it is now outside the conditional so it shows on both.
+
+### Tests
+
+- `test/pseudonym.test.js` (6) — stability, spread across sequential ids, and that
+  the output leaks no fragment of the id it came from.
+- `visual/privacy.spec.js` (9) — the page renders, names all four processors,
+  exposes a `mailto:` deletion contact, and is reachable from all three entry
+  points. One test pins the claim that PostHog receives no email: if `identify()`
+  starts sending PII again, that assertion is what should fail, because the policy
+  would have become untrue.
+
+### ACTION REQUIRED before launch
+
+**The contact address does not exist yet.** You chose a dedicated alias over your
+personal inbox, so the policy lists `scoundrel.privacy@gmail.com`, defined in one
+place (`src/privacyContact.js`). **Create it and send a test message**, or change
+that constant to an address you do read.
+
+A policy listing a dead address is worse than no policy — a deletion request would
+vanish silently. Added to issue 13's pre-launch checklist.
+
+### Follow-up
+
+The policy discloses that Google sees visitors' IP addresses because the fonts are
+loaded from `fonts.googleapis.com`. **Issue 18** removes that by self-hosting;
+when it lands, this page should be updated to drop the claim.
 
 ## Problem
 
@@ -62,7 +128,7 @@ shrinks the disclosure surface — do that regardless of the policy.
 
 ## Acceptance criteria
 
-- [ ] `/privacy` route exists and is reachable from LoginModal, Settings, footer
-- [ ] Every processor above is named
-- [ ] A deletion-request contact is listed
-- [ ] Decision recorded on whether PostHog still receives `email` / `name`
+- [x] `/privacy` route exists and is reachable from LoginModal, Settings, and the version-badge corner (there is no footer)
+- [x] Every processor above is named
+- [~] A deletion-request contact is listed — **but the mailbox has not been created yet**, see above
+- [x] Decision recorded: PostHog receives neither; `sub` plus a derived pseudonym

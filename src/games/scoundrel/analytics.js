@@ -19,6 +19,7 @@
 import { useEffect, useRef } from 'react'
 import { usePostHog } from '@posthog/react'
 import { buildRunRecord } from './history'
+import { pseudonymFor } from '../../utils/pseudonym'
 
 // Flatten a stored run record into PostHog-friendly properties: scalar
 // dimensions stay scalar (filterable), id-bearing lists collapse to id arrays.
@@ -136,11 +137,18 @@ export function useRunAnalytics(game, user) {
   }, [])
 
   // Tie a signed-in player's events to one person profile; reset on sign-out.
+  //
+  // No email and no display name: the only identity sent is the Google `sub`,
+  // which is opaque and application-scoped, so PostHog holds nothing that
+  // identifies a person (issue 06). `pseudonym` is derived from that same id and
+  // exists only so the PostHog UI is readable; it reveals nothing. Keeping `sub`
+  // as the distinct_id also lets events be joined to the `runs` table, which
+  // keys on the same value.
   useEffect(() => {
     if (!posthog) return
     try {
       if (user?.sub && identified.current !== user.sub) {
-        posthog.identify(user.sub, { email: user.email, name: user.name })
+        posthog.identify(user.sub, { pseudonym: pseudonymFor(user.sub) })
         identified.current = user.sub
       } else if (!user?.sub && identified.current) {
         posthog.reset()

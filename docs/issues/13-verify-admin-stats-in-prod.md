@@ -55,6 +55,16 @@ End-to-end, against the deployed URL:
       registered in Vercel and returns 200 when triggered manually
 - [ ] Sign in on a second device; confirm history merges both ways (and see issue 09)
 
+Carried over from issue 06:
+
+- [ ] **Create the privacy contact mailbox** and send it a test message. The policy
+      lists `scoundrel.privacy@gmail.com` (`src/privacyContact.js`); it does not
+      exist yet, and a policy pointing at an unread address means deletion requests
+      vanish silently.
+- [ ] Confirm `/privacy` resolves on the deployment as a direct URL (it relies on
+      the `vercel.json` SPA rewrite, not just client-side routing)
+- [ ] Confirm PostHog person profiles show a pseudonym and **no** email or name
+
 Carried over from issue 07, which hardened the write endpoints but could not test
 them against a deployment (there is no `/api` in `vite dev` or `vite preview`):
 
