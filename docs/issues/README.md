@@ -1,12 +1,32 @@
 # Launch-readiness backlog
 
-25 issues found in a read-only audit of the codebase, API layer, and all markdown
-docs, scoped against one milestone: **sending the game to the first batch of
-users.**
+26 issues, scoped against one milestone: **sending the game to the first batch of
+users.** Issues 01–25 came from a read-only audit of the codebase, API layer, and
+markdown docs; issue 26 surfaced when the full test suite was actually run.
 
-Baseline at time of audit: `npm run lint` clean, `npm run build` clean (542ms),
-`visual/mobile-responsive-simple.spec.js` 12/12 passing. **Nothing here is a
-broken build** — these are gaps in coverage, exposure, and polish.
+Baseline: `npm run lint` clean, `npm run build` clean. Test suite as it stands:
+
+| Spec | Project | Status |
+|---|---|---|
+| `screens.spec.js` | dev | 6 pass (1 known skip — issue 12) |
+| `mobile-responsive-simple.spec.js` | dev | 12 pass |
+| `tutorial-walkthrough.spec.js` | dev | 1 pass |
+| `dev-tools-gate.prod.spec.js` | prod | 6 pass |
+| `mobile-responsive.spec.js` | dev | **25 fail** — see issue 26 |
+
+**The build is not broken** — but the test suite partly is, and that was invisible
+until someone ran it end to end.
+
+## Testing convention
+
+Write the Playwright test in the **same change as the fix**, not as a follow-up.
+If the assertion needs a production build (e.g. anything gated on
+`import.meta.env.DEV`), name the spec `*.prod.spec.js` and it runs in the `prod`
+project against `vite preview`. See `playwright.config.js` and
+`visual/dev-tools-gate.prod.spec.js` for the pattern.
+
+- `npm run test` — everything
+- `npm run test:dev` / `npm run test:prod` — one project
 
 One file per issue, each self-contained: problem, evidence with `file:line`,
 why it matters for batch 1, suggested fix, acceptance criteria. You should not
@@ -60,6 +80,7 @@ shipped to users on `0.4` yet, so sharing is usually fine.
 | [08](08-moderation-tools.md) | No moderation path for handles, rows, or feedback | security | M |
 | [09](09-merge-runseed-dedupe-bug.md) | **BUG** `merge.js` omits `runSeed`, dropping runs on sync | bug | S |
 | [10](10-stale-db-schema.md) | `db/schema.sql` no longer describes the database | docs | S |
+| [26](26-dead-mobile-responsive-spec.md) | **BUG** all 25 tests in `mobile-responsive.spec.js` are dead | testing | M |
 
 ### P2 — product decisions
 

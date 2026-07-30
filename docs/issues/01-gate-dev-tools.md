@@ -51,16 +51,32 @@ always opens the gate by design — 8/8 checks:
 no snapshot churn — dev-server rendering is intentionally unchanged, so the
 visual baselines still hold.
 
-### Follow-ups (not done here)
+### Regression test
 
-- **No regression test in the repo.** Verification was a one-off script. A
-  permanent test needs a Playwright project pointing at `vite preview`, because
-  `playwright.config.js` runs `npm run dev` where the gate is always open. That
-  is test infrastructure — belongs with issue 15 / issue 24.
-- **`DevModal` still ships in the production bundle.** It is statically imported
-  from `./components/modals` alongside `SettingsModal` and `CreditsModal`, so
-  gating the render saves no bytes. Lazy-loading it would trim the main chunk;
-  out of scope here.
+`visual/dev-tools-gate.prod.spec.js` — 6 tests, in the repo and in the default
+`npm run test` run. This required new harness capability: `playwright.config.js`
+now defines a `prod` project served by `vite preview` (rebuilt each run) beside
+the existing `dev` project, because a spec asserting the gate is *closed* cannot
+run against the dev server where it is deliberately open.
+
+Proven to have teeth: with `isDevToolsEnabled()` stubbed to `true`, 4 of the 6
+fail. The 2 that still pass are correct — one asserts no storage key is written
+(unaffected by that particular break) and one is the control that checks the rest
+of the menu still renders.
+
+One test caught a real defect in its own first draft: `page.goto` resolves on
+`load`, but the game is behind a lazy import, so `flags.js` had not run yet and
+the `?dev=1` opt-in was never written before the test navigated away. Three tests
+were racing the code under test; all now wait for the app to boot via a `load()`
+helper. The original one-off verification script had masked this by using
+`waitUntil: 'networkidle'`.
+
+### Follow-up (not done here)
+
+**`DevModal` still ships in the production bundle.** It is statically imported
+from `./components/modals` alongside `SettingsModal` and `CreditsModal`, so
+gating the render saves no bytes. Lazy-loading it would trim the main chunk; out
+of scope here.
 
 ## Problem
 
