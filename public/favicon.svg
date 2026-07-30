@@ -1,0 +1,9 @@
+<svg xmlns="http://www.w3.org/2000/svg" viewBox="0 0 64 64" width="64" height="64" role="img" aria-label="Scoundrel">
+  <!-- Scoundrel's mark: a sigil, the thing a run is spent collecting. Four-pointed
+       to match the ✦ the UI already uses, and kept to two flat colours with no
+       fine detail so it still reads at 16px in a browser tab.
+       Palette matches src/index.css: dungeon #0b0d12, rune #fbbf24. -->
+  <rect width="64" height="64" rx="13" fill="#0b0d12"/>
+  <rect x="1.25" y="1.25" width="61.5" height="61.5" rx="12" fill="none" stroke="#fbbf24" stroke-opacity="0.28" stroke-width="2.5"/>
+  <path d="M32 7 Q36.5 27.5 57 32 Q36.5 36.5 32 57 Q27.5 36.5 7 32 Q27.5 27.5 32 7 Z" fill="#fbbf24"/>
+</svg>

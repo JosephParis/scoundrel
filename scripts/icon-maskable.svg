@@ -1,0 +1,12 @@
+<svg xmlns="http://www.w3.org/2000/svg" viewBox="0 0 512 512" width="512" height="512">
+  <!-- Maskable variant: Android may crop this to a circle or squircle, so the
+       background is full-bleed (no rounded corners of our own) and the sigil stays
+       inside the safe zone -- the centre 80%, i.e. within 205px of centre.
+       The sigil spans 7..57 of its 64-unit box, so 25 units either side of centre;
+       at scale 6 that is 150px, filling ~73% of the safe radius. Smaller scales
+       leave it looking like a dot lost in the tile. -->
+  <rect width="512" height="512" fill="#0b0d12"/>
+  <g transform="translate(256 256) scale(6) translate(-32 -32)">
+    <path d="M32 7 Q36.5 27.5 57 32 Q36.5 36.5 32 57 Q27.5 36.5 7 32 Q27.5 27.5 32 7 Z" fill="#fbbf24"/>
+  </g>
+</svg>

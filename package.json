@@ -8,6 +8,7 @@
     "build": "vite build",
     "lint": "eslint .",
     "preview": "vite preview",
+    "icons": "node scripts/generate-icons.mjs",
     "test": "vitest run && playwright test",
     "test:unit": "vitest run",
     "test:unit:watch": "vitest",

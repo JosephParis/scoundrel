@@ -55,6 +55,17 @@ End-to-end, against the deployed URL:
       registered in Vercel and returns 200 when triggered manually
 - [ ] Sign in on a second device; confirm history merges both ways (and see issue 09)
 
+Carried over from issue 04 (markup and assets are tested, but no scraper or real
+device was involved):
+
+- [ ] Paste the deployed URL into Discord/Slack and confirm the card shows title,
+      description and image
+- [ ] Confirm `VERCEL_PROJECT_PRODUCTION_URL` resolved, i.e. `og:image` in the
+      deployed HTML is **absolute** rather than `/og-image.png`
+- [ ] Mobile Chrome offers "Add to Home screen", and the installed icon is the
+      maskable one rather than a cropped square
+- [ ] Run Lighthouse and confirm the PWA installability checks pass
+
 Carried over from issue 06:
 
 - [ ] **Create the privacy contact mailbox** and send it a test message. The policy

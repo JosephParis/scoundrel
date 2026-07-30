@@ -11,6 +11,9 @@ Baseline: `npm run lint` clean, `npm run build` clean. Test suite as it stands:
 | `test/validate.test.js` | vitest | 42 pass |
 | `test/runs.handler.test.js` | vitest | 16 pass |
 | `test/rateLimit.test.js` | vitest | 13 pass |
+| `test/pseudonym.test.js` | vitest | 6 pass |
+| `visual/privacy.spec.js` | dev | 9 pass |
+| `visual/head-and-manifest.spec.js` | dev | 11 pass |
 | `screens.spec.js` | dev | 6 pass (1 known skip — issue 12) |
 | `mobile-responsive-simple.spec.js` | dev | 12 pass |
 | `tutorial-walkthrough.spec.js` | dev | 1 pass |
@@ -18,7 +21,7 @@ Baseline: `npm run lint` clean, `npm run build` clean. Test suite as it stands:
 | `error-boundary.prod.spec.js` | prod | 8 pass |
 | `mobile-responsive.spec.js` | dev | 27 pass |
 
-**Full suite: 71 unit + 60 e2e passed, 1 skipped (`card-library`, issue 12).**
+**Full suite: 77 unit + 80 e2e passed, 1 skipped (`card-library`, issue 12).**
 
 ## Testing convention
 
@@ -68,13 +71,22 @@ need to re-derive the audit to work one.
 
 Done so far: **05** (tree clean, `GAME_VERSION` now `0.4`), **01** (dev tools
 gated), **26** (suite green and runnable), **02** (error boundary), **07** (write
-endpoints hardened; vitest added, which partly advances 15).
-**Next up is issue 03** (missing music), then 06, 04.
+endpoints hardened; vitest added, which partly advances 15), **06** (privacy
+policy; PostHog no longer receives PII), **04** (icons, manifest, social cards).
 
-Issue 07 pushed several checks onto **issue 13**: its endpoint changes cannot be
-tested against a deployment locally, so verifying that signed-in players are not
-being 401'd is now on that pre-launch checklist. That is the one regression that
-would silently stop recording every signed-in run.
+**All P0 blockers are closed except issue 03** (the missing victory/gameover
+music), which needs two audio tracks sourced — a human decision, not a code one.
+
+**Issue 13 has grown into the real pre-launch gate.** Everything that cannot be
+tested locally has been pushed onto its checklist, because there is no `/api` in
+`vite dev` or `vite preview` and no scraper or mobile device in the harness. Two
+items there are not optional:
+
+- **Create the privacy contact mailbox** (`src/privacyContact.js`). The policy
+  lists an address that does not exist yet, so deletion requests would vanish.
+- **Confirm signed-in players are not being 401'd** by the hardened write
+  endpoints. That is the one regression that would silently stop recording every
+  signed-in run.
 
 Issue 02 left one gap, now tracked as **issue 27**: there is still no save reset
 outside the crash path, so a run that gets *stuck* without throwing has no escape
@@ -102,9 +114,9 @@ shipped to users on `0.4` yet, so sharing is usually fine.
 | [01](01-gate-dev-tools.md) | Gate Dev tools behind a non-obvious flag | launch-blocker | S | **done** |
 | [02](02-error-boundary-and-recovery.md) | Add an error boundary and an always-available save reset | launch-blocker | M | **done** |
 | [03](03-missing-victory-gameover-music.md) | `victory.mp3` / `gameover.mp3` registered but missing | content | S | open |
-| [04](04-html-head-favicon-manifest-meta.md) | No favicon, manifest, description, or OG tags | launch-blocker | M | open |
+| [04](04-html-head-favicon-manifest-meta.md) | No favicon, manifest, description, or OG tags | launch-blocker | M | **done** |
 | [05](05-uncommitted-wip.md) | Commit or shelve the 4-file uncommitted tree | process | S | **done** |
-| [06](06-privacy-policy.md) | No privacy policy despite Google sign-in + PostHog `identify` | legal | M | open |
+| [06](06-privacy-policy.md) | No privacy policy despite Google sign-in + PostHog `identify` | legal | M | **done** |
 
 ### P1 — data integrity and abuse
 
