@@ -249,11 +249,32 @@ export function DevModal({ open, onClose, game, setGame }) {
     () => Object.values(THEMES).filter(t => t.tier === 3).map(t => t.id),
     []
   )
+  // The Long Night is always two *different* Tier 3 themes. Seeding coerces
+  // any equal pair apart (a legacy save could hold one) and setChildAt swaps
+  // instead of duplicating, so a dev override can never stack a theme on
+  // itself -- that doubles every field getActiveThemes sums, e.g. Blood Moon
+  // twice reading as max HP -8.
+  const seedChildren = (pair) => {
+    const a = pair?.[0] || tier3Ids[0] || ''
+    const b = pair?.[1] && pair[1] !== a ? pair[1] : (tier3Ids.find(id => id !== a) || '')
+    return [a, b]
+  }
+
   const [sigils, setSigils] = useState(game.sigilsEarned)
   const [themeId, setThemeId] = useState(game.nextTheme || 'the_quiet')
-  const [child1, setChild1] = useState(() => game.nextThemeChildren?.[0] || tier3Ids[0] || '')
-  const [child2, setChild2] = useState(() => game.nextThemeChildren?.[1] || tier3Ids[1] || '')
+  const [children, setChildren] = useState(() => seedChildren(game.nextThemeChildren))
   const [selectedBoons, setSelectedBoons] = useState(() => new Set(game.boons))
+  const [child1, child2] = children
+
+  const setChildAt = (index, id) => {
+    setChildren(prev => {
+      const next = prev.slice()
+      const other = index === 0 ? 1 : 0
+      if (prev[other] === id) next[other] = prev[index]
+      next[index] = id
+      return next
+    })
+  }
 
   // When the modal re-opens, seed local form state from current game state
   // so it reflects whatever the player just did.
@@ -263,8 +284,7 @@ export function DevModal({ open, onClose, game, setGame }) {
     if (!open) return
     setSigils(game.sigilsEarned)
     setThemeId(game.nextTheme || 'the_quiet')
-    setChild1(game.nextThemeChildren?.[0] || tier3Ids[0] || '')
-    setChild2(game.nextThemeChildren?.[1] || tier3Ids[1] || '')
+    setChildren(seedChildren(game.nextThemeChildren))
     setSelectedBoons(new Set(game.boons))
   }, [open])
   /* eslint-enable react-hooks/set-state-in-effect, react-hooks/exhaustive-deps */
@@ -301,7 +321,7 @@ export function DevModal({ open, onClose, game, setGame }) {
         sigilsEarned: sigils,
         nextTheme: themeId,
         nextThemeChildren: isCompound
-          ? [child1, child2].filter(Boolean)
+          ? [...new Set([child1, child2].filter(Boolean))]
           : null,
         boons: Array.from(selectedBoons),
         boonChosen: true,
@@ -310,6 +330,7 @@ export function DevModal({ open, onClose, game, setGame }) {
         forgeGrants,
         forgeGrantIndex: batch.forgeGrantIndex,
         forgeChoices: batch.forgeChoices,
+        forgeInscribedIds: [],
         mutedBoon: null,
         log: [...g.log, `[dev] overrides applied: sigils ${sigils}, trial "${themeObj?.name || themeId}".`],
       }
@@ -376,14 +397,14 @@ export function DevModal({ open, onClose, game, setGame }) {
         {isCompound && (
           <div className="grid grid-cols-2 gap-2">
             {[
-              { label: 'Child A', value: child1, set: setChild1 },
-              { label: 'Child B', value: child2, set: setChild2 },
-            ].map(({ label, value, set }) => (
+              { label: 'Child A', value: child1, index: 0 },
+              { label: 'Child B', value: child2, index: 1 },
+            ].map(({ label, value, index }) => (
               <div key={label}>
                 <div className="text-[10px] uppercase tracking-wider text-slate-500 mb-1">{label} (T3)</div>
                 <select
                   value={value}
-                  onChange={(e) => set(e.target.value)}
+                  onChange={(e) => setChildAt(index, e.target.value)}
                   className="block w-full bg-stone-900 border border-stone-700 rounded px-2 py-1 text-parchment"
                 >
                   {tier3Ids.map(id => (
