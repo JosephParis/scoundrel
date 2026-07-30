@@ -1,0 +1,139 @@
+# Launch-readiness backlog
+
+25 issues found in a read-only audit of the codebase, API layer, and all markdown
+docs, scoped against one milestone: **sending the game to the first batch of
+users.**
+
+Baseline at time of audit: `npm run lint` clean, `npm run build` clean (542ms),
+`visual/mobile-responsive-simple.spec.js` 12/12 passing. **Nothing here is a
+broken build** — these are gaps in coverage, exposure, and polish.
+
+One file per issue, each self-contained: problem, evidence with `file:line`,
+why it matters for batch 1, suggested fix, acceptance criteria. You should not
+need to re-derive the audit to work one.
+
+## How to work an issue
+
+1. Pick one whose dependencies are met (see the graph below).
+2. Set `status: in-progress` in its frontmatter, and add your branch name.
+3. Read the linked files before changing them — several issues note that the
+   *code* is right and the *docs* are wrong. Don't "fix" correct code to match a
+   stale spec.
+4. Work the acceptance criteria as a checklist.
+5. `npm run lint && npm run build && npm run test` before you're done.
+6. Set `status: done` and record any decision the issue asked you to record.
+
+**Start with issue 05.** It commits the existing dirty working tree. Every other
+issue edits code, and unrelated WIP in the tree makes those changes hard to
+review or revert independently.
+
+## Priorities
+
+- **P0** — visible to every user on day one, or legally required. Do before launch.
+- **P1** — data integrity and abuse. The link is public the moment you send it.
+- **P2** — product decisions that need an explicit answer, not a default.
+- **P3** — quality, performance, accessibility.
+- **P4** — repo hygiene and doc accuracy.
+
+## The backlog
+
+### P0 — blockers
+
+| # | Issue | Area | Effort |
+|---|---|---|---|
+| [01](01-gate-dev-tools.md) | Gate Dev tools behind a non-obvious flag | launch-blocker | S |
+| [02](02-error-boundary-and-recovery.md) | Add an error boundary and an always-available save reset | launch-blocker | M |
+| [03](03-missing-victory-gameover-music.md) | `victory.mp3` / `gameover.mp3` registered but missing | content | S |
+| [04](04-html-head-favicon-manifest-meta.md) | No favicon, manifest, description, or OG tags | launch-blocker | M |
+| [05](05-uncommitted-wip.md) | Commit or shelve the 4-file uncommitted tree | process | S |
+| [06](06-privacy-policy.md) | No privacy policy despite Google sign-in + PostHog `identify` | legal | M |
+
+### P1 — data integrity and abuse
+
+| # | Issue | Area | Effort |
+|---|---|---|---|
+| [07](07-unauthenticated-write-endpoints.md) | `/api/runs` + `/api/feedback` accept unauthenticated writes | security | M |
+| [08](08-moderation-tools.md) | No moderation path for handles, rows, or feedback | security | M |
+| [09](09-merge-runseed-dedupe-bug.md) | **BUG** `merge.js` omits `runSeed`, dropping runs on sync | bug | S |
+| [10](10-stale-db-schema.md) | `db/schema.sql` no longer describes the database | docs | S |
+
+### P2 — product decisions
+
+| # | Issue | Area | Effort |
+|---|---|---|---|
+| [11](11-feature-flag-defaults.md) | Decide feature flag defaults (6 of 7 off) | product | S |
+| [12](12-unreachable-glossary-and-card-library.md) | Card library + Boons/Trials glossary unreachable | product | S |
+| [13](13-verify-admin-stats-in-prod.md) | Verify `/api/stats` + `/admin` in prod before inviting anyone | product | S |
+| [14](14-anonymous-handle-copy-mismatch.md) | **BUG** UI promises "Anonymous" listing; server excludes it | bug | S |
+
+### P3 — quality, performance, accessibility
+
+| # | Issue | Area | Effort |
+|---|---|---|---|
+| [15](15-unit-tests-game-logic.md) | No unit tests over ~100KB of game logic | testing | L |
+| [16](16-audio-payload.md) | ~31MB audio, ~17MB byte-identical duplicates | performance | S |
+| [17](17-prefers-reduced-motion.md) | No `prefers-reduced-motion`; 4 infinite animations | accessibility | S |
+| [18](18-google-fonts-blocking-import.md) | Render-blocking Google Fonts `@import` | performance | S |
+| [19](19-robots-txt.md) | No `robots.txt` while `/admin` is live | hygiene | S |
+
+### P4 — hygiene and doc accuracy
+
+| # | Issue | Area | Effort |
+|---|---|---|---|
+| [20](20-readme-license-env-example.md) | No README, LICENSE, or `.env.example` | docs | M |
+| [21](21-gitignore-env.md) | `.gitignore` misses `.env` while docs point at it | security | S |
+| [22](22-archive-session-docs.md) | Nine session-artifact docs in the repo root | hygiene | S |
+| [23](23-stale-design-md.md) | `DESIGN.md` contradicts the shipped game | docs | M |
+| [24](24-duplicate-ci-workflows.md) | Mobile tests run twice per push | ci | S |
+| [25](25-rules-copy-review.md) | Review rules copy against the post-rework game | docs | S |
+
+## If you only do five
+
+**01** (dev tools), **02** (error boundary), **03** (missing music), **07**
+(unauthenticated writes), **15** (unit tests).
+
+01–03 are visible to every user on day one. 07 and 15 are what make the data you
+collect from batch 1 worth acting on.
+
+## Dependencies
+
+```
+05 (commit WIP) ──> everything else
+                    │
+07 (auth writes) ──>├─ 08 (moderation: needs a trusted accountId to block)
+                    │
+10 (schema) ───────>├─ 08 (needs a `blocked` column)
+                    │
+15 (vitest) ───────>├─ 24 (wire test:unit into CI)
+09 (dedupe bug) ───>┘    (09's acceptance criteria want a test)
+
+23 (DESIGN.md) ────> 25 (rules copy) ──┐
+                                       ├─ audit content together
+12 (unhide tabs) ─────────────────────>┘
+
+11 (flag defaults) ──> 13 (measurement window)   settle flags before opening it
+12 (library tab) ────> 11 (needs `library: true`)
+
+20 (README) ───────> 22 (fold live setup notes in before archiving)
+21 (.gitignore) ───> 20 (.env.example must stay trackable)
+
+03 (music) <───────> 16 (audio cleanup: mourning-song.ogg may become gameover)
+04 (manifest) ─────> 19 (indexing decision)
+06 (privacy) <─────> 18 (Google Fonts is a disclosure item)
+```
+
+## Pushing these to GitHub
+
+`gh` was not installed when this backlog was written, so these live in the repo
+rather than as GitHub issues. To push them:
+
+```powershell
+winget install GitHub.cli
+gh auth login
+./scripts/create-github-issues.ps1 -DryRun   # preview
+./scripts/create-github-issues.ps1           # create
+```
+
+The script reads every `docs/issues/NN-*.md`, creates one GitHub issue per file
+with `priority:*` and area labels, and skips any already marked
+`status: done`. It does not delete these files — they stay as the offline copy.
