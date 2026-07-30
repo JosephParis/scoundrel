@@ -1,10 +1,18 @@
 import { neon } from '@neondatabase/serverless'
 import { ensureRunsTable, runKeyFor } from './_lib/runsTable.js'
+import { accountFromRequest } from './_lib/session.js'
+import { parseRunBatch, mayWriteAs } from './_lib/validate.js'
+import { checkRateLimit, clientIp, tooManyRequests } from './_lib/rateLimit.js'
 
 /**
  * Vercel serverless function: persist finished-run records into Postgres (Neon)
  * for cross-player analytics. The browser mirrors runs here best-effort, so this
- * endpoint only needs to be correct and idempotent, not defensive about retries.
+ * endpoint needs to be idempotent rather than defensive about retries.
+ *
+ * It is reachable by anyone, so it is defensive about *content*: rate limited per
+ * IP, batch size capped, records checked for physical plausibility
+ * (_lib/validate.js), and any record claiming a real account must present a
+ * matching session token. Guest posts stay open. See issue 07.
  *
  * Accepts either one record or an array of them: a fresh run posts a single
  * record, and the client's reconcile() sweep re-posts the whole backlog of
@@ -24,9 +32,11 @@ import { ensureRunsTable, runKeyFor } from './_lib/runsTable.js'
 
 const sql = process.env.DATABASE_URL ? neon(process.env.DATABASE_URL) : null
 
-function isValidRecord(record) {
-  return record && typeof record === 'object' && record.startedAt && record.accountId
-}
+// Generous next to real play -- a finished run posts once, and the reconcile()
+// sweep posts one batch -- but far below what it takes to bulk-forge a
+// leaderboard or skew an aggregation.
+const RATE_LIMIT = 30
+const RATE_WINDOW_MS = 60 * 1000
 
 async function insertRun(record) {
   await sql`
@@ -51,14 +61,28 @@ export default async function handler(req, res) {
   }
   if (!sql) return res.status(503).json({ error: 'database_not_configured' })
 
+  const limit = await checkRateLimit(sql, {
+    name: 'runs', ip: clientIp(req), limit: RATE_LIMIT, windowMs: RATE_WINDOW_MS,
+  })
+  if (!limit.allowed) return tooManyRequests(res, RATE_WINDOW_MS)
+
   let body = req.body
   if (typeof body === 'string') {
     try { body = JSON.parse(body) } catch { body = null }
   }
   // Normalize to an array: a batch resend posts many, a fresh run posts one.
-  const records = (Array.isArray(body) ? body : [body]).filter(isValidRecord)
-  if (records.length === 0) {
-    return res.status(400).json({ error: 'invalid_record' })
+  const parsed = parseRunBatch(body)
+  if (!parsed.ok) return res.status(400).json({ error: parsed.reason })
+  const { records } = parsed
+
+  // Guests post freely -- there is no token to present and guest play is a
+  // first-class path. A record claiming a real account has to prove it, the way
+  // /api/save always has. Without this, anyone can post a victory under any
+  // accountId and playerName, which is what made the leaderboard forgeable and
+  // makes blocking an account (issue 08) meaningless.
+  const account = accountFromRequest(req)
+  if (!records.every(r => mayWriteAs(r.accountId, account))) {
+    return res.status(401).json({ error: 'account_not_authenticated' })
   }
 
   try {

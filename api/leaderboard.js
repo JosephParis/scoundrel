@@ -45,8 +45,19 @@ const sql = process.env.DATABASE_URL ? neon(process.env.DATABASE_URL) : null
 const DEFAULT_LIMIT = 25
 const MAX_LIMIT = 100
 const GUEST_ID = 'guest'
-// Reject sub-second clears: those are clock skew or a broken record, not play.
-const MIN_DURATION_MS = 1000
+// Publish-side plausibility floors (issue 07). Storing a run is deliberately
+// permissive -- losing real data is unrecoverable -- but the public board is
+// where a forged record does damage, so it is filtered harder here. A false
+// negative only hides one row, and these floors are set well below real play:
+//
+// - 60s: a win requires clearing every descent up to the sigil target. No human
+//   does that in a minute; the previous 1s floor let a hand-written record claim
+//   a one-second world record.
+// - 15 rooms: a victory has to have entered rooms to get there. Legacy records
+//   predating roomsEntered store null, so the check tolerates a missing value
+//   rather than silently dropping old wins.
+const MIN_DURATION_MS = 60 * 1000
+const MIN_ROOMS_FOR_VICTORY = 15
 
 function parseLimit(raw) {
   const n = Number.parseInt(raw, 10)
@@ -86,6 +97,24 @@ function rankedBest(versionCond) {
       where r.outcome = 'victory'
         and r.dev is not true
         and r.duration_ms >= ${MIN_DURATION_MS}
+        -- Casts are regex-guarded, not bare ::int. The endpoint that writes these
+        -- rows was open and unvalidated until issue 07, so a single stored row
+        -- with a non-numeric value here would otherwise abort the whole query and
+        -- take the board down. A non-numeric value reads as absent.
+        and coalesce(
+              case when r.record->>'roomsEntered' ~ '^[0-9]+$'
+                   then (r.record->>'roomsEntered')::int end,
+              ${MIN_ROOMS_FOR_VICTORY}
+            ) >= ${MIN_ROOMS_FOR_VICTORY}
+        and coalesce(
+              case when r.record->>'sigilsEarned' ~ '^[0-9]+$'
+                   then (r.record->>'sigilsEarned')::int end,
+              r.sigils_earned, 0
+            ) >= coalesce(
+              case when r.record->>'sigilTarget' ~ '^[0-9]+$'
+                   then (r.record->>'sigilTarget')::int end,
+              1
+            )
         and btrim(coalesce(r.record->>'playerName', '')) <> ''
         ${versionCond}
     ) per_player

@@ -28,6 +28,11 @@ jobs:
       - name: Run linter
         run: npm run lint
 
+      # Sub-second and needs no browser, so it belongs on every push rather than
+      # only in the main-branch all-tests job.
+      - name: Run unit tests
+        run: npm run test:unit
+
       - name: Build project
         run: npm run build
 

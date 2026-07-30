@@ -32,6 +32,23 @@ create index if not exists runs_account_idx on runs (account_id);
 create index if not exists runs_ended_idx   on runs (ended_at);
 create index if not exists runs_version_idx on runs (game_version);
 
+-- ---------------------------------------------------------------------------
+-- Fixed-window rate limiting for the open write endpoints (issue 07).
+-- Created automatically by api/_lib/rateLimit.js, which owns this DDL.
+--
+-- One row per (endpoint, ip, window). The bucket key embeds floor(now/window),
+-- so windows rotate on their own and stale rows are simply never read again; a
+-- probabilistic sweep on write deletes expired ones instead of a cron. Stored in
+-- Postgres rather than process memory because Vercel runs many short-lived
+-- instances, and an in-memory counter is bypassed by landing on another one.
+-- ---------------------------------------------------------------------------
+
+create table if not exists rate_limits (
+  bucket     text primary key,        -- "<endpoint>:<ip>:<window index>"
+  hits       integer not null default 0,
+  expires_at timestamptz not null     -- one full window past the one it counts
+);
+
 -- Filter any stat by balance version with a predicate on game_version, e.g.
 --   where game_version = '0.1'                 -- one version
 --   where game_version in ('0.2','0.3','0.4')  -- a range of versions

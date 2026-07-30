@@ -4,8 +4,92 @@ title: "/api/runs and /api/feedback accept unauthenticated writes with client-su
 priority: P1
 area: security
 effort: M
-status: open
+status: done
 ---
+
+## Resolution
+
+Four layers, plus the client changes needed so the existing flows keep working.
+
+**1. Auth gate.** `mayWriteAs(claimedAccountId, account)` in `api/_lib/validate.js`.
+Guests stay open — guest play has no token to present — but anything claiming a
+real account must present a matching session token, verified with the existing
+`accountFromRequest`. Applied in both `api/runs.js` and `api/feedback.js`. For a
+batch, **every** record must pass, so a guest batch cannot smuggle in one
+impersonating record.
+
+**2. Rate limiting.** `api/_lib/rateLimit.js`, fixed-window, **Postgres-backed
+rather than in-memory** — Vercel runs many short-lived instances, so a
+per-process counter is bypassed by landing on another one. Buckets embed
+`floor(now/window)` so windows rotate on their own; a probabilistic sweep on
+write replaces a cron. `runs` 30/min, `feedback` 5/min.
+
+**It fails open by design.** If the limiter errors, the request is allowed —
+losing a real player's run is unrecoverable, whereas briefly accepting abuse is
+not, and this protects a hobby leaderboard rather than anything with real value
+behind it. That tradeoff is asserted in a test so it can't be "fixed" by accident.
+
+**3. Record validation.** `validateRunRecord` in `api/_lib/validate.js`, imported
+from the game's own `SIGIL_TARGET` / `VERSION_HISTORY` so the rules cannot drift
+from the ruleset. Batch capped at 200 (matching `historyStore`'s local cap).
+
+Deliberately **permissive about storing**: a wrongly rejected record is lost data
+you can never notice, whereas a wrongly accepted one is still in the table and
+can be deleted. So it only rejects the physically impossible — timestamps before
+2024 or far in the future, `endedAt < startedAt`, `durationMs` exceeding the
+wall-clock span (it's span minus pauses, so it can be shorter but never longer),
+sigils above target, a victory below target, an unknown outcome or version. A
+malformed record inside a resend batch is dropped individually rather than
+discarding the valid ones beside it.
+
+**4. Leaderboard floors.** Strictness about *publishing* went here, where a false
+negative only hides one row: duration floor **1s → 60s**, plus a minimum
+`roomsEntered` and a sigils-reached-target check.
+
+The casts are **regex-guarded rather than bare `::int`**. The write endpoint was
+open and unvalidated until now, so a single stored row with a non-numeric value
+there would have aborted the query and taken the whole board down.
+
+### Client changes (required, easy to miss)
+
+Both writers now send the token, or signed-in players would have started getting
+401s:
+
+- `src/utils/historyStore.js` — `reconcile()` attaches `Authorization` when a
+  session token exists. The queue mixes guest and account records, so it always
+  presents the token when it has one.
+- `src/utils/feedback.js` — same.
+
+Verified no import cycle: `cloudSync.js` has no imports of its own.
+
+### Tests
+
+**vitest added** — the repo had no unit runner, so this fix could not otherwise
+have any tests. That partly advances issue 15. Scoped away from `visual/` in
+`vitest.config.js`, since Playwright owns that directory. `npm test` now runs
+both; `test:unit` also runs in the `lint-and-build` CI job on every push, because
+it is sub-second and needs no browser.
+
+**71 unit tests**, in three files: the pure rules (`validate.test.js`), the
+limiter's bucket/IP logic and its fail-open behavior (`rateLimit.test.js`), and
+the handler's control flow with a stubbed Neon client (`runs.handler.test.js`) —
+405/401/429/400/202, including that the limiter is checked *before* anything is
+inserted, and that a forged token is rejected.
+
+Proven to have teeth: stubbing `mayWriteAs` to `return true` fails 7 tests.
+
+### Not done
+
+- **`api/feedback.js` has no handler-level test.** `runs.handler.test.js`
+  establishes the pattern; feedback would be a near-copy. Its logic is one
+  `mayWriteAs` call plus one limiter call, both covered directly.
+- **Nothing is verified against a real deployment.** There is no `/api` in `vite
+  dev` or `vite preview`, so the endpoints cannot be exercised end to end
+  locally — the coverage above is handler-level with a stubbed client. Posting a
+  real run, a real feedback item, and confirming a signed-in player is not 401'd
+  belongs on issue 13's pre-launch checklist.
+- **`rate_limits` needs no migration** — created on first use — but is now
+  documented in `db/schema.sql` so it does not repeat issue 10.
 
 ## Problem
 
@@ -70,8 +154,8 @@ it's worth and that you can distinguish trusted from untrusted rows.
 
 ## Acceptance criteria
 
-- [ ] A POST claiming a non-guest `accountId` without a valid matching token is rejected
-- [ ] Both endpoints rate limited; limit documented
-- [ ] `isValidRecord` rejects out-of-range durations, bad outcomes, oversized arrays
-- [ ] Legitimate guest run mirroring and guest feedback still work end to end
-- [ ] Leaderboard duration floor reviewed against a real fastest human victory
+- [x] A POST claiming a non-guest `accountId` without a valid matching token is rejected
+- [x] Both endpoints rate limited; limits documented (runs 30/min, feedback 5/min)
+- [x] Validation rejects out-of-range durations, bad outcomes, oversized arrays
+- [~] Legitimate guest mirroring and guest feedback still work — covered at handler level with a stubbed client; **not** verified against a deployment (no `/api` locally, see issue 13)
+- [x] Leaderboard duration floor raised 1s → 60s, plus rooms/sigil cross-checks

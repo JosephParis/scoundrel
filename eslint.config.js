@@ -29,7 +29,10 @@ export default defineConfig([
   {
     // Node-side code: Vercel serverless functions and Node test/tooling
     // scripts run with the Node globals (process, etc.), not the browser's.
-    files: ['api/**/*.{js,jsx}', 'visual/**/*.{js,jsx}', '*.config.{js,jsx}'],
+    files: [
+      'api/**/*.{js,jsx}', 'visual/**/*.{js,jsx}', 'test/**/*.{js,jsx}',
+      '*.config.{js,jsx}',
+    ],
     languageOptions: {
       globals: globals.node,
     },

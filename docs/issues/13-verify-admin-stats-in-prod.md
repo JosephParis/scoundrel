@@ -55,6 +55,21 @@ End-to-end, against the deployed URL:
       registered in Vercel and returns 200 when triggered manually
 - [ ] Sign in on a second device; confirm history merges both ways (and see issue 09)
 
+Carried over from issue 07, which hardened the write endpoints but could not test
+them against a deployment (there is no `/api` in `vite dev` or `vite preview`):
+
+- [ ] A **signed-in** player's run reaches `runs` — i.e. `historyStore` is sending
+      `Authorization` and is not being 401'd. This is the regression to watch: a
+      broken token path would silently stop recording every signed-in run.
+- [ ] A **guest** run still reaches `runs` with no token
+- [ ] Signed-in and guest feedback both still submit
+- [ ] A hand-rolled POST to `/api/runs` claiming someone else's `accountId` is
+      rejected with 401
+- [ ] Hammering `/api/runs` past 30/min returns 429 with `Retry-After`
+- [ ] The `rate_limits` table was created on first use and is being swept
+- [ ] The leaderboard still lists real victories after the 60s floor and the
+      rooms/sigil cross-checks — confirm a genuine win is not filtered out
+
 ## Measurement plan
 
 - [ ] Record the `GAME_VERSION` the window opens on, and freeze balance-affecting changes for its duration

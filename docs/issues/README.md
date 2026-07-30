@@ -6,8 +6,11 @@ markdown docs; issue 26 surfaced when the full test suite was actually run.
 
 Baseline: `npm run lint` clean, `npm run build` clean. Test suite as it stands:
 
-| Spec | Project | Status |
+| Suite | Runner | Status |
 |---|---|---|
+| `test/validate.test.js` | vitest | 42 pass |
+| `test/runs.handler.test.js` | vitest | 16 pass |
+| `test/rateLimit.test.js` | vitest | 13 pass |
 | `screens.spec.js` | dev | 6 pass (1 known skip — issue 12) |
 | `mobile-responsive-simple.spec.js` | dev | 12 pass |
 | `tutorial-walkthrough.spec.js` | dev | 1 pass |
@@ -15,18 +18,38 @@ Baseline: `npm run lint` clean, `npm run build` clean. Test suite as it stands:
 | `error-boundary.prod.spec.js` | prod | 8 pass |
 | `mobile-responsive.spec.js` | dev | 27 pass |
 
-**Full suite: 60 passed, 1 skipped (`card-library`, issue 12), 1.8 minutes.**
+**Full suite: 71 unit + 60 e2e passed, 1 skipped (`card-library`, issue 12).**
 
 ## Testing convention
 
-Write the Playwright test in the **same change as the fix**, not as a follow-up.
-If the assertion needs a production build (e.g. anything gated on
-`import.meta.env.DEV`), name the spec `*.prod.spec.js` and it runs in the `prod`
-project against `vite preview`. See `playwright.config.js` and
-`visual/dev-tools-gate.prod.spec.js` for the pattern.
+Write the test in the **same change as the fix**, not as a follow-up. If the
+harness cannot reach the behavior, extend the harness as part of that work.
 
-- `npm run test` — everything
-- `npm run test:dev` / `npm run test:prod` — one project
+Pick the cheapest runner that can actually assert the thing:
+
+- **vitest** (`test/`) for pure logic and serverless handlers. Handlers are
+  testable by stubbing the Neon client — see `test/runs.handler.test.js`.
+- **Playwright `dev` project** for UI against the dev server.
+- **Playwright `prod` project** for anything that only holds in a production
+  build (e.g. gated on `import.meta.env.DEV`). Name it `*.prod.spec.js` and it
+  runs against `vite preview`. See `visual/dev-tools-gate.prod.spec.js`.
+
+Commands:
+
+- `npm run test` — everything (unit, then e2e)
+- `npm run test:unit` / `npm run test:unit:watch`
+- `npm run test:e2e`, `npm run test:dev`, `npm run test:prod`
+
+Two traps that have already bitten, both producing tests that pass for the wrong
+reason:
+
+- `page.goto` resolves on `load`, but the game is behind a lazy import — wait for
+  a real element before asserting on anything the app writes.
+- `addInitScript` re-runs on **every** navigation. Any key the test mutates must
+  be set with `page.evaluate` after the first load, or a reload resurrects it.
+
+Where an assertion's meaning depends on the environment, assert the environment
+too (see the coarse-pointer guard in `mobile-responsive.spec.js`).
 
 One file per issue, each self-contained: problem, evidence with `file:line`,
 why it matters for batch 1, suggested fix, acceptance criteria. You should not
@@ -44,8 +67,14 @@ need to re-derive the audit to work one.
 6. Set `status: done` and record any decision the issue asked you to record.
 
 Done so far: **05** (tree clean, `GAME_VERSION` now `0.4`), **01** (dev tools
-gated), **26** (suite green and runnable), **02** (error boundary).
-**Next up is issue 07** (unauthenticated write endpoints), then 03, 06, 04.
+gated), **26** (suite green and runnable), **02** (error boundary), **07** (write
+endpoints hardened; vitest added, which partly advances 15).
+**Next up is issue 03** (missing music), then 06, 04.
+
+Issue 07 pushed several checks onto **issue 13**: its endpoint changes cannot be
+tested against a deployment locally, so verifying that signed-in players are not
+being 401'd is now on that pre-launch checklist. That is the one regression that
+would silently stop recording every signed-in run.
 
 Issue 02 left one gap, now tracked as **issue 27**: there is still no save reset
 outside the crash path, so a run that gets *stuck* without throwing has no escape
@@ -81,7 +110,7 @@ shipped to users on `0.4` yet, so sharing is usually fine.
 
 | # | Issue | Area | Effort | Status |
 |---|---|---|---|---|
-| [07](07-unauthenticated-write-endpoints.md) | `/api/runs` + `/api/feedback` accept unauthenticated writes | security | M | open |
+| [07](07-unauthenticated-write-endpoints.md) | `/api/runs` + `/api/feedback` accept unauthenticated writes | security | M | **done** |
 | [08](08-moderation-tools.md) | No moderation path for handles, rows, or feedback | security | M | open |
 | [09](09-merge-runseed-dedupe-bug.md) | **BUG** `merge.js` omits `runSeed`, dropping runs on sync | bug | S | open |
 | [10](10-stale-db-schema.md) | `db/schema.sql` no longer describes the database | docs | S | open |
