@@ -32,7 +32,10 @@ export const ROOM_SIZE = 4
 // version, so the dashboard can scope stats to one version or a From/To range
 // and trust the numbers describe a known band of rulesets. Keep labels short;
 // they are what admins pick from.
-export const VERSION_HISTORY = ['0.1', '0.2', '0.3']
+// 0.4: themes no longer repeat within a run (previously only back-to-back was
+// blocked, so a Trial could return later in the same tier band), and a forge
+// visit can no longer upgrade a card its own Inscribe just added.
+export const VERSION_HISTORY = ['0.1', '0.2', '0.3', '0.4']
 
 // The live version: always the newest entry above. Stamped onto each run.
 export const GAME_VERSION = VERSION_HISTORY[VERSION_HISTORY.length - 1]

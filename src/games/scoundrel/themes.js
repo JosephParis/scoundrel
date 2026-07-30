@@ -418,8 +418,10 @@ const TIER_5_IDS = Object.values(THEMES).filter(t => t.tier === 5).map(t => t.id
 // - sigils 7+  → Tier 5 (descents 8–10, aces)
 // Experimental themes (monster-trait Trials) are held out of rotation unless
 // the `specialMonsters` flag is on, so a test build ships only the settled
-// pool. Every tier still keeps >=5 non-experimental themes, so the pool never
-// runs dry with the flag off.
+// pool. Even with the flag off every band holds more non-experimental themes
+// than the descents that draw from it (Tier 1: 3 themes / 1 descent, Tier 2:
+// 6 / 1, Tier 3: 6 / 2, Tier 4: 5 / 2, Tier 5: 5 / 3), so the run-level
+// no-repeat rule in pickThemeId can never exhaust a pool.
 function withoutExperimental(ids) {
   if (isEnabled('specialMonsters')) return ids
   return ids.filter(id => !THEMES[id].experimental)
@@ -433,14 +435,24 @@ function getThemePool(sigils) {
   return TIER_1_IDS
 }
 
-// excludeId drops the previous descent's theme so the dungeon never rolls
-// the same theme two descents in a row within a tier band (e.g. Tier 5
-// spans descents 8-10). Every tier pool has >=3 themes, so removing one is
-// always safe; the guard keeps a 1-theme pool from collapsing to nothing.
-export function pickThemeId(rng, sigils = 0, excludeId = null) {
+// `exclude` is every theme the run has already faced (oldest first, or a
+// single id), dropped from the pool so no theme is ever rolled twice in one
+// run -- not just twice in a row. Tier bands span several descents (Tier 5
+// covers 8-10), so without this the same Trial can come back two descents
+// later. Pools always outnumber the descents that draw from them (see the
+// counts above), so the filter cannot empty in normal play; the fallbacks
+// below only matter if the pools shrink or a flag opens a wider band.
+export function pickThemeId(rng, sigils = 0, exclude = null) {
   const full = getThemePool(sigils)
-  const pool = excludeId ? full.filter(id => id !== excludeId) : full
-  const choices = pool.length > 0 ? pool : full
+  const list = Array.isArray(exclude) ? exclude : exclude ? [exclude] : []
+  const seen = new Set(list)
+  const pool = full.filter(id => !seen.has(id))
+  if (pool.length > 0) return pool[Math.floor(rng() * pool.length)]
+  // Band exhausted: give up on run-level uniqueness but keep the weaker
+  // floor -- never the theme just played.
+  const last = list[list.length - 1]
+  const relaxed = full.filter(id => id !== last)
+  const choices = relaxed.length > 0 ? relaxed : full
   return choices[Math.floor(rng() * choices.length)]
 }
 

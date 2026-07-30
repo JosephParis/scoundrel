@@ -81,6 +81,9 @@ export function createRun(rng = Math.random, options = {}) {
     forgeGrants: [],
     forgeGrantIndex: 0,
     forgeChoices: [],
+    // Kit cards inscribed during the current forge visit. Held out of that
+    // visit's Upgrade offers; cleared each time the forge opens.
+    forgeInscribedIds: [],
 
     hp: 0,
     maxHp: 0,
@@ -426,6 +429,7 @@ export function endDescentVictory(state) {
         forgeGrants: [],
         forgeGrantIndex: 0,
         forgeChoices: [],
+        forgeInscribedIds: [],
         deck: [],
         room: [],
         theme: null,
@@ -490,7 +494,12 @@ export function endDescentVictory(state) {
   //
   // Mode hooks: lockTheme overrides the rolled theme; noBoons skips the
   // offer roll; noForge keeps the forge closed regardless of sigil count.
-  const nextTheme = mode.lockTheme || pickThemeId(rng, newSigils + asc.themeTierOffset, state.theme)
+  // themesFaced holds every theme rolled this run (descend() pushes the
+  // descent's theme as it starts, so the one just cleared is already in it).
+  // Passing the whole list keeps a Trial from coming back later in the run,
+  // not merely on the next descent. The Long Night's children are picked
+  // separately and are not constrained by it.
+  const nextTheme = mode.lockTheme || pickThemeId(rng, newSigils + asc.themeTierOffset, state.themesFaced)
   const nextThemeChildren = resolveThemeChildren(nextTheme, rng)
   // Library flag off: every Boon is available, the per-player unlocked set
   // is ignored. Discoveries still get appended to state (cheap, and the
@@ -521,6 +530,8 @@ export function endDescentVictory(state) {
     forgeGrants,
     forgeGrantIndex,
     forgeChoices,
+    // Fresh visit: nothing inscribed yet, so the whole kit is upgradeable.
+    forgeInscribedIds: [],
     unlockedBoons: nextLibrary,
 
     // Wipe descent-only state
