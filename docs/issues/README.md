@@ -12,9 +12,10 @@ Baseline: `npm run lint` clean, `npm run build` clean. Test suite as it stands:
 | `mobile-responsive-simple.spec.js` | dev | 12 pass |
 | `tutorial-walkthrough.spec.js` | dev | 1 pass |
 | `dev-tools-gate.prod.spec.js` | prod | 6 pass |
+| `error-boundary.prod.spec.js` | prod | 8 pass |
 | `mobile-responsive.spec.js` | dev | 27 pass |
 
-**Full suite: 52 passed, 1 skipped (`card-library`, issue 12), 1.6 minutes.**
+**Full suite: 60 passed, 1 skipped (`card-library`, issue 12), 1.8 minutes.**
 
 ## Testing convention
 
@@ -42,9 +43,13 @@ need to re-derive the audit to work one.
 5. `npm run lint && npm run build && npm run test` before you're done.
 6. Set `status: done` and record any decision the issue asked you to record.
 
-~~**Start with issue 05.**~~ Done — the tree is clean and `GAME_VERSION` is now
-`0.4`. Issues 01 and 26 are also done, so the suite is green and runnable.
-**Next up is issue 02** (error boundary + save reset), then 07, 03, 06, 04.
+Done so far: **05** (tree clean, `GAME_VERSION` now `0.4`), **01** (dev tools
+gated), **26** (suite green and runnable), **02** (error boundary).
+**Next up is issue 07** (unauthenticated write endpoints), then 03, 06, 04.
+
+Issue 02 left one thing open that deserves its own entry: there is still no save
+reset outside the crash path, so a run that gets *stuck* without throwing has no
+escape hatch.
 
 Note for anything touching gameplay: 05 opened version `0.4`, so runs recorded
 from here on stamp `0.4`. If you make another balance-affecting change before
@@ -66,7 +71,7 @@ shipped to users on `0.4` yet, so sharing is usually fine.
 | # | Issue | Area | Effort | Status |
 |---|---|---|---|---|
 | [01](01-gate-dev-tools.md) | Gate Dev tools behind a non-obvious flag | launch-blocker | S | **done** |
-| [02](02-error-boundary-and-recovery.md) | Add an error boundary and an always-available save reset | launch-blocker | M | open |
+| [02](02-error-boundary-and-recovery.md) | Add an error boundary and an always-available save reset | launch-blocker | M | **done** |
 | [03](03-missing-victory-gameover-music.md) | `victory.mp3` / `gameover.mp3` registered but missing | content | S | open |
 | [04](04-html-head-favicon-manifest-meta.md) | No favicon, manifest, description, or OG tags | launch-blocker | M | open |
 | [05](05-uncommitted-wip.md) | Commit or shelve the 4-file uncommitted tree | process | S | **done** |

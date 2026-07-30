@@ -181,3 +181,25 @@ export function isDevToolsEnabled() {
   if (devToolsCached === null) devToolsCached = computeDevTools()
   return devToolsCached
 }
+
+/**
+ * Whether `?crash=1` was passed on a device allowed to use it.
+ *
+ * Exists so the error boundary has a deterministic trigger and can be covered by
+ * a real test rather than verified by hand. Gated behind the same check as the
+ * dev panel, so an ordinary player cannot reach it even by guessing the param.
+ * The boundary catches whatever this throws, so the worst case on an opted-in
+ * device is the recovery screen -- which is the point.
+ */
+export function isCrashTestRequested() {
+  if (!isDevToolsEnabled()) return false
+  try {
+    if (typeof window === 'undefined') return false
+    const params = new URLSearchParams(window.location.search)
+    if (!params.has('crash')) return false
+    const v = (params.get('crash') || '').toLowerCase()
+    return v === '' || v === '1' || v === 'true' || v === 'yes' || v === 'on'
+  } catch {
+    return false
+  }
+}

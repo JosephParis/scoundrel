@@ -20,7 +20,7 @@ import {
 import { historyStore } from '../../utils/historyStore'
 import { buildRunRecord } from './history'
 import { useRunAnalytics } from './analytics'
-import { isDevToolsEnabled } from './flags'
+import { isDevToolsEnabled, isCrashTestRequested } from './flags'
 import { audio } from './audio'
 import { settings } from './settings'
 
@@ -183,6 +183,12 @@ function freshRun() {
 // -- Root --------------------------------------------------------------
 
 export default function Scoundrel() {
+  // Deterministic trigger for the error boundary, so its recovery screen is
+  // covered by a test instead of verified by hand. Gated with the dev panel, and
+  // thrown before any hook runs so the throw is unconditional for this render.
+  if (isCrashTestRequested()) {
+    throw new Error('Deliberate crash from ?crash=1 (error boundary test hook)')
+  }
   const [game, setGame] = useState(() => loadSavedGame() || freshRun())
   const [user, setUser] = useState(() => loadUser())
   const [ascensionUnlocked, setAscensionUnlocked] = useState(() => loadAscensionUnlocked())
