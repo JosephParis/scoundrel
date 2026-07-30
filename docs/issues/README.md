@@ -12,10 +12,9 @@ Baseline: `npm run lint` clean, `npm run build` clean. Test suite as it stands:
 | `mobile-responsive-simple.spec.js` | dev | 12 pass |
 | `tutorial-walkthrough.spec.js` | dev | 1 pass |
 | `dev-tools-gate.prod.spec.js` | prod | 6 pass |
-| `mobile-responsive.spec.js` | dev | **25 fail** — see issue 26 |
+| `mobile-responsive.spec.js` | dev | 27 pass |
 
-**The build is not broken** — but the test suite partly is, and that was invisible
-until someone ran it end to end.
+**Full suite: 52 passed, 1 skipped (`card-library`, issue 12), 1.6 minutes.**
 
 ## Testing convention
 
@@ -44,7 +43,8 @@ need to re-derive the audit to work one.
 6. Set `status: done` and record any decision the issue asked you to record.
 
 ~~**Start with issue 05.**~~ Done — the tree is clean and `GAME_VERSION` is now
-`0.4`. **Next up is issue 02** (error boundary + save reset), then 07, 03, 06, 04.
+`0.4`. Issues 01 and 26 are also done, so the suite is green and runnable.
+**Next up is issue 02** (error boundary + save reset), then 07, 03, 06, 04.
 
 Note for anything touching gameplay: 05 opened version `0.4`, so runs recorded
 from here on stamp `0.4`. If you make another balance-affecting change before
@@ -74,13 +74,13 @@ shipped to users on `0.4` yet, so sharing is usually fine.
 
 ### P1 — data integrity and abuse
 
-| # | Issue | Area | Effort |
-|---|---|---|---|
-| [07](07-unauthenticated-write-endpoints.md) | `/api/runs` + `/api/feedback` accept unauthenticated writes | security | M |
-| [08](08-moderation-tools.md) | No moderation path for handles, rows, or feedback | security | M |
-| [09](09-merge-runseed-dedupe-bug.md) | **BUG** `merge.js` omits `runSeed`, dropping runs on sync | bug | S |
-| [10](10-stale-db-schema.md) | `db/schema.sql` no longer describes the database | docs | S |
-| [26](26-dead-mobile-responsive-spec.md) | **BUG** all 25 tests in `mobile-responsive.spec.js` are dead | testing | M |
+| # | Issue | Area | Effort | Status |
+|---|---|---|---|---|
+| [07](07-unauthenticated-write-endpoints.md) | `/api/runs` + `/api/feedback` accept unauthenticated writes | security | M | open |
+| [08](08-moderation-tools.md) | No moderation path for handles, rows, or feedback | security | M | open |
+| [09](09-merge-runseed-dedupe-bug.md) | **BUG** `merge.js` omits `runSeed`, dropping runs on sync | bug | S | open |
+| [10](10-stale-db-schema.md) | `db/schema.sql` no longer describes the database | docs | S | open |
+| [26](26-dead-mobile-responsive-spec.md) | **BUG** all 25 tests in `mobile-responsive.spec.js` were dead | testing | M | **done** |
 
 ### P2 — product decisions
 

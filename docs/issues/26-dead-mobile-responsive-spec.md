@@ -4,8 +4,58 @@ title: "All 25 tests in mobile-responsive.spec.js are dead and burn 12.5 minutes
 priority: P1
 area: testing
 effort: M
-status: open
+status: done
 ---
+
+## Resolution
+
+**Repaired, not deleted** — the coverage was worth keeping. 27 tests, all passing,
+file runs in ~52s instead of 12.5 minutes of timeouts.
+
+The entry point was only the first of four breakages:
+
+1. **No `Begin` button.** `/` loads straight into the opening sanctuary.
+2. **The sanctuary mobile header is hidden on the opening visit** (`!isOpeningVisit`,
+   i.e. `sigilsEarned > 0`), so every sanctuary mobile test was asserting against
+   a header that does not render on a fresh save. Fixed by seeding a mid-run
+   sanctuary into `scoundrel:save` via `addInitScript` rather than playing a
+   descent (faster, and not subject to a random deck). Note `boonOffers` must be
+   seeded — `SanctuaryView` reads `.length` on it unguarded.
+3. **There is no `Progress` button.** The sanctuary has `Boons` and `Kit`. `Kit`
+   opens `DeckModal`, whose heading is "N cards" — "Your kit" is only a label
+   there. The old `Your progress` heading belongs to `SanctuaryKitModal.jsx`,
+   which is **dead code, imported nowhere** (worth its own cleanup).
+4. **The descent kit button is an icon** (`⋮`, `aria-label="View kit"`), not text.
+   `Rested` is desktop-rail only, never on the mobile header.
+
+All entry now funnels through three helpers (`openingSanctuary`,
+`midRunSanctuary`, `enterDescent`), so the next UI change breaks one place rather
+than twenty-five.
+
+Added beyond the original coverage: the boons modal open/close, and a guard test
+asserting `@media (pointer: coarse)` is actually active under `hasTouch` —
+without it the two 44px touch-target assertions would only be measuring the
+buttons' natural size and could pass while the CSS rule was broken.
+
+`visual/MOBILE_TESTS_README.md` rewritten: it was 376 lines, mostly generic
+Playwright boilerplate and aspirational examples that were never implemented,
+with the stale `Begin`/`Progress` flow presented as current. Now documents the
+real entry helpers, a table of drift-prone selectors, and the actual coverage.
+
+### CI answer
+
+**`all-tests` has been failing on main.** It runs `npm test` (the whole
+`testDir`) but only on `main`/`master`, with `timeout-minutes: 20`. With 25 tests
+failing on 30s timeouts it either exited non-zero or hit the cap. Meanwhile the
+`mobile-tests` job runs only `npm run test:mobile` —
+`mobile-responsive-simple.spec.js`, which passes — so routine CI looked green
+while the main-branch job was red. That gap is exactly why this went unnoticed.
+Consolidating the duplicated workflows remains issue 24.
+
+### Verified
+
+Full suite, both projects: **52 passed, 1 skipped (`card-library`, issue 12), in
+1.6 minutes.** No selector timeouts. `npm run lint` clean.
 
 ## Problem
 
@@ -86,8 +136,8 @@ Either way:
 
 ## Acceptance criteria
 
-- [ ] `npx playwright test` completes without any 30s selector timeouts
-- [ ] Every remaining test in `visual/` either passes or is explicitly `test.skip` with a reason
-- [ ] `mobile-responsive.spec.js` is repaired or removed, with the decision recorded
-- [ ] `MOBILE_TESTS_README.md` matches the tests that actually exist
-- [ ] Confirmed whether CI's `all-tests` job has been failing, and for how long
+- [x] `npx playwright test` completes without any 30s selector timeouts
+- [x] Every remaining test in `visual/` either passes or is explicitly `test.skip` with a reason
+- [x] `mobile-responsive.spec.js` is repaired or removed, with the decision recorded
+- [x] `MOBILE_TESTS_README.md` matches the tests that actually exist
+- [x] Confirmed whether CI's `all-tests` job has been failing (yes — see above)
