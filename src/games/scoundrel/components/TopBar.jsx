@@ -1,5 +1,6 @@
 import { useEffect, useRef, useState } from 'react'
 import { audio, useMuted } from '../audio'
+import { isDevToolsEnabled } from '../flags'
 
 export function TopBar({ game, user, onOpenRules, onRetire, onOpenCredits, onOpenDev, onReplayTutorial, onOpenLogin, onSignOut, onOpenCardLibrary, onOpenHistory, onOpenLeaderboard, onOpenHome, onOpenSettings, onOpenFeedback }) {
   const runActive = game.phase === 'sanctuary' || game.phase === 'descent'
@@ -335,17 +336,19 @@ function OverflowMenu({ runActive, user, onRetire, onOpenCredits, onOpenDev, onO
             <span className="text-rune w-4 text-center">✦</span>
             <span>Credits</span>
           </button>
-          <button
-            role="menuitem"
-            onClick={() => {
-              setOpen(false)
-              onOpenDev()
-            }}
-            className={itemClass}
-          >
-            <span className="text-amber-300/80 w-4 text-center">⚙</span>
-            <span>Dev tools</span>
-          </button>
+          {isDevToolsEnabled() && (
+            <button
+              role="menuitem"
+              onClick={() => {
+                setOpen(false)
+                onOpenDev()
+              }}
+              className={itemClass}
+            >
+              <span className="text-amber-300/80 w-4 text-center">⚙</span>
+              <span>Dev tools</span>
+            </button>
+          )}
           {runActive && (
             <>
               <div className="h-px bg-stone-800" />

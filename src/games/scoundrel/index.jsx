@@ -20,6 +20,7 @@ import {
 import { historyStore } from '../../utils/historyStore'
 import { buildRunRecord } from './history'
 import { useRunAnalytics } from './analytics'
+import { isDevToolsEnabled } from './flags'
 import { audio } from './audio'
 import { settings } from './settings'
 
@@ -483,7 +484,13 @@ export default function Scoundrel() {
       <SettingsModal open={settingsOpen} onClose={() => setSettingsOpen(false)} />
       <CardLibraryModal open={cardLibraryOpen} onClose={() => setCardLibraryOpen(false)} />
       <FeedbackModal open={feedbackOpen} onClose={() => setFeedbackOpen(false)} game={game} user={user} />
-      <DevModal open={devOpen} onClose={() => setDevOpen(false)} game={game} setGame={setGame} />
+      {/* Gated here as well as on the menu entry. Hiding the entry point is
+          what players see; this makes the panel unreachable rather than merely
+          unadvertised, so a future caller of setDevOpen that forgets the check
+          cannot open it on a device that should not have it. */}
+      {isDevToolsEnabled() && (
+        <DevModal open={devOpen} onClose={() => setDevOpen(false)} game={game} setGame={setGame} />
+      )}
       <TutorialReplayModal
         open={tutorialReplayOpen}
         onConfirm={confirmReplayTutorial}

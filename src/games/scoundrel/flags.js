@@ -127,3 +127,57 @@ export function resetAllFlags() {
 export function getFlagDefault(flagId) {
   return !!DEFAULTS[flagId]
 }
+
+// ---------------------------------------------------------------------------
+// Dev tools access
+// ---------------------------------------------------------------------------
+// Deliberately NOT one of the flags above. The dev panel is what toggles those
+// flags, so gating it with one would mean needing dev tools to enable dev
+// tools. It also must not be reachable from FLAG_META, or the panel would offer
+// a switch that turns itself off with no way back.
+//
+// Dev builds always have it. A production build has it off until `?dev=1`, which
+// persists per device so a reload or a route change keeps it; `?dev=0` clears it
+// again. Same URL-beats-storage precedence as the flags above.
+//
+// This is not a security boundary -- anyone reading the bundle can find the key
+// and set it. It exists so ordinary players don't stumble into a tool that
+// trivializes the game, and so the runs they play stay useful as balance data.
+// Runs that do touch the tool are still stamped `devUsed`, which is what
+// actually keeps them out of /api/stats and the leaderboard.
+const DEV_STORAGE_KEY = 'scoundrel:devTools'
+
+let devToolsCached = null
+
+function computeDevTools() {
+  if (import.meta.env.DEV) return true
+  try {
+    if (typeof window === 'undefined') return false
+    const params = new URLSearchParams(window.location.search)
+    if (params.has('dev')) {
+      const v = (params.get('dev') || '').toLowerCase()
+      const on = v === '' || v === '1' || v === 'true' || v === 'yes' || v === 'on'
+      try {
+        if (on) localStorage.setItem(DEV_STORAGE_KEY, '1')
+        else localStorage.removeItem(DEV_STORAGE_KEY)
+      } catch {
+        // ignore storage failures (quota, disabled); the param still applies
+        // to this page view.
+      }
+      return on
+    }
+    return localStorage.getItem(DEV_STORAGE_KEY) === '1'
+  } catch {
+    return false
+  }
+}
+
+/**
+ * Whether the Dev tools entry point should be offered on this device.
+ * Read once and cached, so the answer can't change mid-session and leave the
+ * menu and the modal disagreeing.
+ */
+export function isDevToolsEnabled() {
+  if (devToolsCached === null) devToolsCached = computeDevTools()
+  return devToolsCached
+}

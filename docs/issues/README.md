@@ -23,9 +23,13 @@ need to re-derive the audit to work one.
 5. `npm run lint && npm run build && npm run test` before you're done.
 6. Set `status: done` and record any decision the issue asked you to record.
 
-**Start with issue 05.** It commits the existing dirty working tree. Every other
-issue edits code, and unrelated WIP in the tree makes those changes hard to
-review or revert independently.
+~~**Start with issue 05.**~~ Done — the tree is clean and `GAME_VERSION` is now
+`0.4`. **Next up is issue 02** (error boundary + save reset), then 07, 03, 06, 04.
+
+Note for anything touching gameplay: 05 opened version `0.4`, so runs recorded
+from here on stamp `0.4`. If you make another balance-affecting change before
+launch, decide whether it needs its own entry or can share `0.4` — nothing has
+shipped to users on `0.4` yet, so sharing is usually fine.
 
 ## Priorities
 
@@ -39,14 +43,14 @@ review or revert independently.
 
 ### P0 — blockers
 
-| # | Issue | Area | Effort |
-|---|---|---|---|
-| [01](01-gate-dev-tools.md) | Gate Dev tools behind a non-obvious flag | launch-blocker | S |
-| [02](02-error-boundary-and-recovery.md) | Add an error boundary and an always-available save reset | launch-blocker | M |
-| [03](03-missing-victory-gameover-music.md) | `victory.mp3` / `gameover.mp3` registered but missing | content | S |
-| [04](04-html-head-favicon-manifest-meta.md) | No favicon, manifest, description, or OG tags | launch-blocker | M |
-| [05](05-uncommitted-wip.md) | Commit or shelve the 4-file uncommitted tree | process | S |
-| [06](06-privacy-policy.md) | No privacy policy despite Google sign-in + PostHog `identify` | legal | M |
+| # | Issue | Area | Effort | Status |
+|---|---|---|---|---|
+| [01](01-gate-dev-tools.md) | Gate Dev tools behind a non-obvious flag | launch-blocker | S | **done** |
+| [02](02-error-boundary-and-recovery.md) | Add an error boundary and an always-available save reset | launch-blocker | M | open |
+| [03](03-missing-victory-gameover-music.md) | `victory.mp3` / `gameover.mp3` registered but missing | content | S | open |
+| [04](04-html-head-favicon-manifest-meta.md) | No favicon, manifest, description, or OG tags | launch-blocker | M | open |
+| [05](05-uncommitted-wip.md) | Commit or shelve the 4-file uncommitted tree | process | S | **done** |
+| [06](06-privacy-policy.md) | No privacy policy despite Google sign-in + PostHog `identify` | legal | M | open |
 
 ### P1 — data integrity and abuse
 

@@ -4,8 +4,28 @@ title: "Commit or shelve the 4-file uncommitted working tree"
 priority: P0
 area: process
 effort: S
-status: open
+status: done
 ---
+
+## Resolution
+
+Landed as two commits on `leaderboard-fastest-times`, in the order this issue
+specified (gameplay first, since the DevModal override depends on the new
+`createRun` shape):
+
+- `5992cab` — `themes.js`, `logic/lifecycle.js`, `logic/sanctuary.js`, `constants.js`
+- `0706ccd` — `components/modals.jsx`
+
+**`GAME_VERSION` was bumped to `0.4`** (appended to `VERSION_HISTORY`, with a
+comment recording why). Both gameplay changes alter the distribution of what a
+run faces — run-level theme no-repeat changes which Trials appear, and blocking
+inscribe-then-upgrade removes a power play — so runs before and after are not
+comparable. `constants.js` explicitly instructs appending on "a retuned theme,"
+which this is. Reversible if it turns out to be over-cautious: remove the entry.
+
+Verified: `git status` clean, `npm run lint` clean, `npm run build` clean, and
+`visual/mobile-responsive-simple.spec.js` + `visual/screens.spec.js` passing
+(18 passed, 1 pre-existing skip: `card-library`, see issue 12).
 
 ## Problem
 
@@ -61,7 +81,7 @@ in `/api/stats`.
 
 ## Acceptance criteria
 
-- [ ] `git status` clean
-- [ ] `npm run lint` and `npm run build` clean
-- [ ] `npm run test` passes
-- [ ] Explicit decision recorded on whether `GAME_VERSION` was bumped, and why
+- [x] `git status` clean
+- [x] `npm run lint` and `npm run build` clean
+- [x] Playwright `screens` + `mobile-responsive-simple` pass (18 passed, 1 known skip)
+- [x] Explicit decision recorded on whether `GAME_VERSION` was bumped, and why
