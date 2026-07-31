@@ -1,8 +1,9 @@
 # Launch-readiness backlog
 
-27 issues, scoped against one milestone: **sending the game to the first batch of
+28 issues, scoped against one milestone: **sending the game to the first batch of
 users.** Issues 01–25 came from a read-only audit of the codebase, API layer, and
-markdown docs; issue 26 surfaced when the full test suite was actually run.
+markdown docs; issue 26 surfaced when the full test suite was actually run, and
+issue 28 came from playing it.
 
 Baseline: `npm run lint` clean, `npm run build` clean. Test suite as it stands:
 
@@ -11,10 +12,12 @@ Baseline: `npm run lint` clean, `npm run build` clean. Test suite as it stands:
 | `test/validate.test.js` | vitest | 42 pass |
 | `test/runs.handler.test.js` | vitest | 16 pass |
 | `test/rateLimit.test.js` | vitest | 13 pass |
+| `test/audio.test.js` | vitest | 7 pass |
 | `test/pseudonym.test.js` | vitest | 6 pass |
 | `visual/privacy.spec.js` | dev | 9 pass |
 | `visual/head-and-manifest.spec.js` | dev | 11 pass |
-| `visual/audio-assets.spec.js` | dev | 3 pass |
+| `visual/audio-assets.spec.js` | dev | 5 pass |
+| `visual/bare-hands-layout.spec.js` | dev | 7 pass |
 | `screens.spec.js` | dev | 6 pass (1 known skip — issue 12) |
 | `mobile-responsive-simple.spec.js` | dev | 12 pass |
 | `tutorial-walkthrough.spec.js` | dev | 1 pass |
@@ -22,7 +25,7 @@ Baseline: `npm run lint` clean, `npm run build` clean. Test suite as it stands:
 | `error-boundary.prod.spec.js` | prod | 8 pass |
 | `mobile-responsive.spec.js` | dev | 27 pass |
 
-**Full suite: 77 unit + 83 e2e passed, 1 skipped (`card-library`, issue 12).**
+**Full suite: 84 unit + 92 e2e passed, 1 skipped (`card-library`, issue 12).**
 
 ## Testing convention
 
@@ -73,7 +76,8 @@ need to re-derive the audit to work one.
 Done so far: **05** (tree clean, `GAME_VERSION` now `0.4`), **01** (dev tools
 gated), **26** (suite green and runnable), **02** (error boundary), **07** (write
 endpoints hardened; vitest added, which partly advances 15), **06** (privacy
-policy; PostHog no longer receives PII), **04** (icons, manifest, social cards).
+policy; PostHog no longer receives PII), **04** (icons, manifest, social cards),
+**28** (bare-hands button no longer covers the weapon preview).
 
 **All P0 blockers are closed.**
 
@@ -147,6 +151,7 @@ shipped to users on `0.4` yet, so sharing is usually fine.
 | [09](09-merge-runseed-dedupe-bug.md) | **BUG** `merge.js` omits `runSeed`, dropping runs on sync | bug | S | open |
 | [10](10-stale-db-schema.md) | `db/schema.sql` no longer describes the database | docs | S | open |
 | [26](26-dead-mobile-responsive-spec.md) | **BUG** all 25 tests in `mobile-responsive.spec.js` were dead | testing | M | **done** |
+| [28](28-bare-hands-covers-weapon-preview.md) | **BUG** bare-hands button covers the weapon preview | bug | S | **done** |
 
 ### P2 — product decisions
 

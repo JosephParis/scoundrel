@@ -30,13 +30,16 @@ The pairing is deliberate: a funeral toll is a single bell struck slowly with
 long gaps, while a peal is many bells rung continuously. Death gets the toll the
 game is named for; victory gets the bells rung in celebration.
 
-**gameover.mp3** (death) — a slow knell:
+**gameover.mp3** (death) — a single toll:
 - Source: "Gong or bell vibrant" by Stephan
 - Public domain (released worldwide by its author)
 - From: https://commons.wikimedia.org/wiki/File:Gong_or_bell_vibrant.ogg
-- Edit: first strike lifted with its full decay, sounded three times at 4.6s
-  intervals so the decays overlap, pitched down to 0.9 for weight, faded out.
-  18s, mono, 96 kbps.
+- Edit: one strike lifted with its decay, pitched down to 0.9 for weight, cut in
+  at the attack (the recording opens on 0.285s of room tone) and faded out at 4.6s.
+  7.3s, mono, 96 kbps.
+- It is deliberately one strike and not a sequence: three tolls over 18s played
+  as a short piece of music to wait out rather than a death sound. audio.js also
+  starts this cue at full volume, since a fade-up would swallow the attack.
 
 **victory.mp3** (escape) — a full peal:
 - Source: "Churchbells" by Natalie

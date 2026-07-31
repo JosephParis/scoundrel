@@ -21,16 +21,32 @@ celebration.
 
 - **`gameover.mp3`** — "Gong or bell vibrant" by Stephan. That recording is
   isolated strikes separated by ~5s of silence, so the first strike lifts cleanly
-  with its whole decay. Sounded three times at 4.6s intervals — *shorter* than the
-  8.4s decay, on purpose, so each toll bleeds into the next the way a real bell
-  tower does rather than reading as three pasted samples. Pitched down to 0.9
-  tape-style, which deepens and lengthens together: a bigger bell, not a processed
-  one. 18s.
+  with its whole decay. Pitched down to 0.9 tape-style, which deepens and
+  lengthens together: a bigger bell, not a processed one. **One strike, 7.3s.**
 - **`victory.mp3`** — "Churchbells" by Natalie. Already a peal; a 16s window from
   the middle, faded in and out.
 
-Both mono at 96 kbps (~200 KB each), which is the treatment issue 16 wants for the
-rest of the audio.
+### Revision: one toll, not three (2026-07-31)
+
+The first cut sounded the strike three times at 4.6s intervals over 18s. On the
+death screen that played as a short piece of music to sit through rather than as
+a death sound, so it is now a single toll. Two things changed with it:
+
+- The cue is cut in **at the attack**. The source opens on 0.285s of room tone,
+  which put the strike a beat behind the screen it punctuates.
+- `gameover` opts out of the music crossfade (`fadeIn: false` in `MUSIC`, handled
+  in `playMusic`). A 600ms fade-up turns a struck bell into a swell, which is
+  most of the difference between a death sound and music. The outgoing descent
+  bed still fades out underneath it.
+
+Covered by `test/audio.test.js` (the fade opt-out, against a mocked Howler) and
+by two tests in `visual/audio-assets.spec.js` that decode the file in-page and
+assert a single onset at t=0 — the old three-toll cut fails every one of those
+assertions independently, and the cue being *requested* as the death screen
+appears is asserted end to end.
+
+Both mono at 96 kbps (88 KB and 188 KB), which is the treatment issue 16 wants
+for the rest of the audio.
 
 `mourning-song.ogg` was the obvious candidate here and was **not** used — a bell
 suited the name better. Issue 16 still covers removing it and the other
@@ -103,5 +119,6 @@ next missing asset isn't silent too.
 - [x] Both files exist in `public/audio/music/` and are served as real audio
 - [~] **Not listened to.** I can build and measure these but not hear them — the win and death screens need a human ear before this is truly closed
 - [x] Attribution added to `CREDITS.md` (public domain requires none; recorded anyway)
-- [x] Each ~200 KB, mono 96 kbps — no meaningful first-load cost
+- [x] Each under 200 KB, mono 96 kbps — no meaningful first-load cost
 - [x] A failed cue load logs a warning in dev builds
+- [x] The death cue is a single toll that lands on the frame the screen turns

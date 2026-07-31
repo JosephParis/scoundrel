@@ -39,22 +39,29 @@ fetch "https://upload.wikimedia.org/wikipedia/commons/f/fa/Gong_or_bell_vibrant.
 fetch "https://upload.wikimedia.org/wikipedia/commons/e/e4/Churchbells.ogg" peal.ogg
 
 # --- death: a knell ---------------------------------------------------------
-# Lift the first strike (0 -> 8.4s) with its whole decay, then sound it three
-# times at 4.6s intervals. The spacing is shorter than the decay on purpose, so
-# each toll bleeds into the next the way a real bell tower does rather than
-# reading as three pasted samples. Pitched down to 0.9 tape-style, which deepens
-# and lengthens it together: a bigger bell, not a processed one.
-"$FF" -y -loglevel error -i "$WORK/gong.ogg" -ss 0 -t 8.4 -ac 1 -ar 44100 "$WORK/strike.wav"
+# One strike, and only one. An earlier cut sounded it three times over 18s, which
+# turned the death screen into a piece of music you waited out; a single toll is
+# a punctuation mark on the run instead. Lift the first strike (0 -> 8.4s) with
+# its whole decay intact -- the decay is what makes it read as a bell rather than
+# a thud -- and pitch it down to 0.9 tape-style, which deepens and lengthens it
+# together: a bigger bell, not a processed one.
+#
+# No fade in, and no leading silence: the attack has to land on the same frame
+# the screen turns. The recording opens with 0.285s of room tone before the
+# strike, so the lift starts at 0.27 -- just inside it, which keeps a couple of
+# frames of headroom so the cut cannot click. audio.js plays this cue at full
+# volume from sample zero for the same reason (`fadeIn: false` in MUSIC), rather
+# than through the usual 600ms music crossfade, which would swallow the attack.
+#
+# The tail is cut at ~7s. Measured, the strike is down to -27dB by 6s, so the
+# fade is doing almost nothing an ear would catch -- it just stops the death
+# screen sitting under four more seconds of inaudible ring.
+"$FF" -y -loglevel error -i "$WORK/gong.ogg" -ss 0.27 -t 8.0 -ac 1 -ar 44100 "$WORK/strike.wav"
 
-"$FF" -y -loglevel error \
-  -i "$WORK/strike.wav" -i "$WORK/strike.wav" -i "$WORK/strike.wav" \
-  -filter_complex "\
-[0:a]asetrate=44100*0.9,aresample=44100,adelay=0[a0];\
-[1:a]asetrate=44100*0.9,aresample=44100,adelay=4600[a1];\
-[2:a]asetrate=44100*0.9,aresample=44100,adelay=9200[a2];\
-[a0][a1][a2]amix=inputs=3:duration=longest[mix];\
-[mix]afade=t=out:st=13.5:d=4.5,loudnorm=I=-18:TP=-2:LRA=11[out]" \
-  -map "[out]" -t 18 -ac 1 -ar 44100 -codec:a libmp3lame -b:a 96k \
+"$FF" -y -loglevel error -i "$WORK/strike.wav" \
+  -af "asetrate=44100*0.9,aresample=44100,\
+afade=t=out:st=4.6:d=2.6,loudnorm=I=-18:TP=-2:LRA=11" \
+  -t 7.3 -ac 1 -ar 44100 -codec:a libmp3lame -b:a 96k \
   "$OUT/gameover.mp3"
 
 # --- victory: a peal --------------------------------------------------------
