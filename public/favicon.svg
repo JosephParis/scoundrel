@@ -1,5 +1,5 @@
-<svg xmlns="http://www.w3.org/2000/svg" viewBox="0 0 64 64" width="64" height="64" role="img" aria-label="Scoundrel">
-  <!-- Scoundrel's mark: a sigil, the thing a run is spent collecting. Four-pointed
+<svg xmlns="http://www.w3.org/2000/svg" viewBox="0 0 64 64" width="64" height="64" role="img" aria-label="Knell">
+  <!-- Knell's mark: a sigil, the thing a run is spent collecting. Four-pointed
        to match the ✦ the UI already uses, and kept to two flat colours with no
        fine detail so it still reads at 16px in a browser tab.
        Palette matches src/index.css: dungeon #0b0d12, rune #fbbf24. -->

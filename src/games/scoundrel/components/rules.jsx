@@ -117,7 +117,7 @@ export function RulesModal({ open, onClose }) {
         </button>
         <h2 className="font-display text-rune text-2xl mb-1">{title}</h2>
         <p className="text-[12px] text-slate-500 mb-4">
-          Scoundrel, the 44-card roguelike. Press <span className="font-mono text-slate-300">Esc</span> or click outside to close.
+          Knell, a roguelike of one bad night. Press <span className="font-mono text-slate-300">Esc</span> or click outside to close.
         </p>
         <RulesTabBar tab={tab} setTab={setTab} />
         {tab === 'rules' && <RulesContentFull />}

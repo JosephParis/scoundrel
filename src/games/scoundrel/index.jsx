@@ -27,6 +27,14 @@ import { settings } from './settings'
 // -- Save / load -------------------------------------------------------
 // Bump SAVE_VERSION whenever the shape of game state in logic.js changes
 // in a way that would break older saves. Old data is discarded silently.
+//
+// The `scoundrel:` prefix is deliberately NOT renamed alongside the game's title
+// (the game is now Knell). It is an internal namespace, and every key under it is
+// live data on players' devices: saves, tutorial progress, the boon library,
+// feature flags, the sign-in token and the pending run-mirror queue. Renaming the
+// prefix would orphan all of it in one release, for no user-visible gain. The
+// same goes for `accountId` values already stored server-side, the
+// `src/games/scoundrel/` module path, and `_scoundrelFailed` in audio.js.
 const SAVE_KEY = 'scoundrel:save'
 const SAVE_VERSION = 1
 const TUTORIAL_KEY = 'scoundrel:tutorialCompleted'

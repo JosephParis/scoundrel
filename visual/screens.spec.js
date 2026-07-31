@@ -58,7 +58,7 @@ test('sanctuary', async ({ page }) => {
 test('home-menu', async ({ page }) => {
   await page.goto('/')
   await page.getByRole('button', { name: 'Home menu' }).click()
-  await page.getByRole('heading', { name: 'SCOUNDREL' }).waitFor()
+  await page.getByRole('heading', { name: 'KNELL' }).waitFor()
   await settle(page)
   await page.screenshot({ path: shot('home-menu'), fullPage: true })
 })

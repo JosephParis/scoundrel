@@ -50,7 +50,7 @@ export default function PrivacyPolicy() {
 
         <Section title="The short version">
           <p>
-            Scoundrel is a small game made by one person. You can play the whole thing
+            Knell is a small game made by one person. You can play the whole thing
             without signing in or giving me anything at all. If you do sign in, it is so
             your runs follow you between devices.
           </p>
@@ -170,7 +170,7 @@ export default function PrivacyPolicy() {
           <p>
             Email{' '}
             <a
-              href={`mailto:${PRIVACY_CONTACT}?subject=Scoundrel%20data%20deletion`}
+              href={`mailto:${PRIVACY_CONTACT}?subject=Knell%20data%20deletion`}
               className="text-rune hover:underline font-mono text-[13px]"
             >
               {PRIVACY_CONTACT}

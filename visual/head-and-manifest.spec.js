@@ -20,7 +20,7 @@ async function expectResolves(request, url) {
 test.describe('document head', () => {
   test('has a title and a non-empty description', async ({ page }) => {
     await page.goto('/')
-    await expect(page).toHaveTitle(/Scoundrel/)
+    await expect(page).toHaveTitle(/Knell/)
 
     const description = await content(page, 'meta[name="description"]')
     expect(description).toBeTruthy()

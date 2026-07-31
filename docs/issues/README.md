@@ -14,6 +14,7 @@ Baseline: `npm run lint` clean, `npm run build` clean. Test suite as it stands:
 | `test/pseudonym.test.js` | vitest | 6 pass |
 | `visual/privacy.spec.js` | dev | 9 pass |
 | `visual/head-and-manifest.spec.js` | dev | 11 pass |
+| `visual/audio-assets.spec.js` | dev | 3 pass |
 | `screens.spec.js` | dev | 6 pass (1 known skip — issue 12) |
 | `mobile-responsive-simple.spec.js` | dev | 12 pass |
 | `tutorial-walkthrough.spec.js` | dev | 1 pass |
@@ -21,7 +22,7 @@ Baseline: `npm run lint` clean, `npm run build` clean. Test suite as it stands:
 | `error-boundary.prod.spec.js` | prod | 8 pass |
 | `mobile-responsive.spec.js` | dev | 27 pass |
 
-**Full suite: 77 unit + 80 e2e passed, 1 skipped (`card-library`, issue 12).**
+**Full suite: 77 unit + 83 e2e passed, 1 skipped (`card-library`, issue 12).**
 
 ## Testing convention
 
@@ -74,8 +75,27 @@ gated), **26** (suite green and runnable), **02** (error boundary), **07** (writ
 endpoints hardened; vitest added, which partly advances 15), **06** (privacy
 policy; PostHog no longer receives PII), **04** (icons, manifest, social cards).
 
-**All P0 blockers are closed except issue 03** (the missing victory/gameover
-music), which needs two audio tracks sourced — a human decision, not a code one.
+**All P0 blockers are closed.**
+
+## The game is now called Knell
+
+Renamed from Scoundrel — the old name belonged to the 2011 card game this is built
+on, and there is now a same-genre Steam title using it too. "Knell" is the tolling
+of a bell for a death, which is also what the new `gameover.mp3` is.
+
+The rename touched **user-facing surface only**. Deliberately left alone, because
+they are live data or internal paths and renaming them would orphan every player's
+save for no visible gain:
+
+- the `scoundrel:` localStorage prefix (saves, tutorial flag, boon library, flags,
+  session token, pending run queue) — see the comment at the top of
+  `src/games/scoundrel/index.jsx`
+- `accountId` values already stored server-side
+- the `src/games/scoundrel/` module path, and `_scoundrelFailed` in `audio.js`
+- the boon **"Scoundrel's Cloak"** — a character archetype, not the title
+
+**Still to do by hand:** rename the GitHub repo, then update `REPO` in
+`src/VersionBadge.jsx`, which still links to `JosephParis/scoundrel`.
 
 **Issue 13 has grown into the real pre-launch gate.** Everything that cannot be
 tested locally has been pushed onto its checklist, because there is no `/api` in
@@ -113,7 +133,7 @@ shipped to users on `0.4` yet, so sharing is usually fine.
 |---|---|---|---|---|
 | [01](01-gate-dev-tools.md) | Gate Dev tools behind a non-obvious flag | launch-blocker | S | **done** |
 | [02](02-error-boundary-and-recovery.md) | Add an error boundary and an always-available save reset | launch-blocker | M | **done** |
-| [03](03-missing-victory-gameover-music.md) | `victory.mp3` / `gameover.mp3` registered but missing | content | S | open |
+| [03](03-missing-victory-gameover-music.md) | `victory.mp3` / `gameover.mp3` registered but missing | content | S | **done** |
 | [04](04-html-head-favicon-manifest-meta.md) | No favicon, manifest, description, or OG tags | launch-blocker | M | **done** |
 | [05](05-uncommitted-wip.md) | Commit or shelve the 4-file uncommitted tree | process | S | **done** |
 | [06](06-privacy-policy.md) | No privacy policy despite Google sign-in + PostHog `identify` | legal | M | **done** |

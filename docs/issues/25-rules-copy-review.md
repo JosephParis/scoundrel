@@ -7,6 +7,23 @@ effort: S
 status: open
 ---
 
+## Partly resolved by the rename
+
+The specific line this issue opened on is fixed. `rules.jsx:120` now reads
+**"Knell, a roguelike of one bad night."** — the game was renamed from Scoundrel
+to Knell, which forced the question and settled it: the "44-card" claim is gone,
+and the lineage nod moved off the tagline.
+
+**The rest of this issue still stands.** The broader audit of `rules.jsx` for
+pre-rework framing — whole-deck editing, `Strike`, any implication that the next
+theme is known before descending — was not done, and should still happen
+alongside issue 12 when the parked tabs come back.
+
+Note `deck.js:32`'s "base 44-card Scoundrel deck" comment is **correct** and was
+deliberately left: it describes the source deck this game descends from, which is
+still 44 cards internally. Likewise the boon **"Scoundrel's Cloak"** was kept — a
+scoundrel is a character archetype, not the game's title.
+
 ## Problem
 
 `src/games/scoundrel/components/rules.jsx:120` describes the game to the player

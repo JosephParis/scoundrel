@@ -18,7 +18,7 @@ test.describe('Mobile Responsive - Basic Tests', () => {
     await expect(page.locator('body')).toBeVisible()
 
     // Should have the title somewhere
-    await expect(page.locator('text=SCOUNDREL')).toBeVisible({ timeout: 10000 })
+    await expect(page.locator('text=KNELL')).toBeVisible({ timeout: 10000 })
   })
 
   test('should load the app on desktop', async ({ page }) => {
@@ -29,7 +29,7 @@ test.describe('Mobile Responsive - Basic Tests', () => {
     await expect(page.locator('body')).toBeVisible()
 
     // Should have the title
-    await expect(page.locator('text=SCOUNDREL')).toBeVisible({ timeout: 10000 })
+    await expect(page.locator('text=KNELL')).toBeVisible({ timeout: 10000 })
   })
 
   test('should have mobile-optimized meta tags', async ({ page }) => {
