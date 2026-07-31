@@ -161,8 +161,17 @@ class AudioController {
       volume: kind === 'music' ? this.musicVolume : this.sfxVolume,
       // Swallow load failures (e.g. file not added yet) so a missing cue is
       // silent rather than a thrown error. Mark it so we never re-fade to it.
+      //
+      // Silent in production is the right behaviour, but it also hid two cues
+      // that were registered and never added, leaving the win and death screens
+      // mute for a long time with nothing to notice (issue 03). Say so in dev, so
+      // the next missing file announces itself. visual/audio-assets.spec.js
+      // checks the whole registry resolves.
       onloaderror: () => {
         howl._scoundrelFailed = true
+        if (!import.meta.env.PROD) {
+          console.warn(`[audio] cue failed to load, will stay silent: ${config.src}`)
+        }
       },
     })
     this.howls.set(cacheKey, howl)

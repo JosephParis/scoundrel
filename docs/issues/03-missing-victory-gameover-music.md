@@ -4,8 +4,56 @@ title: "victory.mp3 and gameover.mp3 are registered but do not exist"
 priority: P0
 area: content
 effort: S
-status: open
+status: done
 ---
+
+## Resolution
+
+Both cues built from **public-domain** bell recordings on Wikimedia Commons, by
+`scripts/build-bell-cues.sh` — it downloads the sources and does the editing, so
+the result is reproducible and provenance lives in the repo rather than in a
+memory.
+
+The pairing follows from the game's new name. A **funeral toll** is one bell
+struck slowly with long gaps; a **peal** is many bells rung continuously. So
+death gets the toll the game is named for, and victory gets the bells rung in
+celebration.
+
+- **`gameover.mp3`** — "Gong or bell vibrant" by Stephan. That recording is
+  isolated strikes separated by ~5s of silence, so the first strike lifts cleanly
+  with its whole decay. Sounded three times at 4.6s intervals — *shorter* than the
+  8.4s decay, on purpose, so each toll bleeds into the next the way a real bell
+  tower does rather than reading as three pasted samples. Pitched down to 0.9
+  tape-style, which deepens and lengthens together: a bigger bell, not a processed
+  one. 18s.
+- **`victory.mp3`** — "Churchbells" by Natalie. Already a peal; a 16s window from
+  the middle, faded in and out.
+
+Both mono at 96 kbps (~200 KB each), which is the treatment issue 16 wants for the
+rest of the audio.
+
+`mourning-song.ogg` was the obvious candidate here and was **not** used — a bell
+suited the name better. Issue 16 still covers removing it and the other
+unreferenced sources.
+
+### The real fix is the test
+
+The bug was never "two files are missing" so much as **nothing could tell you**.
+Howler's `onloaderror` sets `_scoundrelFailed` and every `play()` then returns
+early — by design — so a missing cue is indistinguishable from a muted one.
+
+`visual/audio-assets.spec.js` parses the paths **out of `audio.js`** rather than
+hard-coding them, so it covers all 13 cues and any added later. It also asserts
+the registry parsed at all, since a regex that silently stopped matching would
+make every other assertion vacuously pass.
+
+Verified by deleting `gameover.mp3` and re-running: 2 tests fail. That probe
+exposed something worth keeping — the dev server answers a missing file with the
+SPA's `index.html` at **HTTP 200**, so a status-code check alone would have passed.
+The test checks the payload isn't HTML and isn't implausibly small.
+
+`audio.js` now also warns in dev when a cue fails to load, so the next missing
+file announces itself instead of going quiet.
 
 ## Problem
 
@@ -52,7 +100,8 @@ next missing asset isn't silent too.
 
 ## Acceptance criteria
 
-- [ ] Both files exist in `public/audio/music/` and play on their screens
-- [ ] Attribution added to `CREDITS.md`
-- [ ] Each new file is small enough not to regress first load (see issue 16)
-- [ ] A failed cue load logs a warning in dev builds
+- [x] Both files exist in `public/audio/music/` and are served as real audio
+- [~] **Not listened to.** I can build and measure these but not hear them — the win and death screens need a human ear before this is truly closed
+- [x] Attribution added to `CREDITS.md` (public domain requires none; recorded anyway)
+- [x] Each ~200 KB, mono 96 kbps — no meaningful first-load cost
+- [x] A failed cue load logs a warning in dev builds
