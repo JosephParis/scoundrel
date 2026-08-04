@@ -1,4 +1,4 @@
-// Full-screen home / main menu. Reached by clicking the KNELL logo in
+// Full-screen home / main menu. Reached by clicking the SIGIL logo in
 // the top bar. It's an overlay rather than a game phase, so the live run is
 // untouched underneath: "Resume" just closes it. Menu entries hand off to the
 // same modals the top bar opens.
@@ -25,7 +25,7 @@ export function HomeView({ open, onResume, onOpenRules, onOpenHistory, onOpenLea
     <div className="fixed inset-0 z-40 bg-dungeon flex flex-col items-center justify-center px-4 overflow-y-auto animate-fade-in">
       <div className="w-full max-w-md py-10 text-center">
         <h1 className="font-display text-rune text-5xl sm:text-6xl tracking-[0.2em]">
-          KNELL
+          SIGIL
         </h1>
         <div className="rune-divider mx-auto max-w-[10rem] mt-4 mb-8 text-[10px]">
           <span>✦</span>

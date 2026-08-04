@@ -27,8 +27,12 @@ Both are built from public-domain bell recordings by
 so the result is reproducible and the provenance is not just this file.
 
 The pairing is deliberate: a funeral toll is a single bell struck slowly with
-long gaps, while a peal is many bells rung continuously. Death gets the toll the
-game is named for; victory gets the bells rung in celebration.
+long gaps, while a peal is many bells rung continuously. Death gets the toll,
+victory gets the bells rung in celebration.
+
+(These were chosen while the game was briefly called Knell, after the tolling of
+a bell for a death. The name did not survive; the bells did, on their own merits
+— a struck bell is the right full stop for a run, whatever the game is called.)
 
 **gameover.mp3** (death) — a single toll:
 - Source: "Gong or bell vibrant" by Stephan

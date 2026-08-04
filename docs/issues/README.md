@@ -81,11 +81,21 @@ policy; PostHog no longer receives PII), **04** (icons, manifest, social cards),
 
 **All P0 blockers are closed.**
 
-## The game is now called Knell
+## The game is now called Sigil
 
 Renamed from Scoundrel — the old name belonged to the 2011 card game this is built
-on, and there is now a same-genre Steam title using it too. "Knell" is the tolling
-of a bell for a death, which is also what the new `gameover.mp3` is.
+on, and there is now a same-genre Steam title using it too.
+
+A **sigil** is what a run is spent collecting: `SIGIL_TARGET` is 10, the sanctuary
+counts them along the rail, and the outcome screen reports how many were set. The
+title names the win condition, and the favicon mark was already a sigil before the
+rename, so the identity is now one thing rather than two.
+
+It briefly went out as **Knell** (2026-07-30 to 08-03) and that name did not stick.
+Two collisions were weighed and accepted: Romero's SIGIL Doom megawad, and *SIGIL
+the GPS RPG*, which holds `sigilgame.com` and `playsigil.com`. Different genres,
+no legal exposure — but **do not register a domain that near-misses theirs**, or
+players will land on a location-based RPG.
 
 The rename touched **user-facing surface only**. Deliberately left alone, because
 they are live data or internal paths and renaming them would orphan every player's

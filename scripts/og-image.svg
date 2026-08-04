@@ -18,7 +18,7 @@
   </g>
 
   <text x="600" y="400" text-anchor="middle" font-family="Georgia, 'Times New Roman', serif"
-        font-size="120" letter-spacing="16" fill="#f5e6c8">KNELL</text>
+        font-size="120" letter-spacing="16" fill="#f5e6c8">SIGIL</text>
 
   <text x="600" y="470" text-anchor="middle" font-family="Georgia, 'Times New Roman', serif"
         font-size="34" fill="#fbbf24" fill-opacity="0.85">A roguelike deckbuilder of one bad night</text>

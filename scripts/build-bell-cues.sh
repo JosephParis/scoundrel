@@ -17,8 +17,9 @@
 # Why these two: a funeral toll is one bell struck slowly with long gaps between
 # strikes, whereas a peal is many bells rung continuously. The first recording
 # gives a clean isolated strike with its full decay; the second is already a
-# peal. So death gets the toll the game is named after, and victory gets the
-# bells rung in celebration.
+# peal. So death gets the toll and victory gets the bells rung in celebration.
+# (Chosen when the game was briefly called Knell; the name changed, the reasoning
+# for the cues did not.)
 set -euo pipefail
 
 cd "$(dirname "$0")/.."

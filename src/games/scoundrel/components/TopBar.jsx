@@ -14,7 +14,7 @@ export function TopBar({ game, user, onOpenRules, onRetire, onOpenCredits, onOpe
             title="Home menu"
             className="font-display text-rune text-sm sm:text-base tracking-[0.25em] hover:text-amber-300 transition"
           >
-            KNELL
+            SIGIL
           </button>
         </div>
         <div className="flex items-center gap-1.5 sm:gap-2 shrink-0">

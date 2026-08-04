@@ -29,7 +29,7 @@ import { settings } from './settings'
 // in a way that would break older saves. Old data is discarded silently.
 //
 // The `scoundrel:` prefix is deliberately NOT renamed alongside the game's title
-// (the game is now Knell). It is an internal namespace, and every key under it is
+// (the game is now Sigil). It is an internal namespace, and every key under it is
 // live data on players' devices: saves, tutorial progress, the boon library,
 // feature flags, the sign-in token and the pending run-mirror queue. Renaming the
 // prefix would orphan all of it in one release, for no user-visible gain. The

@@ -10,8 +10,9 @@ status: open
 ## Partly resolved by the rename
 
 The specific line this issue opened on is fixed. `rules.jsx:120` now reads
-**"Knell, a roguelike of one bad night."** — the game was renamed from Scoundrel
-to Knell, which forced the question and settled it: the "44-card" claim is gone,
+**"Sigil, a roguelike of one bad night."** — the game was renamed from Scoundrel
+(via a short-lived Knell), which forced the question and settled it: the
+"44-card" claim is gone,
 and the lineage nod moved off the tagline.
 
 **The rest of this issue still stands.** The broader audit of `rules.jsx` for

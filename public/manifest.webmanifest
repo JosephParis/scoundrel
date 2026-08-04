@@ -1,6 +1,6 @@
 {
-  "name": "Knell",
-  "short_name": "Knell",
+  "name": "Sigil",
+  "short_name": "Sigil",
   "description": "A roguelike deckbuilder of one bad night. Forge your kit, descend blind, and earn ten sigils to escape.",
   "id": "/",
   "start_url": "/",
