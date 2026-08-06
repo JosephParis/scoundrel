@@ -112,6 +112,11 @@ async function seededDescent(page, { viewport = MOBILE_VIEWPORT, layout = 'class
   await page.locator('.card-face').first().waitFor({ timeout: 15000 })
   await page.keyboard.press('Space')
   await bareButtons(page).first().waitFor({ timeout: 15000 })
+  // Every assertion here is a bounding box, and the preview line's height comes
+  // from font metrics -- so measuring before the display face has loaded reads
+  // the fallback's line height and the numbers move under you. This is what made
+  // an earlier run report a 0.78px overlap that two previous runs did not.
+  await page.evaluate(() => document.fonts.ready)
   // Nothing should be sitting over the room: the measurements below are
   // bounding boxes, which an overlay would not perturb, so it has to be
   // asserted rather than assumed.

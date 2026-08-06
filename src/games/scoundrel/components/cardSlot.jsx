@@ -276,7 +276,12 @@ export function CardSlot({ card, onClick, onBareHands, weaponDamage, bareDamage,
   // its bottom offset, which is why the button is pinned to h-9 and its label
   // kept to one line rather than being allowed to size itself.
   const hasBare = !!onBareHands
-  const BARE_RESERVE = 'pb-[3.375rem]' // h-9 (2.25rem) + bottom-3 (0.75rem) + gap
+  // h-9 (2.25rem) + bottom-3 (0.75rem) = 3rem of button. The rest is clearance,
+  // and it is deliberately more than it looks like it needs: the preview line's
+  // height comes from font metrics, so it grows a fraction when the display face
+  // finishes loading. At 3.375rem that left ~6px of slack and a sub-pixel overlap
+  // could still show up on a slow font load.
+  const BARE_RESERVE = 'pb-[3.75rem]'
 
   // Everything the chosen face needs to draw itself.
   const f = {
