@@ -60,20 +60,25 @@ device was involved):
 
 - [ ] Paste the deployed URL into Discord/Slack and confirm the card shows title,
       description and image
-- [ ] Confirm `VERCEL_PROJECT_PRODUCTION_URL` resolved, i.e. `og:image` in the
-      deployed HTML is **absolute** rather than `/og-image.png`
+- [x] Confirm `VERCEL_PROJECT_PRODUCTION_URL` resolved, i.e. `og:image` in the
+      deployed HTML is **absolute** rather than `/og-image.png` — it reads
+      `https://sigildeck.com/og-image.png`, so `VITE_SITE_URL` is **not needed**;
+      the Vercel-provided variable already resolves to the custom apex
 - [ ] Mobile Chrome offers "Add to Home screen", and the installed icon is the
       maskable one rather than a cropped square
 - [ ] Run Lighthouse and confirm the PWA installability checks pass
 
 Carried over from issue 06:
 
-- [ ] **Create the privacy contact mailbox** and send it a test message. The policy
-      lists `scoundrel.privacy@gmail.com` (`src/privacyContact.js`); it does not
-      exist yet, and a policy pointing at an unread address means deletion requests
-      vanish silently.
-- [ ] Confirm `/privacy` resolves on the deployment as a direct URL (it relies on
-      the `vercel.json` SPA rewrite, not just client-side routing)
+- [x] **Create the privacy contact mailbox** and send it a test message — done
+      2026-08-06. `PRIVACY_CONTACT` is now `privacy@sigildeck.com`, forwarded by
+      Cloudflare Email Routing, with Gmail configured to reply *as* that address
+      (`smtp.gmail.com` submission on 587 with an App Password) so answering a
+      request never discloses the personal inbox. Round-tripped from an outside
+      account: message received, reply sent and received under the right sender.
+- [x] Confirm `/privacy` resolves on the deployment as a direct URL (it relies on
+      the `vercel.json` SPA rewrite, not just client-side routing) — 200 on
+      `https://sigildeck.com/privacy`
 - [ ] Confirm PostHog person profiles show a pseudonym and **no** email or name
 
 Carried over from issue 07, which hardened the write endpoints but could not test
