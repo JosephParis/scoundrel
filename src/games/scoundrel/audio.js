@@ -50,11 +50,18 @@ function storeVolume(key, v) {
 // Music beds, keyed to match game.phase exactly so phase changes map straight
 // to a track. victory/gameover are one-shot stings (loop off); the two live
 // phases loop.
+//
+// gameover opts out of the fade-in. It is a single bell struck once, and its
+// whole character is in the attack -- fading up over 600ms turns the strike
+// into a swell, which is the difference between a death sound and a piece of
+// music. The file is cut to start on the transient (scripts/build-bell-cues.sh)
+// so this plays the toll on the same frame the death screen appears. The
+// outgoing bed still fades out underneath it.
 const MUSIC = {
   sanctuary: { src: '/audio/music/sanctuary.mp3', loop: true },
   descent: { src: '/audio/music/descent.mp3', loop: true },
   victory: { src: '/audio/music/victory.mp3', loop: false },
-  gameover: { src: '/audio/music/gameover.mp3', loop: false },
+  gameover: { src: '/audio/music/gameover.mp3', loop: false, fadeIn: false },
 }
 
 // Short one-shots. Wire these from gameplay via audio.sfx('<id>') as the game
@@ -161,8 +168,17 @@ class AudioController {
       volume: kind === 'music' ? this.musicVolume : this.sfxVolume,
       // Swallow load failures (e.g. file not added yet) so a missing cue is
       // silent rather than a thrown error. Mark it so we never re-fade to it.
+      //
+      // Silent in production is the right behaviour, but it also hid two cues
+      // that were registered and never added, leaving the win and death screens
+      // mute for a long time with nothing to notice (issue 03). Say so in dev, so
+      // the next missing file announces itself. visual/audio-assets.spec.js
+      // checks the whole registry resolves.
       onloaderror: () => {
         howl._scoundrelFailed = true
+        if (!import.meta.env.PROD) {
+          console.warn(`[audio] cue failed to load, will stay silent: ${config.src}`)
+        }
       },
     })
     this.howls.set(cacheKey, howl)
@@ -184,6 +200,13 @@ class AudioController {
     if (!config) return
     const howl = this._howl('music', id, config)
     if (howl._scoundrelFailed) return
+    // A cue marked fadeIn: false starts at full level, for cues whose attack is
+    // the point (see MUSIC). Everything else eases in.
+    if (config.fadeIn === false) {
+      howl.volume(this.musicVolume)
+      howl.play()
+      return
+    }
     howl.volume(0)
     howl.play()
     howl.fade(0, this.musicVolume, MUSIC_FADE_MS)

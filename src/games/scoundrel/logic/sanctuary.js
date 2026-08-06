@@ -60,9 +60,14 @@ function editsPerVisit(sigils) {
 
 // Kit cards that can still take an Upgrade (+2 within the rank cap).
 // Fixed-rank inscriptions (Elixir of Life, Brittle Fang) don't scale with rank, so
-// they stay out of the Upgrade pool.
-function upgradeCandidates(kit) {
+// they stay out of the Upgrade pool. `exclude` holds the ids of cards an Inscribe
+// added earlier in this same forge visit: a visit can't mint a card and then
+// immediately upgrade the thing it just made. They become upgradeable again on
+// the next visit, and Remove still offers them (undoing an Inscribe is fair).
+function upgradeCandidates(kit, exclude = []) {
+  const skip = exclude.length > 0 ? new Set(exclude) : null
   return (kit || []).filter(c => {
+    if (skip?.has(c.id)) return false
     if (!(isWeapon(c) || isPotion(c))) return false
     const frame = c.inscribed ? INSCRIBED_FRAMES[c.inscribed] : null
     if (frame && frame.rankMin === frame.rankMax) return false
@@ -114,10 +119,11 @@ function rollInscribeChoices(kit, sigils, rng) {
 
 // Roll the candidate cards (up to 4) an edit grant offers, given its type and
 // the current kit. Inscribe rolls fresh tool cards; Upgrade and Remove sample
-// existing kit cards.
-export function rollForgeChoices(type, kit, sigils, rng) {
+// existing kit cards. `freshInscribes` is the ids this visit has already
+// inscribed, held out of the Upgrade pool.
+export function rollForgeChoices(type, kit, sigils, rng, freshInscribes = []) {
   if (type === 'inscribe') return rollInscribeChoices(kit, sigils, rng)
-  if (type === 'upgrade') return sampleN(upgradeCandidates(kit), 4, rng)
+  if (type === 'upgrade') return sampleN(upgradeCandidates(kit, freshInscribes), 4, rng)
   if (type === 'remove') return sampleN((kit || []).slice(), 4, rng)
   return []
 }
@@ -145,11 +151,12 @@ export function rollForgeGrants(kit, sigils, rng) {
 
 // Find the first grant (from `from`) with non-empty choices, rolling each
 // against the current kit. Empty grants (e.g. an Upgrade with nothing left to
-// upgrade) are skipped. Returns { forgeGrantIndex, forgeChoices }.
-export function initForgeBatch(grants, kit, sigils, rng, from = 0) {
+// upgrade, or nothing left once this visit's Inscribes are held out) are
+// skipped. Returns { forgeGrantIndex, forgeChoices }.
+export function initForgeBatch(grants, kit, sigils, rng, from = 0, freshInscribes = []) {
   let index = from
   while (index < grants.length) {
-    const choices = rollForgeChoices(grants[index], kit, sigils, rng)
+    const choices = rollForgeChoices(grants[index], kit, sigils, rng, freshInscribes)
     if (choices.length > 0) return { forgeGrantIndex: index, forgeChoices: choices }
     index += 1
   }
@@ -166,7 +173,8 @@ export function forgeActive(state) {
 function advanceForgeGrant(state) {
   const { forgeGrantIndex, forgeChoices } = initForgeBatch(
     state.forgeGrants || [], state.kit, state.sigilsEarned || 0, state.rng,
-    (state.forgeGrantIndex || 0) + 1
+    (state.forgeGrantIndex || 0) + 1,
+    state.forgeInscribedIds || []
   )
   return { ...state, forgeGrantIndex, forgeChoices }
 }
@@ -208,7 +216,14 @@ export function applyForgeEdit(state, cardId) {
       if (frame?.oncePerRun && kit.some(c => c.inscribed === card.inscribed)) return state
     }
     next = appendLog(
-      { ...state, kit: [...kit, card], kitEdits: (state.kitEdits || 0) + 1 },
+      {
+        ...state,
+        kit: [...kit, card],
+        kitEdits: (state.kitEdits || 0) + 1,
+        // Held out of any Upgrade later in this same visit. Reset when the
+        // forge next opens, so the card is upgradeable from then on.
+        forgeInscribedIds: [...(state.forgeInscribedIds || []), card.id],
+      },
       card.inscribed
         ? `Inscribed ${INSCRIBED_FRAMES[card.inscribed]?.name || 'a tool'}${card.rank > 0 ? ` (${rankLabel(card.rank)})` : ''} into the kit.`
         : `Added ${rankLabel(card.rank)}${SUIT_GLYPH[card.suit]} to the kit.`

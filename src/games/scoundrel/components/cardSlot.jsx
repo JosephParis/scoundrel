@@ -97,8 +97,10 @@ function ClassicFace({ f }) {
       }`}>
         {(wound || noRank || obscured) ? SUIT_GLYPH[card.suit] : `${rankLabel(shownRank)}${SUIT_GLYPH[card.suit]}`}
       </div>
+      {/* max-h-full so the art letterboxes instead of spilling when the face
+          gives up its lower strip to the bare-hands reserve. */}
       <div className="flex-1 min-h-0 flex items-center justify-center py-1">
-        <SuitIcon suit={card.suit} inscribed={card.inscribed} boss={card.boss} className={`w-[62%] h-auto ${suitIconTone(card)}`} />
+        <SuitIcon suit={card.suit} inscribed={card.inscribed} boss={card.boss} className={`w-[62%] h-auto max-h-full ${suitIconTone(card)}`} />
       </div>
       {(f.boss ? f.bossDef : f.inscribed ? f.frame : null) && (
         <div className="-mt-2 text-center text-[12px] uppercase tracking-[0.12em] font-semibold leading-tight px-1 truncate text-stone-900">
@@ -115,14 +117,23 @@ function ClassicFace({ f }) {
 // -- Modern face (art up, name below, rules at the bottom) --------------
 
 function ModernFace({ f }) {
-  const { card, red, wound, tool, noRank, obscured, shownRank, rules } = f
+  const { card, red, wound, tool, noRank, obscured, shownRank, rules, hasBare } = f
   // Name shown under the art. Special cards use their proper name; everything
   // else shows its category so the face still says what it is.
   const name = f.boss ? f.bossDef.name : f.inscribed ? f.frame.name : f.kind
   // Scale the rules copy to its length: short blurbs grow to fill the space,
-  // long ones shrink so they don't spill into the art.
+  // long ones shrink so they don't spill into the art. A bare-hands button
+  // takes a strip off the bottom of the face, so drop a size when one is
+  // present rather than letting the copy clip.
   const len = rules ? rules.length : 0
-  const rulesSize = len > 130 ? 'text-[9.5px]' : len > 95 ? 'text-[10.5px]' : len > 65 ? 'text-[11.5px]' : 'text-[13px]'
+  const rulesSize = hasBare
+    ? (len > 95 ? 'text-[9px]' : len > 65 ? 'text-[10px]' : 'text-[11px]')
+    : (len > 130 ? 'text-[9.5px]' : len > 95 ? 'text-[10.5px]' : len > 65 ? 'text-[11.5px]' : 'text-[13px]')
+  // The art is the one element on this face that carries no information the
+  // player needs to make the choice, so it gives up the room instead of the
+  // rules copy, which would otherwise clip mid-sentence.
+  const artBox = hasBare ? 'mt-0.5 mb-0.5' : 'mt-3 mb-2'
+  const artWidth = hasBare ? 'w-[30%]' : 'w-[54%]'
   return (
     <>
       <div className={`text-xl font-bold leading-none ${
@@ -132,8 +143,8 @@ function ModernFace({ f }) {
       </div>
       {/* Art sits below the rank glyph, sized to read as the centerpiece while
           still leaving the lower half for the rules text. */}
-      <div className="mt-3 mb-2 flex items-center justify-center">
-        <SuitIcon suit={card.suit} inscribed={card.inscribed} boss={card.boss} className={`w-[54%] h-auto ${suitIconTone(card)}`} />
+      <div className={`${artBox} flex items-center justify-center`}>
+        <SuitIcon suit={card.suit} inscribed={card.inscribed} boss={card.boss} className={`${artWidth} h-auto ${suitIconTone(card)}`} />
       </div>
       {name && (
         <div className="text-center text-[12px] uppercase tracking-[0.1em] font-semibold leading-tight px-1 text-stone-900">
@@ -257,11 +268,26 @@ export function CardSlot({ card, onClick, onBareHands, weaponDamage, bareDamage,
   // lifted card peeks out above them. Match the lift only when the card lifts.
   const overlayLift = !reveal && !blocked && !cardLockedForBare ? 'group-hover:-translate-y-1' : ''
 
+  // The bare-hands button floats over the card face, and what it floats over is
+  // the action preview -- the other half of the same decision ("swing for 3" vs
+  // "punch for 8"). Covering it hid the number the button is asking to be
+  // compared against, so the face gives up a fixed strip at the bottom whenever
+  // the button is drawn. BARE_RESERVE must stay >= the button's own height plus
+  // its bottom offset, which is why the button is pinned to h-9 and its label
+  // kept to one line rather than being allowed to size itself.
+  const hasBare = !!onBareHands
+  // h-9 (2.25rem) + bottom-3 (0.75rem) = 3rem of button. The rest is clearance,
+  // and it is deliberately more than it looks like it needs: the preview line's
+  // height comes from font metrics, so it grows a fraction when the display face
+  // finishes loading. At 3.375rem that left ~6px of slack and a sub-pixel overlap
+  // could still show up on a slow font load.
+  const BARE_RESERVE = 'pb-[3.75rem]'
+
   // Everything the chosen face needs to draw itself.
   const f = {
     card, red, wound, key, map, stone, torch, tool, inscribed, noRank, boss, bossDef,
     traitLabel, frame, kind, footerKind, shownRank, willUseWeapon, monsterPreview,
-    potionHeal, potionSour, potionStrength, potionSkip, obscured, rules, useModern,
+    potionHeal, potionSour, potionStrength, potionSkip, obscured, rules, useModern, hasBare,
     isWoundCard: wound, isKeyCard: key, isMapCard: map, isStoneCard: stone, isTorchCard: torch,
   }
 
@@ -278,7 +304,7 @@ export function CardSlot({ card, onClick, onBareHands, weaponDamage, bareDamage,
       <button
         onClick={cardDisabled ? undefined : onClick}
         disabled={cardDisabled}
-        className={`aspect-[2/3] rounded-lg border-2 ${cardBorderTone(card)} card-face ${boss ? 'is-boss' : ''} text-stone-900 p-3 flex flex-col text-left transition-all ${cardInteractive} ${cardIsCue ? 'tutorial-recommended' : ''}`}
+        className={`aspect-[2/3] rounded-lg border-2 ${cardBorderTone(card)} card-face ${boss ? 'is-boss' : ''} text-stone-900 p-3 ${hasBare ? BARE_RESERVE : ''} flex flex-col text-left transition-all ${cardInteractive} ${cardIsCue ? 'tutorial-recommended' : ''}`}
       >
         {f.useModern ? <ModernFace f={f} /> : <ClassicFace f={f} />}
       </button>
@@ -300,9 +326,12 @@ export function CardSlot({ card, onClick, onBareHands, weaponDamage, bareDamage,
           <button
             onClick={(blocked || bareBlocked) ? undefined : onBareHands}
             disabled={blocked || bareBlocked}
-            className={`absolute bottom-3 left-3 right-3 z-20 py-2 px-2.5 rounded-md bg-stone-800/95 backdrop-blur-sm text-parchment text-xs font-medium border border-stone-700 transition text-center ${(blocked || bareBlocked) ? 'cursor-not-allowed opacity-40' : 'hover:bg-stone-700'} ${bareRecommended ? 'tutorial-recommended' : ''}`}
+            className={`absolute bottom-3 left-3 right-3 h-9 z-20 px-1.5 rounded-md bg-stone-800/95 backdrop-blur-sm text-parchment font-medium border border-stone-700 transition text-center ${(blocked || bareBlocked) ? 'cursor-not-allowed opacity-40' : 'hover:bg-stone-700'} ${bareRecommended ? 'tutorial-recommended' : ''}`}
           >
-            <span className="flex items-center justify-center gap-1">
+            {/* One line, always: the reserve above is a fixed height, so a
+                label that wrapped would grow the button back over the preview.
+                Narrowest case is two columns at 320px. */}
+            <span className="flex items-center justify-center gap-1 h-full whitespace-nowrap text-[10px] sm:text-xs">
               <HelperIcon kind="bare" /> Bare hands · take {bareDamage.value}
             </span>
           </button>

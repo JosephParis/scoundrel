@@ -1,4 +1,5 @@
 import { GAME_VERSION } from '../games/scoundrel/constants'
+import { getSessionToken } from './cloudSync'
 
 const FEEDBACK_API = '/api/feedback'
 
@@ -24,9 +25,16 @@ export async function submitFeedback({ message, kind, context, accountId }) {
     console.log('[feedback] dev build, not sent:', payload)
     return
   }
+  // Feedback filed under a real account needs the session token, or the server
+  // rejects it as unauthenticated: otherwise anyone could post spam under
+  // someone else's accountId. Guests send none and are accepted.
+  const token = getSessionToken()
   const res = await fetch(FEEDBACK_API, {
     method: 'POST',
-    headers: { 'Content-Type': 'application/json' },
+    headers: {
+      'Content-Type': 'application/json',
+      ...(token ? { Authorization: `Bearer ${token}` } : {}),
+    },
     body: JSON.stringify(payload),
   })
   if (!res.ok) {

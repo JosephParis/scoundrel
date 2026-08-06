@@ -9,6 +9,7 @@ import { DescentView } from './components/DescentView'
 import { OutcomeView } from './components/OutcomeView'
 import { LoginModal } from './components/LoginModal'
 import { HistoryModal } from './components/HistoryModal'
+import { LeaderboardModal } from './components/LeaderboardModal'
 import { FeedbackModal } from './components/FeedbackModal'
 import { HomeView } from './components/HomeView'
 import { loadUser, signOut as signOutUser } from '../../utils/auth'
@@ -19,11 +20,21 @@ import {
 import { historyStore } from '../../utils/historyStore'
 import { buildRunRecord } from './history'
 import { useRunAnalytics } from './analytics'
+import { isDevToolsEnabled, isCrashTestRequested } from './flags'
 import { audio } from './audio'
+import { settings } from './settings'
 
 // -- Save / load -------------------------------------------------------
 // Bump SAVE_VERSION whenever the shape of game state in logic.js changes
 // in a way that would break older saves. Old data is discarded silently.
+//
+// The `scoundrel:` prefix is deliberately NOT renamed alongside the game's title
+// (the game is now Sigil). It is an internal namespace, and every key under it is
+// live data on players' devices: saves, tutorial progress, the boon library,
+// feature flags, the sign-in token and the pending run-mirror queue. Renaming the
+// prefix would orphan all of it in one release, for no user-visible gain. The
+// same goes for `accountId` values already stored server-side, the
+// `src/games/scoundrel/` module path, and `_scoundrelFailed` in audio.js.
 const SAVE_KEY = 'scoundrel:save'
 const SAVE_VERSION = 1
 const TUTORIAL_KEY = 'scoundrel:tutorialCompleted'
@@ -180,6 +191,12 @@ function freshRun() {
 // -- Root --------------------------------------------------------------
 
 export default function Scoundrel() {
+  // Deterministic trigger for the error boundary, so its recovery screen is
+  // covered by a test instead of verified by hand. Gated with the dev panel, and
+  // thrown before any hook runs so the throw is unconditional for this render.
+  if (isCrashTestRequested()) {
+    throw new Error('Deliberate crash from ?crash=1 (error boundary test hook)')
+  }
   const [game, setGame] = useState(() => loadSavedGame() || freshRun())
   const [user, setUser] = useState(() => loadUser())
   const [ascensionUnlocked, setAscensionUnlocked] = useState(() => loadAscensionUnlocked())
@@ -191,6 +208,7 @@ export default function Scoundrel() {
   const [loginOpen, setLoginOpen] = useState(false)
   const [cardLibraryOpen, setCardLibraryOpen] = useState(false)
   const [historyOpen, setHistoryOpen] = useState(false)
+  const [leaderboardOpen, setLeaderboardOpen] = useState(false)
   const [homeOpen, setHomeOpen] = useState(false)
   const [settingsOpen, setSettingsOpen] = useState(false)
   const [feedbackOpen, setFeedbackOpen] = useState(false)
@@ -334,7 +352,10 @@ export default function Scoundrel() {
     const terminal = game.phase === 'gameover' || game.phase === 'victory'
     if (!terminal || game.tutorial) return
     const accountId = user?.sub || 'guest'
-    historyStore.appendRun(accountId, buildRunRecord(game, user))
+    // Read the handle live rather than through a hook: what matters is the
+    // opt-in as it stood when the run ended, and this is the only record that
+    // is mirrored to the public board.
+    historyStore.appendRun(accountId, buildRunRecord(game, user, settings.handle))
   }, [game, user])
 
   // Persist the Boon library on every change so unlocks survive even if
@@ -393,7 +414,7 @@ export default function Scoundrel() {
   }, [])
 
   useEffect(() => {
-    const anyOpen = rulesOpen || retireOpen || creditsOpen || devOpen || tutorialReplayOpen || loginOpen || cardLibraryOpen || historyOpen || homeOpen || settingsOpen || feedbackOpen
+    const anyOpen = rulesOpen || retireOpen || creditsOpen || devOpen || tutorialReplayOpen || loginOpen || cardLibraryOpen || historyOpen || leaderboardOpen || homeOpen || settingsOpen || feedbackOpen
     if (!anyOpen) return
     const onKey = (e) => {
       if (e.key !== 'Escape') return
@@ -403,6 +424,7 @@ export default function Scoundrel() {
       else if (creditsOpen) setCreditsOpen(false)
       else if (cardLibraryOpen) setCardLibraryOpen(false)
       else if (historyOpen) setHistoryOpen(false)
+      else if (leaderboardOpen) setLeaderboardOpen(false)
       else if (retireOpen) setRetireOpen(false)
       else if (tutorialReplayOpen) setTutorialReplayOpen(false)
       else if (loginOpen) setLoginOpen(false)
@@ -411,20 +433,20 @@ export default function Scoundrel() {
     }
     window.addEventListener('keydown', onKey)
     return () => window.removeEventListener('keydown', onKey)
-  }, [rulesOpen, retireOpen, creditsOpen, devOpen, tutorialReplayOpen, loginOpen, cardLibraryOpen, historyOpen, homeOpen, settingsOpen, feedbackOpen, resumeHome])
+  }, [rulesOpen, retireOpen, creditsOpen, devOpen, tutorialReplayOpen, loginOpen, cardLibraryOpen, historyOpen, leaderboardOpen, homeOpen, settingsOpen, feedbackOpen, resumeHome])
 
   // Escape pauses an active run when nothing else is open, opening the pause
   // menu. (The overlay-close handler above owns Escape whenever a panel is up.)
   useEffect(() => {
     const runActive = game.phase === 'sanctuary' || game.phase === 'descent'
-    const anyOpen = rulesOpen || retireOpen || creditsOpen || devOpen || tutorialReplayOpen || loginOpen || cardLibraryOpen || historyOpen || homeOpen || settingsOpen || feedbackOpen
+    const anyOpen = rulesOpen || retireOpen || creditsOpen || devOpen || tutorialReplayOpen || loginOpen || cardLibraryOpen || historyOpen || leaderboardOpen || homeOpen || settingsOpen || feedbackOpen
     if (!runActive || anyOpen) return
     const onKey = (e) => {
       if (e.key === 'Escape') openHome()
     }
     window.addEventListener('keydown', onKey)
     return () => window.removeEventListener('keydown', onKey)
-  }, [game.phase, rulesOpen, retireOpen, creditsOpen, devOpen, tutorialReplayOpen, loginOpen, cardLibraryOpen, historyOpen, homeOpen, settingsOpen, feedbackOpen, openHome])
+  }, [game.phase, rulesOpen, retireOpen, creditsOpen, devOpen, tutorialReplayOpen, loginOpen, cardLibraryOpen, historyOpen, leaderboardOpen, homeOpen, settingsOpen, feedbackOpen, openHome])
 
   const confirmReplayTutorial = () => {
     setGame(createRun(Math.random, { tutorial: true, unlockedBoons: loadLibrary() }))
@@ -459,6 +481,7 @@ export default function Scoundrel() {
         onSignOut={handleSignOut}
         onOpenCardLibrary={() => setCardLibraryOpen(true)}
         onOpenHistory={() => setHistoryOpen(true)}
+        onOpenLeaderboard={() => setLeaderboardOpen(true)}
         onOpenHome={openHome}
         onOpenSettings={() => setSettingsOpen(true)}
         onOpenFeedback={() => setFeedbackOpen(true)}
@@ -475,7 +498,13 @@ export default function Scoundrel() {
       <SettingsModal open={settingsOpen} onClose={() => setSettingsOpen(false)} />
       <CardLibraryModal open={cardLibraryOpen} onClose={() => setCardLibraryOpen(false)} />
       <FeedbackModal open={feedbackOpen} onClose={() => setFeedbackOpen(false)} game={game} user={user} />
-      <DevModal open={devOpen} onClose={() => setDevOpen(false)} game={game} setGame={setGame} />
+      {/* Gated here as well as on the menu entry. Hiding the entry point is
+          what players see; this makes the panel unreachable rather than merely
+          unadvertised, so a future caller of setDevOpen that forgets the check
+          cannot open it on a device that should not have it. */}
+      {isDevToolsEnabled() && (
+        <DevModal open={devOpen} onClose={() => setDevOpen(false)} game={game} setGame={setGame} />
+      )}
       <TutorialReplayModal
         open={tutorialReplayOpen}
         onConfirm={confirmReplayTutorial}
@@ -491,11 +520,17 @@ export default function Scoundrel() {
         user={user}
         onClose={() => setHistoryOpen(false)}
       />
+      <LeaderboardModal
+        open={leaderboardOpen}
+        user={user}
+        onClose={() => setLeaderboardOpen(false)}
+      />
       <HomeView
         open={homeOpen}
         onResume={resumeHome}
         onOpenRules={() => setRulesOpen(true)}
         onOpenHistory={() => setHistoryOpen(true)}
+        onOpenLeaderboard={() => setLeaderboardOpen(true)}
         onOpenCardLibrary={() => setCardLibraryOpen(true)}
         onReplayTutorial={() => setTutorialReplayOpen(true)}
         onOpenCredits={() => setCreditsOpen(true)}

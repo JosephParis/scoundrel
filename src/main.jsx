@@ -8,6 +8,7 @@ import { PostHogContext } from '@posthog/react'
 import './index.css'
 import App from './App.jsx'
 import VersionBadge from './VersionBadge.jsx'
+import { ErrorBoundary } from './ErrorBoundary.jsx'
 
 // PostHog SDK is heavy. Defer its import past window.load + idle so it doesn't
 // compete with LCP. Children mount immediately; usePostHog consumers no-op
@@ -62,9 +63,13 @@ function Root() {
 
   return (
     <PostHogContext.Provider value={{ client: posthogClient }}>
-      <BrowserRouter>
-        <App />
-      </BrowserRouter>
+      {/* Inside the provider so crashes can be reported, and outside the router
+          so it also catches a failed lazy route import -- Suspense does not. */}
+      <ErrorBoundary>
+        <BrowserRouter>
+          <App />
+        </BrowserRouter>
+      </ErrorBoundary>
       <VersionBadge />
       <Analytics />
       <SpeedInsights />

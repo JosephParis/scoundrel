@@ -23,6 +23,8 @@
  * account so a player's pre-login runs are not orphaned.
  */
 
+import { getSessionToken } from './cloudSync'
+
 const KEY_PREFIX = 'scoundrel:history:'
 const GUEST_ID = 'guest'
 // Records awaiting confirmed delivery to /api/runs. Global (not per-account):
@@ -149,9 +151,17 @@ class LocalHistoryStore {
     if (pending.length === 0) return
     const sentKeys = new Set(pending.map(serverKeyOf))
     try {
+      // /api/runs accepts guest records unauthenticated but requires a matching
+      // session token for any record claiming a real account, so the queue --
+      // which mixes both -- always presents the token when there is one. A signed
+      // -out player has none and posts only guest records, which is allowed.
+      const token = getSessionToken()
       const res = await fetch(RUNS_API, {
         method: 'POST',
-        headers: { 'Content-Type': 'application/json' },
+        headers: {
+          'Content-Type': 'application/json',
+          ...(token ? { Authorization: `Bearer ${token}` } : {}),
+        },
         body: JSON.stringify(pending),
         keepalive,
       })

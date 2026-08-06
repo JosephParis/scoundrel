@@ -9,6 +9,13 @@ import { test, expect } from '@playwright/test'
 const MOBILE_VIEWPORT = { width: 375, height: 667 }
 const DESKTOP_VIEWPORT = { width: 1920, height: 1080 }
 
+// The wordmark cannot be located by its text. The game is named after one of its
+// own nouns, so `text=SIGIL` (which matches case-insensitively, as a substring)
+// also hits the sanctuary's "Sigils" rail label and any "10 sigils" copy -- four
+// elements, and a strict-mode violation. Its role is unambiguous and does not
+// move when the copy does.
+const wordmark = page => page.getByRole('button', { name: 'Home menu' })
+
 test.describe('Mobile Responsive - Basic Tests', () => {
   test('should load the app on mobile', async ({ page }) => {
     await page.setViewportSize(MOBILE_VIEWPORT)
@@ -18,7 +25,8 @@ test.describe('Mobile Responsive - Basic Tests', () => {
     await expect(page.locator('body')).toBeVisible()
 
     // Should have the title somewhere
-    await expect(page.locator('text=SCOUNDREL')).toBeVisible({ timeout: 10000 })
+    await expect(wordmark(page)).toBeVisible({ timeout: 10000 })
+    await expect(wordmark(page)).toHaveText('SIGIL')
   })
 
   test('should load the app on desktop', async ({ page }) => {
@@ -29,7 +37,8 @@ test.describe('Mobile Responsive - Basic Tests', () => {
     await expect(page.locator('body')).toBeVisible()
 
     // Should have the title
-    await expect(page.locator('text=SCOUNDREL')).toBeVisible({ timeout: 10000 })
+    await expect(wordmark(page)).toBeVisible({ timeout: 10000 })
+    await expect(wordmark(page)).toHaveText('SIGIL')
   })
 
   test('should have mobile-optimized meta tags', async ({ page }) => {

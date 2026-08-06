@@ -1,5 +1,5 @@
 {
-  "name": "scoundrel",
+  "name": "sigil",
   "private": true,
   "version": "0.0.0",
   "type": "module",
@@ -8,7 +8,13 @@
     "build": "vite build",
     "lint": "eslint .",
     "preview": "vite preview",
-    "test": "playwright test",
+    "icons": "node scripts/generate-icons.mjs",
+    "test": "vitest run && playwright test",
+    "test:unit": "vitest run",
+    "test:unit:watch": "vitest",
+    "test:e2e": "playwright test",
+    "test:prod": "playwright test --project=prod",
+    "test:dev": "playwright test --project=dev",
     "test:mobile": "playwright test visual/mobile-responsive-simple.spec.js",
     "test:mobile:full": "playwright test visual/mobile-responsive.spec.js",
     "test:mobile:ui": "playwright test visual/mobile-responsive.spec.js --ui",
@@ -39,6 +45,7 @@
     "fluent-ffmpeg": "^2.1.3",
     "globals": "^17.4.0",
     "tailwindcss": "^4.2.2",
-    "vite": "^8.0.3"
+    "vite": "^8.0.3",
+    "vitest": "^4.1.10"
   }
 }

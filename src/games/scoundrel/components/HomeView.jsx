@@ -1,11 +1,11 @@
-// Full-screen home / main menu. Reached by clicking the SCOUNDREL logo in
+// Full-screen home / main menu. Reached by clicking the SIGIL logo in
 // the top bar. It's an overlay rather than a game phase, so the live run is
 // untouched underneath: "Resume" just closes it. Menu entries hand off to the
 // same modals the top bar opens.
 // onOpenCardLibrary is still wired from index.jsx for the parked Card library
 // entry below, so it reads as unused until that entry comes back.
 // eslint-disable-next-line no-unused-vars
-export function HomeView({ open, onResume, onOpenRules, onOpenHistory, onOpenCardLibrary, onReplayTutorial, onOpenCredits }) {
+export function HomeView({ open, onResume, onOpenRules, onOpenHistory, onOpenLeaderboard, onOpenCardLibrary, onReplayTutorial, onOpenCredits }) {
   if (!open) return null
 
   // TEMPORARY: Card library is parked alongside the rules modal's reference
@@ -15,6 +15,7 @@ export function HomeView({ open, onResume, onOpenRules, onOpenHistory, onOpenCar
     { label: 'Resume', hint: 'Back to your run', onClick: onResume, accent: true },
     { label: 'How to play', hint: 'The rules', onClick: onOpenRules },
     { label: 'Run history', hint: 'Past descents', onClick: onOpenHistory },
+    { label: 'Leaderboard', hint: 'Fastest victories', onClick: onOpenLeaderboard },
     // { label: 'Card library', hint: 'Every card in the deck', onClick: onOpenCardLibrary },
     { label: 'Tutorial', hint: 'A guided walkthrough', onClick: onReplayTutorial },
     { label: 'Credits', hint: 'Who built this', onClick: onOpenCredits },
@@ -24,7 +25,7 @@ export function HomeView({ open, onResume, onOpenRules, onOpenHistory, onOpenCar
     <div className="fixed inset-0 z-40 bg-dungeon flex flex-col items-center justify-center px-4 overflow-y-auto animate-fade-in">
       <div className="w-full max-w-md py-10 text-center">
         <h1 className="font-display text-rune text-5xl sm:text-6xl tracking-[0.2em]">
-          SCOUNDREL
+          SIGIL
         </h1>
         <div className="rune-divider mx-auto max-w-[10rem] mt-4 mb-8 text-[10px]">
           <span>✦</span>

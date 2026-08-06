@@ -179,7 +179,7 @@ export default function AdminDashboard() {
     <div className="min-h-screen bg-stone-950 text-stone-200">
       <div className="mx-auto max-w-5xl p-6">
         <header className="mb-6 flex items-center justify-between gap-4">
-          <h1 className="text-xl font-semibold">Scoundrel — run analytics</h1>
+          <h1 className="text-xl font-semibold">Sigil — run analytics</h1>
           <div className="flex items-center gap-3 text-sm">
             <VersionRange
               range={range}
