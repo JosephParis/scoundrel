@@ -184,7 +184,10 @@ export function CardSlot({ card, onClick, onBareHands, weaponDamage, bareDamage,
   }
   const red = card.suit === HEART || card.suit === DIAMOND
   const wound = isWound(card)
-  const key = isSkeletonKey(card)
+  // Not `key`: this ends up in the `f` bag that the faces are spread from, and
+  // React treats a `key` property in a spread as the element's key rather than a
+  // prop -- silently, apart from a console error on every single card render.
+  const skeletonKey = isSkeletonKey(card)
   const map = isMap(card)
   const stone = isWhetstone(card)
   const torch = isTorch(card)
@@ -216,7 +219,7 @@ export function CardSlot({ card, onClick, onBareHands, weaponDamage, bareDamage,
             ? 'Potion'
             : wound
               ? 'Wound'
-              : key
+              : skeletonKey
                 ? 'Skeleton Key'
                 : ''
   // The mid-card label already names inscribed cards, so the small footer
@@ -283,12 +286,15 @@ export function CardSlot({ card, onClick, onBareHands, weaponDamage, bareDamage,
   // could still show up on a slow font load.
   const BARE_RESERVE = 'pb-[3.75rem]'
 
-  // Everything the chosen face needs to draw itself.
+  // Everything the chosen face needs to draw itself. Spread into the face
+  // components, so nothing in here may be called `key` or `ref` -- React would
+  // consume it instead of passing it through. The card kinds are carried by the
+  // isXCard aliases below, which is what the faces actually read.
   const f = {
-    card, red, wound, key, map, stone, torch, tool, inscribed, noRank, boss, bossDef,
+    card, red, wound, map, stone, torch, tool, inscribed, noRank, boss, bossDef,
     traitLabel, frame, kind, footerKind, shownRank, willUseWeapon, monsterPreview,
     potionHeal, potionSour, potionStrength, potionSkip, obscured, rules, useModern, hasBare,
-    isWoundCard: wound, isKeyCard: key, isMapCard: map, isStoneCard: stone, isTorchCard: torch,
+    isWoundCard: wound, isKeyCard: skeletonKey, isMapCard: map, isStoneCard: stone, isTorchCard: torch,
   }
 
   return (

@@ -84,9 +84,26 @@ Carried over from issue 06:
 Carried over from issue 07, which hardened the write endpoints but could not test
 them against a deployment (there is no `/api` in `vite dev` or `vite preview`):
 
+Auth wiring confirmed on the deployment 2026-08-06, both halves:
+
+- [x] Client build carries `VITE_GOOGLE_CLIENT_ID` — it is in the `scoundrel-*`
+      chunk, **not** the entry bundle, because that is where `LoginModal` lands.
+      Grepping `index-*.js` alone reports a false negative; don't repeat that.
+- [x] Server has `GOOGLE_CLIENT_ID` and `SESSION_SECRET` — `POST /api/auth` with
+      an empty body returns `400 missing_credential`. `api/auth.js:21` returns
+      `503 auth_not_configured` if either is missing, so reaching the 400 branch
+      proves both are set.
+- [x] `/api/stats` returns 401 unauthenticated
+
 - [ ] A **signed-in** player's run reaches `runs` — i.e. `historyStore` is sending
       `Authorization` and is not being 401'd. This is the regression to watch: a
       broken token path would silently stop recording every signed-in run.
+      **Only a real signed-in run can check this.** A synthetic probe cannot:
+      `runs.js` validates the batch (`:74`) *before* the auth gate (`:84`), so a
+      throwaway record is rejected with `400 no_valid_records` and never reaches
+      `mayWriteAs` — and a record valid enough to reach it would write a junk row
+      to the production table if the gate were broken. `mayWriteAs` itself has 7
+      unit tests; what is untested is only the deployed wiring.
 - [ ] A **guest** run still reaches `runs` with no token
 - [ ] Signed-in and guest feedback both still submit
 - [ ] A hand-rolled POST to `/api/runs` claiming someone else's `accountId` is

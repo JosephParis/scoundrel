@@ -189,6 +189,25 @@ for (const layout of ['classic', 'modern']) {
   })
 }
 
+test('rendering a room logs no console errors', async ({ page }) => {
+  // The card faces are drawn by spreading one big props bag, and a `key` in a
+  // spread is consumed by React as the element key rather than passed through --
+  // silently, apart from a console error per card per render. It sat there for a
+  // while because nothing failed: the value was also carried as `isKeyCard`, so
+  // the face still drew correctly.
+  //
+  // This asserts on console errors generally rather than that one message. The
+  // crash reporting added with the error boundary reads the console, so noise
+  // here is not free, and a room render is the busiest thing the app does.
+  const errors = []
+  page.on('console', msg => { if (msg.type() === 'error') errors.push(msg.text()) })
+  page.on('pageerror', err => errors.push(String(err)))
+
+  await seededDescent(page, { viewport: MOBILE_VIEWPORT, layout: 'modern' })
+
+  expect(errors, `console errors while rendering a room:\n${errors.join('\n')}`).toEqual([])
+})
+
 test('the bare-hands label stays on one line', async ({ page }) => {
   // The reserve above the button is a fixed height, so a wrapped label would
   // grow the button back over the preview. Narrowest supported viewport, where
