@@ -55,12 +55,20 @@ a bell for a death. The name did not survive; the bells did, on their own merits
 Public domain imposes no attribution requirement; both are credited here anyway
 so the provenance of every shipped asset is recorded in one place.
 
-## Alternative Track (available but not currently active)
+## Removed (issue 16)
 
-**Mourning Song** by Kevin MacLeod:
-- Classical instrumental, 1:32 duration
-- Downloaded as: mourning-song.ogg
-- From: Wikimedia Commons
-- To use: rename to descent.mp3 (or convert OGG to MP3 first)
-- Note: considered for the death cue, but a bell suited the game's name better.
-  Issue 16 covers removing this and the other unreferenced source files.
+Three files were shipped to every visitor and never played. Deleted 2026-08-08,
+taking `public/audio/` from 32MB to 16MB:
+
+- `dark-times.mp3` — **byte-identical** to `descent.mp3`. The same recording,
+  kept under its original title as well as its in-game name. Credited above as
+  the source of Descent; nothing was lost.
+- `ossuary-5-rest.mp3` — **byte-identical** to `sanctuary.mp3`, same story.
+- `mourning-song.ogg` — "Mourning Song" by Kevin MacLeod, from Wikimedia
+  Commons. Considered for the death cue and not used; a struck bell suited it
+  better. Recoverable from git history, or re-downloadable, if ever wanted.
+
+Nothing referenced these — `audio.js` names only `sanctuary`, `descent`,
+`victory` and `gameover` — so this is a pure payload cut with no behaviour
+change. `visual/audio-assets.spec.js` parses the registry out of `audio.js`, so
+it verifies what ships rather than a hard-coded list.

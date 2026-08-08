@@ -77,9 +77,17 @@ Done so far: **05** (tree clean, `GAME_VERSION` now `0.4`), **01** (dev tools
 gated), **26** (suite green and runnable), **02** (error boundary), **07** (write
 endpoints hardened; vitest added, which partly advances 15), **06** (privacy
 policy; PostHog no longer receives PII), **04** (icons, manifest, social cards),
-**28** (bare-hands button no longer covers the weapon preview).
+**28** (bare-hands button no longer covers the weapon preview), **16** (audio
+payload halved), **19** (`robots.txt` + admin `noindex`).
 
-**All P0 blockers are closed.**
+**All P0 blockers are closed.** Live at **https://sigildeck.com** since
+2026-08-06, with the privacy mailbox, auth and DNS all verified against the
+deployment (see issue 13).
+
+**The open risk before widening access is issue 08.** Leaderboard handles are
+player-supplied and public, and there is no way to remove an abusive one — no
+block, no delete, no audit. That is the thing that changes character the moment
+strangers rather than friends are playing.
 
 ## The game is now called Sigil
 
@@ -178,10 +186,10 @@ shipped to users on `0.4` yet, so sharing is usually fine.
 | # | Issue | Area | Effort |
 |---|---|---|---|
 | [15](15-unit-tests-game-logic.md) | No unit tests over ~100KB of game logic | testing | L |
-| [16](16-audio-payload.md) | ~31MB audio, ~17MB byte-identical duplicates | performance | S |
+| [16](16-audio-payload.md) | ~31MB audio, ~17MB byte-identical duplicates | performance | S | **done** |
 | [17](17-prefers-reduced-motion.md) | No `prefers-reduced-motion`; 4 infinite animations | accessibility | S |
 | [18](18-google-fonts-blocking-import.md) | Render-blocking Google Fonts `@import` | performance | S |
-| [19](19-robots-txt.md) | No `robots.txt` while `/admin` is live | hygiene | S |
+| [19](19-robots-txt.md) | No `robots.txt` while `/admin` is live | hygiene | S | **done** |
 
 ### P4 — hygiene and doc accuracy
 

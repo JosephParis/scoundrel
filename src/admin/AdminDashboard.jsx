@@ -91,7 +91,23 @@ function TokenGate({ onSubmit, error }) {
   )
 }
 
+// robots.txt disallows /admin, but that is advisory and only reaches crawlers
+// that fetch it before the URL. A crawler arriving from a direct link never
+// consults it. /admin is a client route rendered from the same index.html as the
+// game, so the tag cannot live in the static HTML without hiding the game too --
+// it is injected on mount and removed on unmount.
+function useNoIndex() {
+  useEffect(() => {
+    const tag = document.createElement('meta')
+    tag.name = 'robots'
+    tag.content = 'noindex, nofollow'
+    document.head.appendChild(tag)
+    return () => tag.remove()
+  }, [])
+}
+
 export default function AdminDashboard() {
+  useNoIndex()
   const [token, setToken] = useState(() => {
     try { return localStorage.getItem(TOKEN_KEY) || '' } catch { return '' }
   })

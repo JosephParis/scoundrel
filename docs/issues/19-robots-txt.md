@@ -4,7 +4,7 @@ title: "No robots.txt while /admin is a live client route"
 priority: P3
 area: hygiene
 effort: S
-status: open
+status: done
 ---
 
 ## Problem

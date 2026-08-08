@@ -1,0 +1,22 @@
+# Sigil — https://sigildeck.com
+#
+# /admin is a real client route. It is not a security hole (TokenGate blocks the
+# UI, and api/stats.js independently requires the ADMIN_TOKEN bearer), but
+# vercel.json rewrites everything outside /api/* to index.html, so it answers 200
+# to any crawler. Indexing it advertises that the route exists, burns serverless
+# invocations on crawler traffic, and adds junk to analytics.
+#
+# robots.txt is advisory only, so AdminDashboard also sets a noindex meta tag
+# when it mounts — that covers a crawler arriving from a direct link.
+User-agent: *
+Disallow: /admin
+
+# The game itself IS indexable (issue 19 asked for this decision to be explicit
+# rather than a default). Distribution is by link and the OG card, so indexing
+# adds little on its own, but there is no reason to hide a public free game.
+#
+# Reconsider if the leaderboard starts attracting drive-by traffic before issue
+# 08 lands: handles are player-supplied and public, and there is currently no way
+# to remove an abusive one. Tightening this to `Disallow: /` is a one-line change
+# and reversible.
+Allow: /

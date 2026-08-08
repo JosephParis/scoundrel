@@ -4,7 +4,7 @@ title: "~31MB of audio in public/, over half of it byte-identical duplicates"
 priority: P3
 area: performance
 effort: S
-status: open
+status: done
 ---
 
 ## Problem
