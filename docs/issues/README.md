@@ -116,8 +116,10 @@ save for no visible gain:
 - the `src/games/scoundrel/` module path, and `_scoundrelFailed` in `audio.js`
 - the boon **"Scoundrel's Cloak"** — a character archetype, not the title
 
-**Still to do by hand:** rename the GitHub repo, then update `REPO` in
-`src/VersionBadge.jsx`, which still links to `JosephParis/scoundrel`.
+The GitHub repo is now **`JosephParis/sigil`** (renamed 2026-08-08). `REPO` in
+`src/VersionBadge.jsx` and the fetch user-agent in `scripts/build-bell-cues.sh`
+follow it. The **working directory is still `apps/scoundrel`** and stays that
+way — same reasoning as the module path.
 
 **Issue 13 has grown into the real pre-launch gate.** Everything that cannot be
 tested locally has been pushed onto its checklist, because there is no `/api` in

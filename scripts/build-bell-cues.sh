@@ -30,7 +30,7 @@ OUT="public/audio/music"
 WORK="$(mktemp -d)"
 trap 'rm -rf "$WORK"' EXIT
 
-UA="ScoundrelGameDev/1.0 (+https://github.com/JosephParis/scoundrel)"
+UA="SigilGameDev/1.0 (+https://github.com/JosephParis/sigil)"
 fetch() {
   echo "fetching $2"
   curl -fsSL -A "$UA" -o "$WORK/$2" "$1"

@@ -4,7 +4,7 @@
 // the layout (no added page scroll on full-screen views). The SHA links to the
 // matching GitHub commit so "is prod on the latest build?" is one glance away.
 
-const REPO = 'https://github.com/JosephParis/scoundrel'
+const REPO = 'https://github.com/JosephParis/sigil'
 
 const SHA = import.meta.env.VITE_BUILD_SHA || 'dev'
 const REF = import.meta.env.VITE_BUILD_REF || ''
