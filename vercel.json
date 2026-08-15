@@ -2,6 +2,11 @@
   "rewrites": [
     { "source": "/((?!api/).*)", "destination": "/index.html" }
   ],
+  "git": {
+    "deploymentEnabled": {
+      "dawn/*": false
+    }
+  },
   "crons": [
     { "path": "/api/cron-backfill-runs", "schedule": "0 4 * * 1" }
   ]
