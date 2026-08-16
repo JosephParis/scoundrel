@@ -4,7 +4,8 @@ title: "No unit tests over ~100KB of game logic"
 priority: P3
 area: testing
 effort: L
-status: open
+status: in-progress
+branch: dawn/2026-08-16
 ---
 
 ## Problem
