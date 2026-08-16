@@ -1,7 +1,8 @@
 # Dawn run — 2026-08-16
 
 **Branch:** `dawn/2026-08-16` · **Issue picked:** [15 — No unit tests over ~100KB
-of game logic](docs/issues/15-unit-tests-game-logic.md)
+of game logic](docs/issues/15-unit-tests-game-logic.md), which also closed
+[09](docs/issues/09-merge-runseed-dedupe-bug.md).
 
 ## Why this one
 
@@ -19,77 +20,84 @@ were disqualified rather than merely lower-value:
 
 ## What changed
 
-**+187 unit tests, 84 → 302 total.** Every test lands green; each test file is
-its own commit.
+**Unit tests 84 → 391.** All seven coverage targets the issue names are now
+done, not just the six the acceptance criteria required. One commit per file.
 
 | Commit | File | Tests | Covers |
 |---|---|---|---|
 | `02d653d` | `test/deck.test.js` | 32 | the 44-card deck, the low-ten kit, the tier ceiling and ace-tier volume escalation, `applyMonsterMods`, seeded `shuffle`, the curated tutorial deck |
-| `ca501a9` | `test/themes.test.js` | 31 | `pickThemeId` band selection, the 0.4 no-repeat rule across 50 seeded full runs, **both** fallback tiers, `resolveThemeChildren`, `getActiveThemes` |
-| `721e28a` | `test/combat.test.js` | 78 | damage arithmetic and its ordering, weapon binding, durability, `applyHpLoss` (Numb / Twin Souls / Second Wind / death), the potion limit, tool cards, monster traits, refill and victory |
+| `ca501a9` | `test/themes.test.js` | 31 | band selection, the 0.4 no-repeat rule across 50 seeded full runs, **both** fallback tiers, `resolveThemeChildren`, `getActiveThemes` |
+| `721e28a` | `test/combat.test.js` | 78 | damage arithmetic *and its ordering*, weapon binding, durability, `applyHpLoss`, the potion limit, tool cards, monster traits, refill and victory |
 | `e88745c` | `test/sanctuary.test.js` | 37 | the Forge edit batch, the rank cap, the 0.4 inscribe-then-upgrade invariant, `pickBoon` |
 | `db0b8f7` | `test/dedupeKeys.test.js` | 40 | all four run-dedupe implementations agree; `mergeProfiles` end to end |
+| `37ec809` | `test/lifecycle.test.js` | 56 | `createRun`, `descend`, `endDescentVictory` and sigil accrual, `endDescentDeath`, `retireRun`, `fleeRoom`, `getAscensionEffects` |
+| `98be685` | `test/history.test.js` | 33 | `buildRunRecord` at `RECORD_VERSION = 7`, `leaderboardName` clamping, paused-time arithmetic, `computeLifetimeStats` |
 
 `test/support/state.js` holds the shared fixtures: a seeded mulberry32 rng, a
 scripted rng for pinning one probability branch, and the descent / sanctuary
-state factories.
+state factories. The combat tests deliberately play through the real entry
+points (`playCard`, `playCardBare`, `applyHpLoss`) rather than the private
+damage helper, so the *order* of the reductions is covered as well as each one.
 
-### A bug fixed along the way — issue 09, now closed
+## Two bugs the tests turned up
 
-Issue 15's fifth acceptance criterion is a dedupe-key agreement test, and that
-test cannot honestly pass while the keys disagree. `api/_lib/merge.js` keyed a
-run on `accountId:startedAt` alone while the other three implementations folded
-in `runSeed`, so two guest runs started in the same millisecond on two devices
-— the exact case `runSeed` exists for — collapsed into one and a real run
-vanished from synced history. Fixed, stale comment corrected, and the test
-lands in the same commit per the project convention.
+**Issue 09 — the merge dedupe key, now closed.** `api/_lib/merge.js` keyed a run
+on `accountId:startedAt` alone while the other three implementations folded in
+`runSeed`. Two guest runs started in the same millisecond on two devices — the
+exact case `runSeed` exists for — collapsed into one and a real run vanished
+from synced history. I fixed it rather than writing a test that documents the
+divergence, because issue 15's fifth acceptance criterion is an *agreement*
+test and it cannot honestly pass while the keys disagree.
 
-I did **not** collapse the four copies into one shared module, which issue 09
-floats as the better fix. The client cannot import from `api/`, and the four
-are not the same string anyway — `historyStore.js`'s bucket key legitimately
-omits `accountId` because its buckets are already per-account. Each is now
-exported instead, and the test asserts the property that matters: all four make
-the same same-run / different-run call. **You might have decided differently
-here** and moved the function into a tree both can reach.
+**`setRunMode` accepted a junk mode string.** Its guard was
+`if (!getMode(modeId)) return state`, but `getMode` falls back to the default
+mode and so never reports an unknown id. An unrecognized mode was stored on the
+run and stamped into its history record. Guards on `MODES` now, with the test in
+the same commit (`37ec809`).
+
+## Decisions you might have made differently
+
+- **I did not collapse the four dedupe-key copies into one shared module,**
+  which issue 09 floats as the better fix. The client cannot import from `api/`,
+  and the four are not the same string anyway — `historyStore.js`'s bucket key
+  legitimately omits `accountId` because its buckets are already per-account.
+  Each is exported instead, and the test asserts the property that matters: all
+  four make the same same-run / different-run call. Moving the function into a
+  tree both can reach is still the tidier end state.
+- **I closed issue 09 inside issue 15's run** rather than leaving it open with a
+  failing test. It is a one-line fix; the alternative was a criterion I could
+  not tick.
+- **I did not widen CI's branch filter.** `ci.yml` runs unit tests on push and
+  PR, but only for `main` / `master` / `develop` — so nothing on this branch has
+  been exercised by CI. Pre-existing, and widening it belongs with issue 24.
 
 ## Test results
 
-- `npm run test:unit` — **302 passed**, 10 files, sub-second.
+- `npm run test:unit` — **391 passed**, 12 files, sub-second.
 - `npm run lint` — clean.
 - `npm run build` — clean.
-- `npm run test:e2e` — **not run.** Playwright needs browsers and a dev server;
-  nothing on this branch touches the UI, so the risk of a change here breaking
-  it is close to nil, but it is genuinely unverified.
-
-## Issue 15 acceptance criteria
-
-- [x] vitest installed; `npm run test:unit` runs — already true, landed with issue 07
-- [x] `combat.js` damage and durability paths covered
-- [x] `sanctuary.js` forge invariants, including no inscribe-then-upgrade in one visit
-- [x] `themes.js` no-repeat and both fallbacks under a seeded RNG
-- [x] Dedupe-key agreement test in place
-- [x] Unit tests run in CI on every push — already wired into `ci.yml`'s
-  `lint-and-build` job. **Caveat:** that workflow only triggers on `main`,
-  `master` and `develop`, so a push to a `dawn/*` branch runs no CI at all.
-  Pre-existing, and widening it belongs with issue 24.
+- `npm run test:e2e` — **started but not confirmed.** A `--project=dev` run was
+  launched in the background and had not reported by the time this was written,
+  so treat the e2e half as unverified. Nothing on this branch touches the UI —
+  the only non-test source changes are `merge.js`'s key, `cloudSync` /
+  `historyStore` export keywords, and the `setRunMode` guard — so the risk is
+  low, but it is genuinely unchecked. **Run `npm test` before merging.**
 
 ## What is left
 
-Two of the issue's seven suggested targets have no tests yet. Neither is an
-acceptance criterion, so **15 is marked `done`** — but if you want the coverage:
+Issue 15 is genuinely done: all six acceptance criteria are met and all seven of
+its suggested targets have tests. Nothing is scaffolded-but-empty.
 
-- **`lifecycle.js`** (~28 KB) — `createRun` initial state, `descend`,
-  `endDescentVictory`, sigil accrual against `SIGIL_TARGET = 10`. The biggest
-  remaining gap, and the one a balance pass is most likely to break.
-- **`history.js`** — `buildRunRecord` shape at `RECORD_VERSION = 7`,
-  `leaderboardName` clamping, `computeLifetimeStats`.
+The obvious next items, unchanged by this run:
 
-Obvious next step is `test/lifecycle.test.js`, which `test/support/state.js` is
-already set up for.
+- **08** (moderation) is still the stated risk before inviting strangers.
+- **13** is still the pre-launch gate, and now carries one more item: confirm no
+  already-synced profile lost a run to the issue 09 bug before it was fixed.
+  That needs the production database, which an unattended run must not touch.
 
 ## One more thing
 
-The `sigil-issue` skill that `dawn-run` defers to for the real procedure **does
+The `sigil-issue` skill that `dawn-run` defers to for its real procedure **does
 not exist on disk** — `~/.claude/skills/` holds only `dawn-run` and
 `limit-window`. I followed `docs/issues/README.md`'s own "How to work an issue"
 and testing-convention sections instead, which appear to cover the same ground.
