@@ -4,7 +4,7 @@ title: "No unit tests over ~100KB of game logic"
 priority: P3
 area: testing
 effort: L
-status: in-progress
+status: done
 branch: dawn/2026-08-16
 ---
 
@@ -89,9 +89,46 @@ that's where a silent regression actually costs you.
 
 ## Acceptance criteria
 
-- [ ] vitest installed; `npm run test:unit` runs
-- [ ] `combat.js` damage and durability paths covered
-- [ ] `sanctuary.js` forge invariants covered, including no inscribe-then-upgrade in one visit
-- [ ] `themes.js` no-repeat and both fallbacks covered under a seeded RNG
-- [ ] Dedupe-key agreement test in place
-- [ ] Unit tests run in CI on every push
+- [x] vitest installed; `npm run test:unit` runs
+- [x] `combat.js` damage and durability paths covered
+- [x] `sanctuary.js` forge invariants covered, including no inscribe-then-upgrade in one visit
+- [x] `themes.js` no-repeat and both fallbacks covered under a seeded RNG
+- [x] Dedupe-key agreement test in place
+- [x] Unit tests run in CI on every push
+
+## Resolution (2026-08-16, `dawn/2026-08-16`)
+
+**84 -> 302 unit tests.** Five new files, each self-contained and committed on
+its own, over the shared fixtures in `test/support/state.js` (seeded
+mulberry32 rng, a scripted rng for pinning one probability branch, and the
+descent/sanctuary state factories):
+
+| File | Tests | Covers |
+|---|---|---|
+| `test/deck.test.js` | 32 | the 44-card deck, the low-ten kit, the tier ceiling and ace-tier volume escalation, `applyMonsterMods`, seeded `shuffle`, the tutorial deck |
+| `test/themes.test.js` | 31 | band selection, the 0.4 no-repeat rule across 50 seeded full runs, both fallback tiers, `resolveThemeChildren`, `getActiveThemes` |
+| `test/combat.test.js` | 78 | damage arithmetic *and its ordering*, weapon binding, durability, `applyHpLoss`, the potion limit, tool cards, traits, refill/victory |
+| `test/sanctuary.test.js` | 37 | the Forge edit batch, the rank cap, the 0.4 inscribe-then-upgrade invariant, `pickBoon` |
+| `test/dedupeKeys.test.js` | 40 | all four dedupe implementations agree; `mergeProfiles` end to end |
+
+The combat tests deliberately play through the real entry points (`playCard`,
+`playCardBare`, `applyHpLoss`) rather than the private damage helper, so the
+*order* of the reductions is covered as well as each one.
+
+The dedupe-key criterion could not be met honestly while the keys disagreed, so
+**issue 09 was fixed in the same change** and is now closed.
+
+Unit tests were already wired into `ci.yml`'s `lint-and-build` job (they landed
+with issue 07). Note that workflow only triggers on `main` / `master` /
+`develop`, so pushes to other branches run no CI — pre-existing, and widening it
+belongs with issue 24.
+
+### Left uncovered
+
+Suggested targets 3 and 6, neither of which is an acceptance criterion:
+
+- **`lifecycle.js`** (~28 KB) — `createRun` initial state, `descend`,
+  `endDescentVictory`, sigil accrual against `SIGIL_TARGET = 10`. The largest
+  remaining gap and the one a balance pass is most likely to break.
+- **`history.js`** — `buildRunRecord` shape at `RECORD_VERSION = 7`,
+  `leaderboardName` clamping, `computeLifetimeStats`.
