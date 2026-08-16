@@ -78,6 +78,8 @@ export function descentState(overrides = {}) {
     roomsEntered: 0,
     runRoomsEntered: 0,
     canFlee: true,
+    cloakUsed: false,
+    cloakArmed: false,
     riposteCharge: 0,
     vengefulBonus: 0,
     lastKilledMonsterRanks: [],

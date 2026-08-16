@@ -1,4 +1,4 @@
-import { SUIT_GLYPH, SIGIL_TARGET, DEFAULT_MODE, getMode, isMonster, isWeapon, isPotion, rankLabel } from '../constants'
+import { SUIT_GLYPH, SIGIL_TARGET, DEFAULT_MODE, MODES, getMode, isMonster, isWeapon, isPotion, rankLabel } from '../constants'
 import { getTheme, pickThemeId, resolveThemeChildren } from '../themes'
 import { BOONS, pickBoonOffers, STARTER_BOON_IDS, UNLOCKABLE_BOON_IDS } from '../boons'
 import { getAscensionEffectsForState } from '../ascensions'
@@ -164,7 +164,10 @@ export function setRunMode(state, modeId) {
   if (state.phase !== 'sanctuary') return state
   if (state.sigilsEarned !== 0) return state
   if (state.tutorial) return state
-  if (!getMode(modeId)) return state
+  // Guard on MODES, not getMode: getMode falls back to the default mode and so
+  // never reports an unknown id, which let a junk mode string be stored on the
+  // run and stamped into its history record.
+  if (!MODES[modeId]) return state
   if (state.mode === modeId) return state
   return { ...state, mode: modeId }
 }
