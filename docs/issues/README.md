@@ -168,7 +168,7 @@ shipped to users on `0.4` yet, so sharing is usually fine.
 |---|---|---|---|---|
 | [07](07-unauthenticated-write-endpoints.md) | `/api/runs` + `/api/feedback` accept unauthenticated writes | security | M | **done** |
 | [08](08-moderation-tools.md) | No moderation path for handles, rows, or feedback | security | M | open |
-| [09](09-merge-runseed-dedupe-bug.md) | **BUG** `merge.js` omits `runSeed`, dropping runs on sync | bug | S | open |
+| [09](09-merge-runseed-dedupe-bug.md) | **BUG** `merge.js` omits `runSeed`, dropping runs on sync | bug | S | **done** |
 | [10](10-stale-db-schema.md) | `db/schema.sql` no longer describes the database | docs | S | open |
 | [26](26-dead-mobile-responsive-spec.md) | **BUG** all 25 tests in `mobile-responsive.spec.js` were dead | testing | M | **done** |
 | [28](28-bare-hands-covers-weapon-preview.md) | **BUG** bare-hands button covers the weapon preview | bug | S | **done** |

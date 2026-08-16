@@ -4,7 +4,8 @@ title: "BUG: api/_lib/merge.js omits runSeed from the run dedupe key, dropping r
 priority: P1
 area: bug
 effort: S
-status: open
+status: done
+branch: dawn/2026-08-16
 ---
 
 ## Problem
@@ -78,8 +79,25 @@ confirming the blast radius is zero before it grows.
 
 ## Acceptance criteria
 
-- [ ] `merge.js` includes `runSeed` in the key when present
-- [ ] One shared implementation, or a test proving all four agree
-- [ ] Test: two records with the same `accountId` + `startedAt` but different `runSeed` both survive a merge
-- [ ] Test: legacy records with no `runSeed` still dedupe correctly against themselves
-- [ ] Stale comment corrected
+- [x] `merge.js` includes `runSeed` in the key when present
+- [x] One shared implementation, or a test proving all four agree
+- [x] Test: two records with the same `accountId` + `startedAt` but different `runSeed` both survive a merge
+- [x] Test: legacy records with no `runSeed` still dedupe correctly against themselves
+- [x] Stale comment corrected
+
+## Resolution (2026-08-16, `dawn/2026-08-16`)
+
+`merge.js`'s `runKey` now folds in `runSeed` when present, and its stale
+"mirrors the client and /api/runs dedupe" comment says what it actually does.
+
+The four copies were **not** collapsed into one shared module. The client cannot
+import from `api/`, and the four are not the same string anyway:
+`historyStore.js`'s own bucket key omits `accountId` because its buckets are
+already per-account. Instead each implementation is now exported and
+`test/dedupeKeys.test.js` asserts the property that matters — that all four make
+the same same-run / different-run call — plus the exact-string agreement of the
+three that are account-scoped.
+
+**Not done: the blast-radius check.** Whether any already-synced profile lost a
+run before this fix can only be answered against the production database, which
+an unattended run must not touch. Worth confirming alongside issue 13.

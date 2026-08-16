@@ -30,9 +30,17 @@ function union(a, b) {
 }
 
 // Stable per-run identity, mirroring the client and /api/runs dedupe: a run is
-// the same run if its account+start match, regardless of the random record id.
-function runKey(record) {
-  return `${record?.accountId ?? ''}:${record?.startedAt ?? ''}`
+// the same run if its account, start and per-run seed match, regardless of the
+// random record id. runSeed is minted once at run start and folded in when
+// present, so two devices' guest runs that happen to share a startedAt
+// millisecond stay distinct instead of collapsing into one and losing a run.
+// Legacy records predate the seed and keep the old accountId:startedAt key.
+// Kept in step with runKeyFor (api/_lib/runsTable.js), serverKeyOf
+// (src/utils/historyStore.js) and runMergeKey (src/utils/cloudSync.js) —
+// test/dedupeKeys.test.js asserts all four agree.
+export function runKey(record) {
+  const base = `${record?.accountId ?? ''}:${record?.startedAt ?? ''}`
+  return record?.runSeed ? `${base}:${record.runSeed}` : base
 }
 
 function mergeHistory(a, b) {

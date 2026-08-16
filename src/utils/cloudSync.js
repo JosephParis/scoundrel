@@ -83,6 +83,17 @@ export function snapshotLocalState(accountId) {
   }
 }
 
+// Merge key: accountId + startedAt, plus the stable per-run seed when present
+// so two devices' guest runs sharing a startedAt millisecond stay distinct.
+// Legacy runs lack a seed and keep the old accountId:startedAt key. Kept in
+// step with serverKeyOf in historyStore.js, runKeyFor in api/_lib/runsTable.js
+// and runKey in api/_lib/merge.js — test/dedupeKeys.test.js asserts all four
+// agree on which records are the same run.
+export function runMergeKey(record) {
+  const base = `${record?.accountId ?? ''}:${record?.startedAt ?? ''}`
+  return record?.runSeed ? `${base}:${record.runSeed}` : base
+}
+
 // Client-side twin of api/_lib/merge.js. The server already merged the snapshot
 // this device sent, but time passed while the request was in flight: the player
 // may have unlocked a boon, finished a run, or advanced the active save since.
@@ -92,15 +103,10 @@ export function snapshotLocalState(accountId) {
 function foldWithLocal(accountId, server) {
   const local = snapshotLocalState(accountId)
   const union = (a, b) => Array.from(new Set([...(a || []), ...(b || [])]))
-  // Merge key: accountId + startedAt, plus the stable per-run seed when present
-  // so two devices' guest runs sharing a startedAt millisecond stay distinct.
-  // Legacy runs lack a seed and keep the old accountId:startedAt key. Keep this
-  // in step with runKeyOf in historyStore.js and the server's runKey.
   const byKey = new Map()
   for (const r of (local.history || []).concat(server.history || [])) {
     if (!r || !(r.startedAt || r.accountId)) continue
-    const base = `${r.accountId ?? ''}:${r.startedAt ?? ''}`
-    byKey.set(r.runSeed ? `${base}:${r.runSeed}` : base, r)
+    byKey.set(runMergeKey(r), r)
   }
   const history = Array.from(byKey.values())
     .sort((x, y) => (x.startedAt || 0) - (y.startedAt || 0))
