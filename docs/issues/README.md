@@ -14,6 +14,13 @@ Baseline: `npm run lint` clean, `npm run build` clean. Test suite as it stands:
 | `test/rateLimit.test.js` | vitest | 13 pass |
 | `test/audio.test.js` | vitest | 7 pass |
 | `test/pseudonym.test.js` | vitest | 6 pass |
+| `test/combat.test.js` | vitest | 78 pass |
+| `test/lifecycle.test.js` | vitest | 56 pass |
+| `test/dedupeKeys.test.js` | vitest | 40 pass |
+| `test/sanctuary.test.js` | vitest | 37 pass |
+| `test/history.test.js` | vitest | 33 pass |
+| `test/deck.test.js` | vitest | 32 pass |
+| `test/themes.test.js` | vitest | 31 pass |
 | `visual/privacy.spec.js` | dev | 9 pass |
 | `visual/head-and-manifest.spec.js` | dev | 11 pass |
 | `visual/audio-assets.spec.js` | dev | 5 pass |
@@ -25,7 +32,13 @@ Baseline: `npm run lint` clean, `npm run build` clean. Test suite as it stands:
 | `error-boundary.prod.spec.js` | prod | 8 pass |
 | `mobile-responsive.spec.js` | dev | 27 pass |
 
-**Full suite: 84 unit + 92 e2e passed, 1 skipped (`card-library`, issue 12).**
+**Full suite: 391 unit + 92 e2e passed, 1 skipped (`card-library`, issue 12).**
+
+The unit half went 84 → 391 with issue 15. The rules engine now has real
+coverage: `combat.js`, `lifecycle.js`, `logic/sanctuary.js`, `deck.js`,
+`themes.js`, `history.js` and the run-dedupe keys. Shared fixtures (a seeded
+rng and the state factories) live in `test/support/state.js` — start there
+rather than hand-rolling a state literal.
 
 ## Testing convention
 
@@ -78,7 +91,9 @@ gated), **26** (suite green and runnable), **02** (error boundary), **07** (writ
 endpoints hardened; vitest added, which partly advances 15), **06** (privacy
 policy; PostHog no longer receives PII), **04** (icons, manifest, social cards),
 **28** (bare-hands button no longer covers the weapon preview), **16** (audio
-payload halved), **19** (`robots.txt` + admin `noindex`).
+payload halved), **19** (`robots.txt` + admin `noindex`), **15** (unit tests
+over the game logic), **09** (the `merge.js` dedupe key that dropped runs —
+closed alongside 15, whose agreement test could not pass while it was broken).
 
 **All P0 blockers are closed.** Live at **https://sigildeck.com** since
 2026-08-06, with the privacy mailbox, auth and DNS all verified against the
@@ -185,12 +200,12 @@ shipped to users on `0.4` yet, so sharing is usually fine.
 
 ### P3 — quality, performance, accessibility
 
-| # | Issue | Area | Effort |
-|---|---|---|---|
-| [15](15-unit-tests-game-logic.md) | No unit tests over ~100KB of game logic | testing | L |
+| # | Issue | Area | Effort | Status |
+|---|---|---|---|---|
+| [15](15-unit-tests-game-logic.md) | No unit tests over ~100KB of game logic | testing | L | **done** |
 | [16](16-audio-payload.md) | ~31MB audio, ~17MB byte-identical duplicates | performance | S | **done** |
-| [17](17-prefers-reduced-motion.md) | No `prefers-reduced-motion`; 4 infinite animations | accessibility | S |
-| [18](18-google-fonts-blocking-import.md) | Render-blocking Google Fonts `@import` | performance | S |
+| [17](17-prefers-reduced-motion.md) | No `prefers-reduced-motion`; 4 infinite animations | accessibility | S | open |
+| [18](18-google-fonts-blocking-import.md) | Render-blocking Google Fonts `@import` | performance | S | open |
 | [19](19-robots-txt.md) | No `robots.txt` while `/admin` is live | hygiene | S | **done** |
 
 ### P4 — hygiene and doc accuracy
