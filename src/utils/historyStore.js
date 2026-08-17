@@ -44,7 +44,7 @@ function keyFor(accountId) {
 // without conflating two different runs that share a startedAt millisecond (two
 // devices' guest runs). runSeed is minted once at run start; legacy runs lack it
 // and fall back to the old startedAt-only key, preserving their behavior.
-function runKeyOf(record) {
+export function runKeyOf(record) {
   return record.runSeed ? `${record.startedAt}:${record.runSeed}` : `${record.startedAt}`
 }
 
@@ -73,8 +73,9 @@ function writeRaw(accountId, records) {
 // Server-side identity for a record, matching runKeyFor in api/_lib/runsTable.js
 // (accountId:startedAt[:runSeed]). Used to dedupe the pending queue and to drop
 // exactly the records a reconcile confirmed. Includes accountId because the
-// queue is global across guest/account records.
-function serverKeyOf(record) {
+// queue is global across guest/account records. test/dedupeKeys.test.js asserts
+// this agrees with the other three implementations.
+export function serverKeyOf(record) {
   const base = `${record.accountId ?? ''}:${record.startedAt ?? ''}`
   return record.runSeed ? `${base}:${record.runSeed}` : base
 }
