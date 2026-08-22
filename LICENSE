@@ -1,0 +1,218 @@
+Sigil
+
+Copyright (c) 2026 Joseph Paris. All rights reserved except as licensed below.
+
+Required Notice: Copyright (c) 2026 Joseph Paris (https://sigildeck.com)
+
+The source code of this repository is licensed under the PolyForm Noncommercial
+License 1.0.0, reproduced in full below. In short: you may read it, run it,
+modify it, and share it for any NONCOMMERCIAL purpose. You may not sell it, or
+use it in anything you sell, without a separate commercial license from the
+copyright holder.
+
+This is deliberately not an OSI "open source" license. The code is published so
+it can be read, learned from and built on, not so the game can be resold.
+
+COMMERCIAL RIGHTS RESERVED
+    The copyright holder retains every right not granted here, including the
+    right to sell this software, to distribute it under different terms, and to
+    grant commercial licenses to others. If you want to use any of this
+    commercially, ask.
+
+CONTRIBUTIONS
+    A contributor owns the copyright in what they write. By opening a pull
+    request against this repository you agree that your contribution is licensed
+    to the project under these same terms, and that the copyright holder may
+    also license it commercially. Without that, a single outside contribution
+    would make the project impossible to sell later without tracking down its
+    author.
+
+WHAT THIS COVERS
+    This license covers the code and text written for this project. It does NOT
+    cover the third-party assets listed at the end of this file, which include
+    artwork embedded directly in source files, and which travel under their own
+    terms.
+
+================================================================================
+PolyForm Noncommercial License 1.0.0
+================================================================================
+
+<https://polyformproject.org/licenses/noncommercial/1.0.0>
+
+## Acceptance
+
+In order to get any license under these terms, you must agree to them as both
+strict obligations and conditions to all your licenses.
+
+## Copyright License
+
+The licensor grants you a copyright license for the software to do everything you
+might do with the software that would otherwise infringe the licensor's copyright
+in it for any permitted purpose. However, you may only distribute the software
+according to Distribution License and make changes or new works based on the
+software according to Changes and New Works License.
+
+## Distribution License
+
+The licensor grants you an additional copyright license to distribute copies of
+the software. Your license to distribute covers distributing the software with
+changes and new works permitted by Changes and New Works License.
+
+## Notices
+
+You must ensure that anyone who gets a copy of any part of the software from you
+also gets a copy of these terms or the URL for them above, as well as copies of
+any plain-text lines beginning with `Required Notice:` that the licensor provided
+with the software. For example:
+
+> Required Notice: Copyright Yoyodyne, Inc. (http://example.com)
+
+## Changes and New Works License
+
+The licensor grants you an additional copyright license to make changes and new
+works based on the software for any permitted purpose.
+
+## Patent License
+
+The licensor grants you a patent license for the software that covers patent
+claims the licensor can license, or becomes able to license, that you would
+infringe by using the software.
+
+## Noncommercial Purposes
+
+Any noncommercial purpose is a permitted purpose.
+
+## Personal Uses
+
+Personal use for research, experiment, and testing for the benefit of public
+knowledge, personal study, private entertainment, hobby projects, amateur
+pursuits, or religious observance, without any anticipated commercial
+application, is use for a permitted purpose.
+
+## Noncommercial Organizations
+
+Use by any charitable organization, educational institution, public research
+organization, public safety or health organization, environmental protection
+organization, or government institution is use for a permitted purpose regardless
+of the source of funding or obligations resulting from the funding.
+
+## Fair Use
+
+You may have "fair use" rights for the software under the law. These terms do not
+limit them.
+
+## No Other Rights
+
+These terms do not allow you to sublicense or transfer any of your licenses to
+anyone else, or prevent the licensor from granting licenses to anyone else. These
+terms do not imply any other licenses.
+
+## Patent Defense
+
+If you make any written claim that the software infringes or contributes to
+infringement of any patent, your patent license for the software granted under
+these terms ends immediately. If your company makes such a claim, your patent
+license ends immediately for work on behalf of your company.
+
+## Violations
+
+The first time you are notified in writing that you have violated any of these
+terms, or done anything with the software not covered by your licenses, your
+licenses can nonetheless continue if you come into full compliance with these
+terms, and take practical steps to correct past violations, within 32 days of
+receiving notice. Otherwise, all your licenses end immediately.
+
+## No Liability
+
+***As far as the law allows, the software comes as is, without any warranty or
+condition, and the licensor will not be liable to you for any damages arising out
+of these terms or the use or nature of the software, under any kind of legal
+claim.***
+
+## Definitions
+
+The **licensor** is the individual or entity offering these terms, and the
+**software** is the software the licensor makes available under these terms.
+
+**You** refers to the individual or entity agreeing to these terms.
+
+**Your company** is any legal entity, sole proprietorship, or other kind of
+organization that you work for, plus all organizations that have control over,
+are under the control of, or are under common control with that organization.
+**Control** means ownership of substantially all the assets of an entity, or the
+power to direct its management and policies by vote, contract, or otherwise.
+Control can be direct or indirect.
+
+**Your licenses** are all the licenses granted to you for the software under
+these terms.
+
+**Use** means anything you do with the software requiring one of your licenses.
+
+================================================================================
+Third-party assets
+================================================================================
+
+The PolyForm grant above covers the code and text written for this project.
+Several bundled assets are third-party works under their own terms, which travel
+with the files and are not relicensed by this file. Note that some of them are
+embedded *inside* source files rather than sitting in an assets folder.
+
+All of the licenses below permit commercial use, so they do not stand in the way
+of the copyright holder selling this software later. Every one of them requires
+that attribution be kept, and the CC BY-SA cues additionally require that
+adaptations *of those cues* be shared alike.
+
+ARTWORK — Creative Commons Attribution 3.0 (CC BY 3.0)
+    The card, boss and forge-inscription icons are by Lorc and Delapouite, from
+    game-icons.net, licensed CC BY 3.0:
+    https://creativecommons.org/licenses/by/3.0/
+
+    These are NOT separate image files. The SVG path data is embedded directly
+    in `src/games/scoundrel/components/SuitIcon.jsx`, so that file contains
+    CC BY 3.0 third-party work regardless of the license on the code around it.
+    Attribution as shipped is in the game's Credits screen. Keep it.
+
+    One icon, `vampiric_edge`, is hand-authored for this project and is covered
+    by the PolyForm grant rather than by CC BY.
+
+MUSIC — Creative Commons Attribution 3.0 (CC BY 3.0)
+    The two looping tracks in `public/audio/music/` are by Kevin MacLeod
+    (incompetech.com), licensed CC BY 3.0:
+    https://creativecommons.org/licenses/by/3.0/
+
+    CC BY requires ATTRIBUTION. If you redistribute this project, or reuse these
+    files anywhere else, you must credit Kevin MacLeod. The attribution as
+    shipped lives in `public/audio/music/CREDITS.md` and in the game's Credits
+    screen; keep it, and keep it reachable by players.
+
+    Per-track detail, including album and ISRC, is in that CREDITS.md.
+
+SOUND EFFECTS — mixed terms
+    - Combat sounds by Philippe Groarke, CC BY-SA 3.0. Share-alike: an
+      adaptation of these specific sounds must be released under CC BY-SA 3.0.
+      Bundling them unchanged in this larger work does not relicense the work
+      around them.
+    - Smithing sounds by hjm, CC BY 3.0.
+    - Card sounds from Cockatrice.
+    - Additional effects from Kenney and OpenGameArt, CC0 (no obligations).
+
+    Attribution as shipped is in the game's Credits screen.
+
+BELL CUES — public domain
+    The one-shot cues are derived from public-domain bell recordings by
+    `scripts/build-bell-cues.sh`, which downloads the sources and does the
+    editing itself, so provenance is reproducible rather than asserted. See
+    `public/audio/music/CREDITS.md`.
+
+FONTS
+    Currently loaded from Google Fonts at runtime and not redistributed here, so
+    no font files in this repo carry a license. Issue 18 proposes self-hosting
+    them; if that lands, the fonts arrive under the SIL Open Font License and
+    their OFL text must be vendored alongside the files and noted here.
+
+GAME DESIGN
+    The original single-deck card game "Scoundrel" is by Zach Gage and Kurt
+    Bieg. This project began as an implementation of it and has since diverged
+    substantially (see `REWORK.md`). Game rules and mechanics are not
+    copyrightable subject matter, but the debt is real and worth stating: the
+    core loop here descends from their design.

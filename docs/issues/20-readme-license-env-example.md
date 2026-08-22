@@ -4,7 +4,7 @@ title: "No README, LICENSE, or .env.example"
 priority: P4
 area: docs
 effort: M
-status: open
+status: done
 ---
 
 ## Problem
@@ -59,7 +59,73 @@ belongs here too.
 
 ## Acceptance criteria
 
-- [ ] `README.md` covers setup, scripts, all eight env vars, architecture, deployment
-- [ ] `.env.example` lists all eight with the dev-sign-in warning called out
-- [ ] `LICENSE` chosen and added, with third-party asset licenses noted
-- [ ] A clean clone can be brought up from the README alone
+- [x] `README.md` covers setup, scripts, all eight env vars, architecture, deployment
+- [x] `.env.example` lists all eight with the dev-sign-in warning called out
+- [x] `LICENSE` chosen and added, with third-party asset licenses noted
+- [x] A clean clone can be brought up from the README alone
+
+## Resolution
+
+Landed on `dawn/2026-08-22`, after issue 21 (which had to go first, so
+`.env.example` would stay trackable under the broadened ignore rules).
+
+**`README.md`** — what the game is, the og-image as the screenshot, quick start,
+the full script table, the testing convention and its two Playwright traps, the
+eight env vars split build-time vs runtime, architecture (localStorage as source
+of truth with the convergent merge, module layout, feature flags and their
+`?flag-<id>=1` override, `VERSION_HISTORY` / `GAME_VERSION`), deployment, and a
+documentation map that carries the staleness warning on `DESIGN.md` until issue
+23 lands.
+
+Two things the audit did not list, both worth a reader's time:
+
+- **The game needs no environment variables at all to run.** A clean clone is
+  `npm install && npm run dev`; with nothing configured it plays local-only. The
+  env table reads as a prerequisite list otherwise, and it is not one.
+- **`vite dev` and `vite preview` do not serve `/api`.** That is the fact behind
+  issue 13 existing as a production checklist, and it is not obvious from the
+  tree.
+
+**`.env.example`** — all eight, grouped build-time vs runtime, with the
+dev-sign-in warning called out twice (on the variable and in the header). Also
+records that `GOOGLE_CLIENT_ID` must match `VITE_GOOGLE_CLIENT_ID`, since a
+mismatch fails every sign-in, and that rotating `SESSION_SECRET` forces a
+re-sign-in without losing data.
+
+**`LICENSE`** — **PolyForm Noncommercial 1.0.0** (see the revision below), with
+a third-party asset section covering the CC BY 3.0 artwork and music
+(attribution is a redistribution obligation, not a nicety), the mixed-term sound
+effects, the public-domain bell cues, a placeholder for OFL fonts if issue 18
+self-hosts them, and a note on the debt to Gage and Bieg's original *Scoundrel*.
+
+### Decision revised 2026-08-22: MIT → PolyForm Noncommercial 1.0.0
+
+MIT was chosen first, as the default for a public repo whose value is the game
+rather than the code, and flagged here as the one decision that is hard to walk
+back. Revisited with Joey before this branch merged, and reversed.
+
+**The requirement:** nobody else may sell the game, and the copyright holder
+keeps the right to sell it later. Copyleft does not deliver that — AGPL forces
+a commercial forker to publish their source but still lets them charge for it.
+PolyForm Noncommercial says the actual thing, in language a lawyer drafted, and
+does not pretend to be open source when it is not.
+
+Three things were added that MIT did not need:
+
+- **Commercial rights reserved**, stated explicitly, so the reservation does not
+  rest on inference from what the grant omits.
+- **A contribution term.** A contributor owns their contribution's copyright, so
+  without this a single outside pull request would make the project unsellable
+  without tracking down its author. Worth having in place before the repo is
+  posted to Reddit.
+- **The MIT draft's third-party section was incomplete**, which the switch was a
+  good moment to fix. It listed music, bells, fonts and the design debt, but not
+  the artwork or the sound effects. The artwork gap was the sharper one: the
+  game-icons.net paths by Lorc and Delapouite are CC BY 3.0 and are embedded
+  *inside* `SuitIcon.jsx`, so the old wording ("the MIT grant covers the SOURCE
+  CODE of this repository") was granting MIT over third-party artwork. The
+  combat sounds are CC BY-SA 3.0, a share-alike term, and were unlisted too.
+
+Every third-party license in the bundle permits commercial use, so none of them
+blocks selling the game later — they only require attribution to be kept, which
+the in-game Credits screen already does.
