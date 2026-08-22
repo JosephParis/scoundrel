@@ -6,9 +6,12 @@
   "scripts": {
     "dev": "vite",
     "build": "vite build",
+    "build:itch": "node scripts/build-itch.mjs",
     "lint": "eslint .",
     "preview": "vite preview",
     "icons": "node scripts/generate-icons.mjs",
+    "itch:shots": "node scripts/itch-screenshots.mjs",
+    "itch:publish": "node scripts/itch-publish.mjs",
     "test": "vitest run && playwright test",
     "test:unit": "vitest run",
     "test:unit:watch": "vitest",

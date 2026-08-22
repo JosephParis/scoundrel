@@ -2,6 +2,7 @@ import { useEffect, useState } from 'react'
 import { historyStore } from '../../../utils/historyStore'
 import { computeLifetimeStats } from '../history'
 import { RunSummary, EndingKitSection } from './RunSummary'
+import { IS_STANDALONE } from '../../../buildTarget.js'
 
 const OUTCOME_LABEL = { victory: 'Victory', death: 'Died', retired: 'Retired' }
 const OUTCOME_COLOR = {
@@ -121,7 +122,13 @@ export function HistoryModal({ open, onClose, user }) {
         </button>
         <h2 className="font-display text-rune text-2xl mb-1">Run history</h2>
         <p className="text-[12px] text-slate-500 mb-4">
-          {user ? `Signed in as ${user.name || user.email}.` : 'Playing as guest. Sign in to keep history tied to your account.'}
+          {/* The "sign in" nudge is only true where there is something to sign
+              in to; standalone has no accounts at all (src/buildTarget.js). */}
+          {IS_STANDALONE
+            ? 'History is saved on this device.'
+            : user
+              ? `Signed in as ${user.name || user.email}.`
+              : 'Playing as guest. Sign in to keep history tied to your account.'}
           {' '}Press <span className="font-mono text-slate-300">Esc</span> or click outside to close.
         </p>
 

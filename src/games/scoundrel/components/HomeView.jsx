@@ -2,6 +2,8 @@
 // the top bar. It's an overlay rather than a game phase, so the live run is
 // untouched underneath: "Resume" just closes it. Menu entries hand off to the
 // same modals the top bar opens.
+import { IS_STANDALONE, HOME_URL } from '../../../buildTarget.js'
+
 // onOpenCardLibrary is still wired from index.jsx for the parked Card library
 // entry below, so it reads as unused until that entry comes back.
 // eslint-disable-next-line no-unused-vars
@@ -15,7 +17,11 @@ export function HomeView({ open, onResume, onOpenRules, onOpenHistory, onOpenLea
     { label: 'Resume', hint: 'Back to your run', onClick: onResume, accent: true },
     { label: 'How to play', hint: 'The rules', onClick: onOpenRules },
     { label: 'Run history', hint: 'Past descents', onClick: onOpenHistory },
-    { label: 'Leaderboard', hint: 'Fastest victories', onClick: onOpenLeaderboard },
+    // The leaderboard is served by /api, which the standalone build cannot
+    // reach (see src/buildTarget.js). An entry that always opens an empty modal
+    // reads as a broken feature, so it is not offered; the footer below says
+    // where it lives instead.
+    ...(IS_STANDALONE ? [] : [{ label: 'Leaderboard', hint: 'Fastest victories', onClick: onOpenLeaderboard }]),
     // { label: 'Card library', hint: 'Every card in the deck', onClick: onOpenCardLibrary },
     { label: 'Tutorial', hint: 'A guided walkthrough', onClick: onReplayTutorial },
     { label: 'Credits', hint: 'Who built this', onClick: onOpenCredits },
@@ -50,6 +56,22 @@ export function HomeView({ open, onResume, onOpenRules, onOpenHistory, onOpenLea
             </button>
           ))}
         </nav>
+        {IS_STANDALONE && (
+          <p className="mt-8 text-[11px] leading-relaxed text-slate-500">
+            This copy plays entirely in your browser and saves to this device.
+            <br />
+            For the leaderboard and saves that follow you across devices, play at{' '}
+            <a
+              href={HOME_URL}
+              target="_blank"
+              rel="noopener noreferrer"
+              className="text-rune/80 underline underline-offset-2 hover:text-rune transition"
+            >
+              sigildeck.com
+            </a>
+            .
+          </p>
+        )}
       </div>
     </div>
   )

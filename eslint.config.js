@@ -5,7 +5,10 @@ import reactRefresh from 'eslint-plugin-react-refresh'
 import { defineConfig, globalIgnores } from 'eslint/config'
 
 export default defineConfig([
-  globalIgnores(['dist']),
+  // Build output, not source. dist-itch is the standalone (itch.io) target;
+  // linting a minified bundle produces hundreds of findings about code nobody
+  // wrote, which is enough noise to hide a real one.
+  globalIgnores(['dist', 'dist-itch']),
   {
     files: ['**/*.{js,jsx}'],
     extends: [
@@ -31,7 +34,7 @@ export default defineConfig([
     // scripts run with the Node globals (process, etc.), not the browser's.
     files: [
       'api/**/*.{js,jsx}', 'visual/**/*.{js,jsx}', 'test/**/*.{js,jsx}',
-      '*.config.{js,jsx}',
+      'scripts/**/*.{js,mjs}', '*.config.{js,jsx}',
     ],
     languageOptions: {
       globals: globals.node,

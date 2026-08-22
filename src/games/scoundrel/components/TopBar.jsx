@@ -1,6 +1,7 @@
 import { useEffect, useRef, useState } from 'react'
 import { audio, useMuted } from '../audio'
 import { isDevToolsEnabled } from '../flags'
+import { IS_STANDALONE } from '../../../buildTarget.js'
 
 export function TopBar({ game, user, onOpenRules, onRetire, onOpenCredits, onOpenDev, onReplayTutorial, onOpenLogin, onSignOut, onOpenCardLibrary, onOpenHistory, onOpenLeaderboard, onOpenHome, onOpenSettings, onOpenFeedback }) {
   const runActive = game.phase === 'sanctuary' || game.phase === 'descent'
@@ -215,7 +216,10 @@ function OverflowMenu({ runActive, user, onRetire, onOpenCredits, onOpenDev, onO
             </button>
             <div className="h-px bg-stone-800" />
           </div>
-          {user ? (
+          {/* Accounts need /api/auth, and Google Sign-In does not render in a
+              cross-origin iframe regardless. Nothing here can work standalone,
+              so the menu does not pretend otherwise (see src/buildTarget.js). */}
+          {IS_STANDALONE ? null : user ? (
             <>
               <div className="px-3 py-2 flex items-center gap-2 border-b border-stone-800">
                 {user.picture ? (
@@ -292,28 +296,35 @@ function OverflowMenu({ runActive, user, onRetire, onOpenCredits, onOpenDev, onO
             <span className="text-rune w-4 text-center">❧</span>
             <span>Run history</span>
           </button>
-          <button
-            role="menuitem"
-            onClick={() => {
-              setOpen(false)
-              onOpenLeaderboard()
-            }}
-            className={itemClass}
-          >
-            <span className="text-rune w-4 text-center">★</span>
-            <span>Leaderboard</span>
-          </button>
-          <button
-            role="menuitem"
-            onClick={() => {
-              setOpen(false)
-              onOpenFeedback()
-            }}
-            className={itemClass}
-          >
-            <span className="text-rune w-4 text-center">✎</span>
-            <span>Send feedback</span>
-          </button>
+          {/* Both post to /api. Standalone has no server to answer, and
+              feedback silently going nowhere is worse than not offering it --
+              the footer on the home menu points those players at the site. */}
+          {!IS_STANDALONE && (
+            <>
+              <button
+                role="menuitem"
+                onClick={() => {
+                  setOpen(false)
+                  onOpenLeaderboard()
+                }}
+                className={itemClass}
+              >
+                <span className="text-rune w-4 text-center">★</span>
+                <span>Leaderboard</span>
+              </button>
+              <button
+                role="menuitem"
+                onClick={() => {
+                  setOpen(false)
+                  onOpenFeedback()
+                }}
+                className={itemClass}
+              >
+                <span className="text-rune w-4 text-center">✎</span>
+                <span>Send feedback</span>
+              </button>
+            </>
+          )}
           <button
             role="menuitem"
             onClick={() => {

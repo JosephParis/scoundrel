@@ -27,6 +27,45 @@
     height: 100%;
   }
 
+  /* Embedded builds (itch.io). main.jsx sets this class for the standalone
+     target only; the site is untouched.
+
+     itch serves the game in a fixed-size iframe that does not scroll its
+     document, so a screen taller than the configured viewport simply loses its
+     bottom -- the sanctuary runs ~870px at 1280 wide against a 720px frame, and
+     the DESCEND button falls off the end with no scrollbar to reach it.
+
+     Nothing here scrolls. The whole app is scaled to fit instead; the scale
+     factor is measured and written to --stage-scale by EmbeddedStage.jsx, which
+     is where the reasoning lives. These rules only have to guarantee the two
+     things that measurement assumes: that the frame is the hard boundary
+     (overflow hidden, no scroll anywhere) and that the stage is free to be
+     taller than it (out of flow, height auto) so there is something to measure.
+
+     The stage stays at the frame's full width and shrinks from `top center`, so
+     the scaled result sits flush against the top edge and stays centred. */
+  html.embedded, html.embedded body {
+    height: 100dvh;
+    min-height: 0;
+    overflow: hidden;
+  }
+
+  html.embedded #root {
+    position: relative;
+    height: 100dvh;
+    min-height: 0;
+    overflow: hidden;
+  }
+
+  html.embedded .stage {
+    position: absolute;
+    top: 0;
+    left: 0;
+    width: 100%;
+    transform-origin: top center;
+    transform: scale(var(--stage-scale, 1));
+  }
+
   body {
     margin: 0;
     background:
