@@ -212,7 +212,7 @@ shipped to users on `0.4` yet, so sharing is usually fine.
 
 | # | Issue | Area | Effort | Status |
 |---|---|---|---|---|
-| [20](20-readme-license-env-example.md) | No README, LICENSE, or `.env.example` | docs | M | open |
+| [20](20-readme-license-env-example.md) | No README, LICENSE, or `.env.example` | docs | M | **done** |
 | [21](21-gitignore-env.md) | `.gitignore` misses `.env` while docs point at it | security | S | **done** |
 | [22](22-archive-session-docs.md) | Nine session-artifact docs in the repo root | hygiene | S | open |
 | [23](23-stale-design-md.md) | `DESIGN.md` contradicts the shipped game | docs | M | open |
