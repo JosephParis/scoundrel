@@ -220,8 +220,9 @@ unattended.
 | `REWORK.md` | **The design of record.** Start here for how the game actually works. |
 | `DESIGN.md` | ⚠ **Stale** — describes the pre-rework game and contradicts the shipped one on core mechanics (issue 23). Do not trust it until that lands. |
 | `WINRATE_TARGETS.md` | Balance targets |
-| `RESPONSIVE_AND_PWA_PLAN.md` | The spec behind issue 04 |
-| `EXTENSIONS.md`, `Storyline.md`, `MOBILE_UI_IMPROVEMENTS.md` | Design notes |
+| `docs/RESPONSIVE_AND_PWA_PLAN.md` | The spec behind issue 04 |
+| `docs/EXTENSIONS.md`, `docs/Storyline.md`, `docs/MOBILE_UI_IMPROVEMENTS.md` | Design notes |
+| `docs/archive/` | Historical session notes. Not current documentation — see its [README](docs/archive/README.md). |
 | `docs/issues/` | The launch-readiness backlog — statuses and a dependency graph in its [README](docs/issues/README.md) |
 | `db/schema.sql` | Database schema (drifted — issue 10) |
 | `public/audio/music/CREDITS.md` | Music attribution, required by CC BY |
