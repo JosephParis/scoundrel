@@ -28,7 +28,9 @@ dist-ssr
 
 .vercel
 
-.env.local
+.env
+.env.*
+!.env.example
 
 # Playwright visual-review output (the harness config + spec are tracked,
 # but generated screenshots/results are not)

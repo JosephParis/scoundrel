@@ -210,14 +210,14 @@ shipped to users on `0.4` yet, so sharing is usually fine.
 
 ### P4 — hygiene and doc accuracy
 
-| # | Issue | Area | Effort |
-|---|---|---|---|
-| [20](20-readme-license-env-example.md) | No README, LICENSE, or `.env.example` | docs | M |
-| [21](21-gitignore-env.md) | `.gitignore` misses `.env` while docs point at it | security | S |
-| [22](22-archive-session-docs.md) | Nine session-artifact docs in the repo root | hygiene | S |
-| [23](23-stale-design-md.md) | `DESIGN.md` contradicts the shipped game | docs | M |
-| [24](24-duplicate-ci-workflows.md) | Mobile tests run twice per push | ci | S |
-| [25](25-rules-copy-review.md) | Review rules copy against the post-rework game | docs | S |
+| # | Issue | Area | Effort | Status |
+|---|---|---|---|---|
+| [20](20-readme-license-env-example.md) | No README, LICENSE, or `.env.example` | docs | M | open |
+| [21](21-gitignore-env.md) | `.gitignore` misses `.env` while docs point at it | security | S | **done** |
+| [22](22-archive-session-docs.md) | Nine session-artifact docs in the repo root | hygiene | S | open |
+| [23](23-stale-design-md.md) | `DESIGN.md` contradicts the shipped game | docs | M | open |
+| [24](24-duplicate-ci-workflows.md) | Mobile tests run twice per push | ci | S | open |
+| [25](25-rules-copy-review.md) | Review rules copy against the post-rework game | docs | S | open |
 
 ## If you only do five
 
