@@ -23,10 +23,12 @@ const CARD_LAYOUT_OPTIONS = [
 ]
 
 // Opt-in name for the public leaderboard. Empty is the default and the whole
-// point: a run is posted as Anonymous unless the player types something here,
-// so nobody is ever named on a public page without choosing to be. The field
-// is write-through — settings.setHandle sanitizes on every keystroke, so what
-// is shown is exactly what a future run would carry.
+// point: a run reaches the board only if the player types a name here, so
+// nobody is ever named on a public page without choosing to be. Handle-less
+// runs are not listed anonymously — api/leaderboard.js filters them out
+// entirely — and the copy below has to say so (issue 14). The field is
+// write-through: settings.setHandle sanitizes on every keystroke, so what is
+// shown is exactly what a future run would carry.
 function LeaderboardHandleSection() {
   const handle = useHandle()
   // What a run would actually be credited to: sanitizeHandle keeps a trailing
@@ -42,7 +44,7 @@ function LeaderboardHandleSection() {
         value={handle}
         onChange={e => settings.setHandle(e.target.value)}
         maxLength={MAX_HANDLE_LENGTH}
-        placeholder="Anonymous"
+        placeholder="Not listed"
         aria-label="Leaderboard name"
         autoComplete="off"
         spellCheck={false}
@@ -209,7 +211,21 @@ export function CreditsModal({ open, onClose }) {
         <p className="text-[12px] text-slate-500 mb-5">
           Press <span className="font-mono text-slate-300">Esc</span> or click outside to close.
         </p>
+        {/* First, because it is the only credit here that is owed rather than
+            given: the room, the weapon binding and the three-of-four draw are
+            Scoundrel's, and until now the game named its icon and music sources
+            but not the design it descends from. */}
         <section>
+          <div className="text-[10px] uppercase tracking-[0.3em] text-slate-500 mb-2">
+            Based on
+          </div>
+          <p className="text-[11px] text-slate-500 leading-snug">
+            <span className="text-slate-300">Scoundrel</span> (2011), the print-and-play
+            solo card game by Zach Gage and Kurt Bieg. The sanctuary, the forge,
+            Boons and Trials are additions.
+          </p>
+        </section>
+        <section className="mt-6 pt-4 border-t border-stone-800">
           <div className="text-[10px] uppercase tracking-[0.3em] text-slate-500 mb-3">
             Design & playtesting
           </div>

@@ -4,7 +4,7 @@ title: "BUG: UI promises handle-less runs post as Anonymous, but the server excl
 priority: P2
 area: bug
 effort: S
-status: open
+status: done
 ---
 
 ## Problem
@@ -71,7 +71,34 @@ property, so the copy fix is the better call.
 
 ## Acceptance criteria
 
-- [ ] No UI text or placeholder implies handle-less runs appear as "Anonymous"
-- [ ] Handle field copy states that a name is required to appear on the board
-- [ ] Stale comments in `settings.js` and `history.js` corrected
+- [x] No UI text or placeholder implies handle-less runs appear as "Anonymous"
+- [x] Handle field copy states that a name is required to appear on the board
+- [x] Stale comments in `settings.js` and `history.js` corrected
 - [ ] Verified live: handle-less victory does not appear; named victory does
+      (needs production — pair with issue 13)
+
+## Resolution (2026-08-22)
+
+Server behavior kept; the client now describes it. Nothing claims an anonymous
+listing exists, because it does not.
+
+- `modals.jsx` — placeholder `"Anonymous"` → `"Not listed"`. The paragraph
+  under the field already read "your runs stay off the leaderboard entirely" and
+  was left alone; the placeholder was the half that contradicted it.
+- `modals.jsx`, `settings.js` (x3), `history.js` — stale comments rewritten.
+  `leaderboardName()`'s docstring now states that null means absent from the
+  board, not shown without a name.
+- `OutcomeView.jsx` — new `LeaderboardNudge`, shown only on a victory with no
+  handle: "This victory isn't on the leaderboard: it only lists runs that carry
+  a name. **Set one in Settings**", wired through `index.jsx` to open the
+  Settings modal in one click. Not shown on death — only victories are ranked.
+  `useHandle()` is called unconditionally; gating it behind `won &&` would
+  change hook order between the two outcome screens.
+
+Covered by `visual/copy-accuracy.spec.js` (8 tests for this issue): placeholder
+is not "Anonymous", the word appears nowhere in Settings, the nudge appears on an
+unlisted victory and opens Settings, and is absent for a named victory, a death,
+and present for a whitespace-only handle.
+
+**Not verified in production.** The last acceptance box needs a real
+handle-less and named victory against sigildeck.com — do it with issue 13.

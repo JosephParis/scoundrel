@@ -56,10 +56,13 @@ function namedBoons(state) {
 const MAX_HANDLE_LENGTH = 16
 
 /**
- * The name a run is credited to on the public leaderboard, or null for
- * "Anonymous". Nothing is derived from the player's Google profile: the only
- * source is the handle they typed into Settings, which is empty by default, so
- * a name reaches the public board only because its owner chose to put it there.
+ * The name a run is credited to on the public leaderboard, or null when the
+ * run stays off it. Null is not an anonymous listing: api/leaderboard.js
+ * excludes nameless rows, so such a run is absent from the board rather than
+ * shown without a name. Nothing is derived from the player's Google profile:
+ * the only source is the handle they typed into Settings, which is empty by
+ * default, so a name reaches the public board only because its owner chose to
+ * put it there.
  * @param {string} handle - the player's opt-in handle ('' when unset)
  */
 function leaderboardName(handle) {

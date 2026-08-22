@@ -117,7 +117,9 @@ export function RulesModal({ open, onClose }) {
         </button>
         <h2 className="font-display text-rune text-2xl mb-1">{title}</h2>
         <p className="text-[12px] text-slate-500 mb-4">
-          Sigil, a roguelike of one bad night. Press <span className="font-mono text-slate-300">Esc</span> or click outside to close.
+          {/* Named in full in the Credits modal; this line only has room for the
+              nod. See docs/issues/25 for why the lineage sits on the tagline. */}
+          Sigil, a roguelike deckbuilder after Scoundrel. Press <span className="font-mono text-slate-300">Esc</span> or click outside to close.
         </p>
         <RulesTabBar tab={tab} setTab={setTab} />
         {tab === 'rules' && <RulesContentFull />}
@@ -160,7 +162,7 @@ function RulesContentBrief() {
       <div className="mb-4 rounded-md border border-rune/20 bg-stone-900/40 p-3">
         <div className="text-rune text-[11px] font-semibold uppercase tracking-[0.2em] mb-1.5">The run</div>
         <p className="text-slate-300">
-          Survive a descent to earn a <span className="text-rune">sigil</span> and rest to full. Each time you return you pick one <span className="text-rune">Boon</span> (a permanent perk) and <span className="text-rune">Forge</span> your kit; the next <span className="text-rune">Trial</span> is shown before you commit. Reach <span className="text-rune">{SIGIL_TARGET} sigils</span> to escape. Die in the dungeon and the run resets.
+          Survive a descent to earn a <span className="text-rune">sigil</span> and rest to full. Each time you return you pick one <span className="text-rune">Boon</span> (a permanent perk) and <span className="text-rune">Forge</span> your kit. You descend blind: the <span className="text-rune">Trial</span> below is named as you arrive, never before, so build for anything rather than for one known threat. Reach <span className="text-rune">{SIGIL_TARGET} sigils</span> to escape. Die in the dungeon and the run resets.
         </p>
       </div>
       <div className="grid grid-cols-1 md:grid-cols-2 gap-x-6 gap-y-4">
@@ -279,7 +281,7 @@ function RulesContentFull() {
       <RuleSection title="Between descents: the Sanctuary">
         <RuleRow term="HP">Refills to full.</RuleRow>
         <RuleRow term="Boon">Pick 1 of 3. Permanent for the run.</RuleRow>
-        <RuleRow term="Trial">Next descent's rules previewed before you commit.</RuleRow>
+        <RuleRow term="Trial">Not shown here. You descend blind and the Trial is named as you arrive, so your kit is a standing answer, not a counter.</RuleRow>
         <RuleRow term="Forge">After each descent: Inscribe, Upgrade, or Remove a kit card. The offer varies. Permanent.</RuleRow>
         <RuleRow term="Weapon">Carries over, arrives rested (binding cleared).</RuleRow>
       </RuleSection>
@@ -361,7 +363,8 @@ function ThemesGlossary() {
     <div className="space-y-5 text-[13px] leading-snug">
       <p className="text-slate-400">
         One Trial per descent: a deck or rule mutation just for that descent.
-        You see it before you descend, so spend your Boon as counterplay.
+        You never see which one you drew until you are standing in it, so
+        Boons and kit are built for resilience rather than as counterplay.
       </p>
 
       <ThemeSection meta={TIER_META.opening} themes={opening} />

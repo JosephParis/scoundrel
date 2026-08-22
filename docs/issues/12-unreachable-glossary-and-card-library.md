@@ -59,3 +59,19 @@ the shipped kit model before launch.
 - [ ] All content verified against the post-rework game; no `Strike` or whole-deck-editing references
 - [ ] `card-library` visual test un-skipped and passing
 - [ ] A new player can look up any trait or inscribed frame they encounter
+
+## Inherited from issue 25 (2026-08-22)
+
+Issue 25's copy audit closed, and handed this one the part that depends on the
+tabs coming back:
+
+- `ThemesGlossary`'s theme-preview claim is **already fixed** — it no longer
+  says "You see it before you descend, so spend your Boon as counterplay",
+  because re-enabling the tab with that line would have put a promise the game
+  does not keep back in front of players.
+- **Still to audit before unhiding:** `BoonsGlossary` ("Pick 1 of 3 each
+  sanctuary visit... draw biases toward tags you've taken less") and
+  `CardLibraryContent`, neither of which was checked against the post-rework
+  game.
+- `visual/copy-accuracy.spec.js` asserts on the rules modal. When the tabs
+  return, extend it there rather than starting a new spec.
