@@ -93,11 +93,18 @@ policy; PostHog no longer receives PII), **04** (icons, manifest, social cards),
 **28** (bare-hands button no longer covers the weapon preview), **16** (audio
 payload halved), **19** (`robots.txt` + admin `noindex`), **15** (unit tests
 over the game logic), **09** (the `merge.js` dedupe key that dropped runs —
-closed alongside 15, whose agreement test could not pass while it was broken).
+closed alongside 15, whose agreement test could not pass while it was broken),
+**21** (`.env` now ignored; nothing had leaked), **20** (README, LICENSE and
+`.env.example`), **22** (nine session docs archived to `docs/archive/`).
 
 **All P0 blockers are closed.** Live at **https://sigildeck.com** since
 2026-08-06, with the privacy mailbox, auth and DNS all verified against the
 deployment (see issue 13).
+
+The repo root is now **README, LICENSE and the three live design docs**
+(`REWORK.md`, `DESIGN.md`, `WINRATE_TARGETS.md`). Everything else moved under
+`docs/` — see `docs/archive/README.md` for the historical session notes, which
+are kept but are **not** current documentation.
 
 **The open risk before widening access is issue 08.** Leaderboard handles are
 player-supplied and public, and there is no way to remove an abusive one — no
