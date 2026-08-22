@@ -35,7 +35,7 @@ Environment, in Vercel:
 - [ ] `ADMIN_TOKEN` set — `api/stats.js` requires it as a bearer token
 - [ ] `CRON_SECRET` set — `api/cron-backfill-runs.js` accepts either this or `ADMIN_TOKEN`
 - [ ] `GOOGLE_CLIENT_ID` + `SESSION_SECRET` set (`api/auth.js` 503s without both)
-- [ ] `VITE_GOOGLE_CLIENT_ID` set at build time — without it `LoginModal` silently falls back to the local "dev sign-in" form, which must **not** happen in production
+- [x] `VITE_GOOGLE_CLIENT_ID` set at build time — without it `LoginModal` silently falls back to the local "dev sign-in" form, which must **not** happen in production. **Verified 2026-08-22** against the deploy of `2cfeb5e`: a real `...apps.googleusercontent.com` id is present in the lazy-loaded `scoundrel-*` chunk (grepping `index-*.js` alone reports a false negative — `LoginModal` is not in the entry bundle)
 - [ ] `VITE_PUBLIC_POSTHOG_TOKEN` + `VITE_PUBLIC_POSTHOG_HOST` set
 
 End-to-end, against the deployed URL:
@@ -124,3 +124,38 @@ Auth wiring confirmed on the deployment 2026-08-06, both halves:
 - [ ] Every checklist item above verified against production, not preview
 - [ ] A screenshot or note recording that `/admin` rendered correctly with real data
 - [ ] Explicit decision on whether batch 1 is qualitative or a balance measurement
+
+## Verified against production, 2026-08-22 (deploy of `2cfeb5e`)
+
+Checked by fetching the live deployment. These need no credentials, so they were
+done as part of the deploy rather than left for a manual pass:
+
+- **`/api/stats` returns 401 unauthenticated.** The bearer gate is live, so the
+  endpoint is not open to the internet.
+- **`/privacy` returns 200 as a direct URL**, so the `vercel.json` SPA rewrite is
+  working. Only the shell was checked — the page body renders client-side, and
+  confirming the rendered content still wants a browser.
+- **`VITE_GOOGLE_CLIENT_ID` is in the bundle** (see the ticked box above). This
+  was the one with teeth: without it production ships a sign-in form that trusts
+  any typed name.
+- **`og:image` resolves**: `https://sigildeck.com/og-image.png`, HTTP 200,
+  244823 bytes — byte-identical in size to the regenerated local file, so the
+  new "A roguelite deckbuilder" card is the one being served.
+- **The head is serving the new copy**: `description` and `og:description` both
+  read "A roguelite deckbuilder…", confirming the deploy landed rather than
+  Vercel serving a cached previous build.
+
+### Still open, and why they could not be done from here
+
+Every remaining box needs either a real browser session or a secret:
+
+- **The signed-in write path** — the silent-data-loss regression. `api/runs.js`
+  validates the batch (`:74`) before the auth gate (`:84`), so a synthetic probe
+  is rejected with `400 no_valid_records` and never exercises `mayWriteAs`. Only
+  a genuine signed-in run proves it.
+- **A guest run reaching `runs`** — same reason.
+- **`/admin` rendering** — needs `ADMIN_TOKEN`, which is deliberately not on
+  this machine.
+- **Issue 14's live check** — set a handle, win, confirm the run lists; then a
+  handle-less win, confirm it does not. The client half is covered by
+  `visual/copy-accuracy.spec.js`; the server half is this box.
