@@ -239,9 +239,20 @@ is right and the *docs* are wrong; don't "fix" correct code to match a stale spe
 
 ## License
 
-[MIT](LICENSE) for the source code.
+[PolyForm Noncommercial 1.0.0](LICENSE) for the source code. Read it, run it,
+modify it, share it — for any noncommercial purpose. Selling it, or using it in
+something you sell, needs a separate commercial license. This is deliberately
+not an OSI open-source license: the code is published to be read and learned
+from, not to be resold. Commercial rights are reserved by the copyright holder.
 
-The bundled music is by Kevin MacLeod under **CC BY 3.0**, which requires
-attribution — see [`LICENSE`](LICENSE) and
+Contributions are accepted under those same terms, and licensable commercially
+by the copyright holder — see [`LICENSE`](LICENSE). Without that, one outside
+contribution would make the project unsellable without tracking down its author.
+
+**The bundled assets are third-party works under their own terms**, and some are
+embedded *inside* source files: the game-icons.net artwork by Lorc and
+Delapouite is SVG path data living in `SuitIcon.jsx`, under CC BY 3.0. The music
+is Kevin MacLeod under CC BY 3.0, and the combat sounds are CC BY-SA 3.0. All
+require attribution to be kept. See [`LICENSE`](LICENSE) and
 [`public/audio/music/CREDITS.md`](public/audio/music/CREDITS.md) before reusing
-or redistributing it.
+or redistributing anything.

@@ -92,16 +92,40 @@ records that `GOOGLE_CLIENT_ID` must match `VITE_GOOGLE_CLIENT_ID`, since a
 mismatch fails every sign-in, and that rotating `SESSION_SECRET` forces a
 re-sign-in without losing data.
 
-**`LICENSE`** — **MIT**, with a third-party asset section covering the CC BY 3.0
-music (attribution is a redistribution obligation, not a nicety), the
-public-domain bell cues, a placeholder for OFL fonts if issue 18 self-hosts them,
-and a note on the debt to Gage and Bieg's original *Scoundrel*.
+**`LICENSE`** — **PolyForm Noncommercial 1.0.0** (see the revision below), with
+a third-party asset section covering the CC BY 3.0 artwork and music
+(attribution is a redistribution obligation, not a nicety), the mixed-term sound
+effects, the public-domain bell cues, a placeholder for OFL fonts if issue 18
+self-hosts them, and a note on the debt to Gage and Bieg's original *Scoundrel*.
 
-### Decision to revisit: MIT
+### Decision revised 2026-08-22: MIT → PolyForm Noncommercial 1.0.0
 
-MIT was chosen as the default for a public repo whose value is the game rather
-than the code, and it is the least friction for anyone reading the source. It is
-worth an explicit second look, because it is the one decision here that is hard
-to walk back: it permits commercial redistribution of the game's code. If that is
-not wanted, the alternatives are a source-available license, or MIT on the code
-with assets and content reserved. Nothing else in this issue is contentious.
+MIT was chosen first, as the default for a public repo whose value is the game
+rather than the code, and flagged here as the one decision that is hard to walk
+back. Revisited with Joey before this branch merged, and reversed.
+
+**The requirement:** nobody else may sell the game, and the copyright holder
+keeps the right to sell it later. Copyleft does not deliver that — AGPL forces
+a commercial forker to publish their source but still lets them charge for it.
+PolyForm Noncommercial says the actual thing, in language a lawyer drafted, and
+does not pretend to be open source when it is not.
+
+Three things were added that MIT did not need:
+
+- **Commercial rights reserved**, stated explicitly, so the reservation does not
+  rest on inference from what the grant omits.
+- **A contribution term.** A contributor owns their contribution's copyright, so
+  without this a single outside pull request would make the project unsellable
+  without tracking down its author. Worth having in place before the repo is
+  posted to Reddit.
+- **The MIT draft's third-party section was incomplete**, which the switch was a
+  good moment to fix. It listed music, bells, fonts and the design debt, but not
+  the artwork or the sound effects. The artwork gap was the sharper one: the
+  game-icons.net paths by Lorc and Delapouite are CC BY 3.0 and are embedded
+  *inside* `SuitIcon.jsx`, so the old wording ("the MIT grant covers the SOURCE
+  CODE of this repository") was granting MIT over third-party artwork. The
+  combat sounds are CC BY-SA 3.0, a share-alike term, and were unlisted too.
+
+Every third-party license in the bundle permits commercial use, so none of them
+blocks selling the game later — they only require attribution to be kept, which
+the in-game Credits screen already does.
