@@ -4,16 +4,23 @@ title: "Review player-facing rules copy against the post-rework game"
 priority: P4
 area: docs
 effort: S
-status: open
+status: done
 ---
 
 ## Partly resolved by the rename
 
-The specific line this issue opened on is fixed. `rules.jsx:120` now reads
-**"Sigil, a roguelike of one bad night."** — the game was renamed from Scoundrel
-(via a short-lived Knell), which forced the question and settled it: the
-"44-card" claim is gone,
-and the lineage nod moved off the tagline.
+The specific line this issue opened on is fixed. The "44-card" claim is gone,
+settled by the rename from Scoundrel (via a short-lived Knell).
+
+**Superseded 2026-08-10 on the lineage half.** This issue recorded that "the
+lineage nod moved off the tagline"; that was reversed deliberately, not lost.
+The tagline is now **"Forge your kit, take a Boon, face the Trial"** with
+**"a roguelike deckbuilder after Scoundrel"** carrying the lineage, on the
+reasoning that the Scoundrel audience is the one group who already understand
+the mechanic and are worth naming for. Full attribution — Zach Gage and Kurt
+Bieg, 2011 — now has a **"Based on"** section at the top of the Credits modal,
+which it did not have at all before: the game named its icon, music and SFX
+sources but not the design it descends from.
 
 **The rest of this issue still stands.** The broader audit of `rules.jsx` for
 pre-rework framing — whole-deck editing, `Strike`, any implication that the next
@@ -79,8 +86,50 @@ Related copy issues tracked separately:
 
 ## Acceptance criteria
 
-- [ ] Line 120 either reworded or a deliberate decision recorded to keep it
-- [ ] Original Scoundrel credited somewhere player-visible if "44-card" is dropped
-- [ ] Remaining `rules.jsx` content contains no pre-rework mechanics
-- [ ] No player-facing text implies theme foreknowledge
-- [ ] Audited alongside issue 12's re-enabled tabs
+- [x] Line 120 either reworded or a deliberate decision recorded to keep it
+- [x] Original Scoundrel credited somewhere player-visible if "44-card" is dropped
+- [x] Remaining `rules.jsx` content contains no pre-rework mechanics
+- [x] No player-facing text implies theme foreknowledge
+- [ ] Audited alongside issue 12's re-enabled tabs — **transferred to issue 12**
+
+## Resolution (2026-08-22)
+
+The audit of the live rules content is done. The parked-tab half transfers to
+issue 12, which is where those tabs come back.
+
+**The real defect found: three places promised a Trial preview the game never
+gives.** `REWORK.md` §8 decided you descend fully blind, and the code agrees —
+`SanctuaryView.jsx` never reads `state.nextTheme`, and the only player-visible
+reveal is `ThemeIntroOverlay`, which fires on arrival, after you have committed.
+The copy still taught DESIGN.md's dropped "see the theme, spend your Boon as
+counterplay" loop:
+
+- `rules.jsx` brief panel — "the next Trial is shown before you commit" → now
+  "You descend blind: the Trial below is named as you arrive, never before, so
+  build for anything rather than for one known threat."
+- `rules.jsx` long-form sanctuary loop — "Next descent's rules previewed before
+  you commit" → "Not shown here. You descend blind and the Trial is named as you
+  arrive, so your kit is a standing answer, not a counter."
+- `rules.jsx` `ThemesGlossary` — "You see it before you descend, so spend your
+  Boon as counterplay" → rewritten for resilience. Parked behind issue 12, fixed
+  now so re-enabling the tab cannot put the old promise back in front of players.
+
+Checked and found clean: no `Strike` in player-facing copy, no "44-card" claim
+(settled by the rename), and the kit/dungeon framing in "The deck" already
+matches the post-rework model.
+
+Covered by `visual/copy-accuracy.spec.js` (4 tests for this issue), including
+one asserting the inline opening panel and the modal tell the same story — the
+inline panel is the copy most players actually read.
+
+### Left open, deliberately: the Forge cadence
+
+`ascensions.js` defaults `forgeSigils: [1,2,3,4,5,6,7]` with the comment "the
+default covers all of them, so the Forge opens after every descent". That was
+true when the target was 7 sigils. `SIGIL_TARGET` is now **10**, so the Forge
+does not open on returns 8 and 9, and the rules copy ("Forge — After each
+descent") is false for those two visits.
+
+Not touched here: extending the default to `[1..10]` is a balance change and
+belongs to whoever owns the difficulty curve, not to a copy pass. Fix the data
+or reword the rules — but one of the two has to move.

@@ -2,11 +2,40 @@ import { useMemo } from 'react'
 import { LogPanel } from './atoms'
 import { RunSummary, EndingKitSection } from './RunSummary'
 import { buildRunRecord } from '../history'
+import { useHandle } from '../settings'
+
+// A victory with no leaderboard handle is never listed: the board excludes
+// nameless rows outright rather than showing them as "Anonymous". Silently
+// dropping someone's best run is the confusing half of issue 14, so say it
+// here, at the one moment the player cares, and offer the fix in one click.
+// Deliberately not shown on death — only victories are ranked, so there is
+// nothing to miss out on.
+function LeaderboardNudge({ onOpenSettings }) {
+  return (
+    <p className="text-[12px] text-slate-400 -mt-2 mb-4 max-w-md">
+      This victory isn't on the leaderboard: it only lists runs that carry a
+      name.{' '}
+      <button
+        onClick={onOpenSettings}
+        className="text-rune underline underline-offset-2 hover:text-amber-300 transition"
+      >
+        Set one in Settings
+      </button>{' '}
+      and the runs you finish from now on will be listed.
+    </p>
+  )
+}
 
 // onBeginAgain wraps freshRun() in the root so this file doesn't
 // depend on save/load details.
-export function OutcomeView({ game, onBeginAgain }) {
+export function OutcomeView({ game, onBeginAgain, onOpenSettings }) {
   const won = game.phase === 'victory'
+  // Unconditional: `won &&` in front of the hook call would skip it on the
+  // death screen and change hook order between the two outcomes.
+  // Trailing space is legal mid-typing but nothing posts under it, so trim
+  // before deciding whether this run carries a name.
+  const handle = useHandle()
+  const unlisted = won && !handle.trim()
   // Local view-only record; the persisted copy (with account id) is written
   // by the root's recording effect. User isn't needed for display.
   const record = useMemo(() => buildRunRecord(game, null), [game])
@@ -43,6 +72,8 @@ export function OutcomeView({ game, onBeginAgain }) {
       >
         {won ? 'ASCEND' : 'BEGIN AGAIN'}
       </button>
+
+      {unlisted && <LeaderboardNudge onOpenSettings={onOpenSettings} />}
 
       <div className="w-full max-w-4xl grid gap-5 lg:grid-cols-2 items-start text-left">
         <div className="panel p-5 sm:p-6">

@@ -1,0 +1,40 @@
+<svg xmlns="http://www.w3.org/2000/svg" viewBox="0 0 630 500" width="630" height="500">
+  <!-- itch.io cover image, 630x500. Rasterised to docs/itch/cover.png by
+       scripts/generate-icons.mjs.
+
+       Not a crop of og-image.svg: that card is 1200x630, near 2:1, and this is
+       nearly square, so the same composition would either letterbox or lose the
+       mark. Same palette and same serif, redrawn for the taller frame.
+
+       It also carries less text on purpose. itch renders this at roughly
+       315x250 in browse listings, where the og card's third line would be
+       unreadable, so only the title and one line survive. -->
+  <defs>
+    <radialGradient id="glow" cx="50%" cy="38%" r="65%">
+      <stop offset="0%" stop-color="#1b1408"/>
+      <stop offset="100%" stop-color="#0b0d12"/>
+    </radialGradient>
+  </defs>
+
+  <rect width="630" height="500" fill="url(#glow)"/>
+  <rect x="18" y="18" width="594" height="464" fill="none" stroke="#fbbf24" stroke-opacity="0.22" stroke-width="3"/>
+
+  <!-- Sigil, echoing the favicon -->
+  <g transform="translate(315 190) scale(2.1) translate(-32 -32)">
+    <path d="M32 7 Q36.5 27.5 57 32 Q36.5 36.5 32 57 Q27.5 36.5 7 32 Q27.5 27.5 32 7 Z" fill="#fbbf24"/>
+  </g>
+
+  <text x="315" y="345" text-anchor="middle" font-family="Georgia, 'Times New Roman', serif"
+        font-size="86" letter-spacing="12" fill="#f5e6c8">SIGIL</text>
+
+  <text x="315" y="396" text-anchor="middle" font-family="Georgia, 'Times New Roman', serif"
+        font-size="24" fill="#fbbf24" fill-opacity="0.85">Forge your kit, take a Boon,</text>
+
+  <text x="315" y="424" text-anchor="middle" font-family="Georgia, 'Times New Roman', serif"
+        font-size="24" fill="#fbbf24" fill-opacity="0.85">face the Trial</text>
+
+  <!-- Genre and lineage on one quiet line. itch's tags carry the genre in
+       browse, so this is for the cover read in isolation. -->
+  <text x="315" y="458" text-anchor="middle" font-family="Georgia, 'Times New Roman', serif"
+        font-size="15" fill="#94a3b8">a roguelite deckbuilder</text>
+</svg>

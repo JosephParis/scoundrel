@@ -539,7 +539,7 @@ export default function Scoundrel() {
         {game.phase === 'sanctuary' && <SanctuaryView game={game} setGame={setGame} onSkipTutorial={skipTutorial} ascensionUnlocked={ascensionUnlocked} celebrateSigil={sigilCelebrate} onSigilCelebrated={() => setSigilCelebrate(false)} onOpenRules={() => setRulesOpen(true)} />}
         {game.phase === 'descent' && <DescentView game={game} setGame={setGame} />}
         {(game.phase === 'gameover' || game.phase === 'victory') && (
-          <OutcomeView game={game} onBeginAgain={() => setGame(freshRun())} />
+          <OutcomeView game={game} onBeginAgain={() => setGame(freshRun())} onOpenSettings={() => setSettingsOpen(true)} />
         )}
       </main>
     </div>

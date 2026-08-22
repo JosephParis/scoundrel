@@ -17,9 +17,9 @@ export const CARD_LAYOUTS = ['modern', 'classic']
 const DEFAULT_CARD_LAYOUT = 'modern'
 
 // The public leaderboard credits runs to this handle. Empty is the default and
-// means "post my runs as Anonymous": appearing on the board by name is an
-// opt-in the player performs, never something derived from their Google
-// profile. Kept deliberately narrow so nothing resembling contact details can
+// means "keep my runs off the board": there is no anonymous listing, so
+// appearing at all is an opt-in the player performs, never something derived
+// from their Google profile. Kept deliberately narrow so nothing resembling contact details can
 // be typed in — no '@', no dots, no slashes.
 export const MAX_HANDLE_LENGTH = 16
 
@@ -27,7 +27,7 @@ export const MAX_HANDLE_LENGTH = 16
  * Normalize a typed handle: drop anything outside letters, digits, spaces,
  * hyphens and underscores, collapse runs of whitespace, and clamp the length.
  * Returns '' for a handle that is empty or made entirely of rejected
- * characters, which every reader treats as "anonymous".
+ * characters, which every reader treats as "keep this run off the board".
  *
  * Leading whitespace is dropped but a single trailing space is kept: this runs
  * on every keystroke of a controlled input, and trimming the end would eat the
@@ -119,8 +119,8 @@ export function useCardLayout() {
   )
 }
 
-// React binding for the leaderboard handle. Empty string = post as Anonymous,
-// which is also the server snapshot so hydration stays consistent.
+// React binding for the leaderboard handle. Empty string = stay off the
+// leaderboard, which is also the server snapshot so hydration stays consistent.
 export function useHandle() {
   return useSyncExternalStore(
     fn => settings.subscribe(fn),

@@ -18,6 +18,7 @@
  */
 import { Howl, Howler } from 'howler'
 import { useSyncExternalStore } from 'react'
+import { assetUrl } from '../../buildTarget.js'
 
 const MUTE_KEY = 'scoundrel:muted'
 const MUSIC_VOL_KEY = 'scoundrel:musicVolume'
@@ -163,7 +164,15 @@ class AudioController {
     let howl = this.howls.get(cacheKey)
     if (howl) return howl
     howl = new Howl({
-      src: [config.src],
+      // Resolved against the deployment base rather than used as written. The
+      // registry paths are absolute so the tooling can read them straight out of
+      // this file (visual/audio-assets.spec.js, visual/robots-and-payload.spec.js),
+      // but they are the one class of asset Vite's `base` cannot rewrite -- they
+      // are strings assembled at runtime, not imports. Left alone, a build served
+      // from a subdirectory requests /audio/... at the host's root and every cue
+      // 404s into the silent-failure path below: no music, no error, nothing to
+      // notice. assetUrl is the identity function when BASE_URL is '/'.
+      src: [assetUrl(config.src)],
       loop: !!config.loop,
       volume: kind === 'music' ? this.musicVolume : this.sfxVolume,
       // Swallow load failures (e.g. file not added yet) so a missing cue is

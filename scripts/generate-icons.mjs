@@ -14,9 +14,9 @@
  *   scripts/icon-maskable.svg   full-bleed variant for Android masking
  *   scripts/og-image.svg        1200x630 social card
  */
-import { readFileSync, writeFileSync } from 'node:fs'
+import { readFileSync, writeFileSync, mkdirSync } from 'node:fs'
 import { fileURLToPath } from 'node:url'
-import { dirname, join } from 'node:path'
+import { dirname, join, relative } from 'node:path'
 import { chromium } from 'playwright'
 
 const here = dirname(fileURLToPath(import.meta.url))
@@ -31,6 +31,12 @@ const TARGETS = [
   { out: 'icon-512.png', size: 512 },
   { out: 'icon-512-maskable.png', size: 512, src: join(here, 'icon-maskable.svg') },
   { out: 'og-image.png', width: 1200, height: 630, src: join(here, 'og-image.svg') },
+  // Store art rather than a shipped asset, so it lands outside public/ -- it is
+  // uploaded to itch by hand and has no business in the bundle.
+  {
+    out: 'cover.png', width: 630, height: 500,
+    src: join(here, 'itch-cover.svg'), dir: join(root, 'docs', 'itch'),
+  },
 ]
 
 /**
@@ -86,9 +92,11 @@ try {
       { waitUntil: 'load' },
     )
     const buf = await page.screenshot({ omitBackground: true, type: 'png' })
-    writeFileSync(join(pub, t.out), buf)
+    const outDir = t.dir ?? pub
+    mkdirSync(outDir, { recursive: true })
+    writeFileSync(join(outDir, t.out), buf)
     await page.close()
-    console.log(`wrote public/${t.out} (${width}x${height})`)
+    console.log(`wrote ${relative(root, join(outDir, t.out)).replaceAll('\\', '/')} (${width}x${height})`)
 
     if (t.out === 'favicon-32.png') {
       writeFileSync(join(pub, 'favicon.ico'), pngToIco(buf, 32))

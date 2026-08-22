@@ -53,16 +53,50 @@ function htmlSiteUrl() {
   }
 }
 
+// The standalone target (itch.io and any other portal that hosts the bundle as
+// static files inside an iframe). See src/buildTarget.js for what it changes and
+// why. Everything below is a no-op unless VITE_BUILD_TARGET says otherwise, so
+// the sigildeck.com build is untouched.
+const isStandalone = process.env.VITE_BUILD_TARGET === 'standalone'
+
+// Drops the web-app manifest from the standalone HTML.
+//
+// manifest.webmanifest hardcodes "start_url": "/" and absolute icon paths, all
+// of which point at the portal's root rather than the game's directory. Rather
+// than ship a second manifest whose every path is wrong, the standalone build
+// has none: it is an embedded iframe, so it was never installable anyway.
+function htmlStandalone() {
+  return {
+    name: 'sigil-html-standalone',
+    apply: () => isStandalone,
+    transformIndexHtml(html) {
+      return html.replace(/^\s*<link rel="manifest"[^>]*>\s*$/m, '')
+    },
+  }
+}
+
 export default defineConfig({
-  plugins: [react(), tailwindcss(), htmlSiteUrl()],
+  // './' so the bundle works from any directory depth. itch serves it from
+  // /html/<project-id>/, and an absolute base would send every asset request to
+  // the portal's root.
+  base: isStandalone ? './' : '/',
+  plugins: [react(), tailwindcss(), htmlSiteUrl(), htmlStandalone()],
   define: {
     // Override entries on import.meta.env so client code reads them with no
     // extra globals and ESLint stays happy. Values are inlined at build time.
     'import.meta.env.VITE_BUILD_SHA': JSON.stringify(buildSha),
     'import.meta.env.VITE_BUILD_REF': JSON.stringify(buildRef),
     'import.meta.env.VITE_BUILD_TIME': JSON.stringify(buildTime),
+    // Inlined rather than left to Vite's own VITE_* env handling so the value is
+    // always a string: `'' === 'standalone'` is false, whereas an undefined
+    // replacement would leave a bare `undefined` in the output.
+    'import.meta.env.VITE_BUILD_TARGET': JSON.stringify(process.env.VITE_BUILD_TARGET || ''),
   },
   build: {
+    // A separate directory so an itch build can never be mistaken for the one
+    // that deploys, and so `vite preview` and the prod test project keep
+    // pointing at the real thing.
+    outDir: isStandalone ? 'dist-itch' : 'dist',
     rollupOptions: {
       output: {
         manualChunks(id) {
