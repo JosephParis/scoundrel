@@ -113,26 +113,23 @@ export function SanctuaryView({ game, setGame, onSkipTutorial, ascensionUnlocked
           nothing here a first-time player can act on or learn from. */}
       {!isOpeningVisit && (
       <div className="md:hidden mb-3">
-        <div className="flex items-center gap-2">
-          {/* HP */}
-          <div className="flex items-center gap-1">
-            <span className="text-[9px] uppercase tracking-wider text-slate-500">HP</span>
-            <span className="font-mono text-parchment text-sm">
+        <div className="flex items-center gap-3">
+          {/* HP. Sized to match the descent header's read-outs so the two
+              numbers do not change size when the player descends. The sigil
+              count that used to sit between HP and the weapon is gone from
+              both mobile headers -- see the note in DescentView. */}
+          <div className="flex flex-col items-center justify-center">
+            <span className="text-[9px] uppercase tracking-wider text-slate-500 leading-none mb-1">HP</span>
+            <span className="font-mono font-bold text-parchment text-4xl leading-none">
               {game.maxHp || BASE_MAX_HP}
             </span>
           </div>
 
-          {/* Sigils */}
-          <div className="flex items-center gap-1">
-            <span className="text-[9px] uppercase tracking-wider text-slate-500">Sigils</span>
-            <span className="font-mono text-rune text-sm">{game.sigilsEarned}/{game.sigilTarget}</span>
-          </div>
-
           {/* Weapon display (not clickable) */}
           {game.carriedWeapon && (
-            <div className="flex items-center gap-1">
-              <span className="text-[9px] uppercase tracking-wider text-slate-500">Weapon</span>
-              <span className="font-mono text-parchment text-sm">
+            <div className="flex flex-col items-center justify-center">
+              <span className="text-[9px] uppercase tracking-wider text-slate-500 leading-none mb-1">Weapon</span>
+              <span className="font-mono font-bold text-parchment text-4xl leading-none">
                 {rankLabel(game.carriedWeapon.rank)}{SUIT_GLYPH[game.carriedWeapon.suit]}
               </span>
             </div>
