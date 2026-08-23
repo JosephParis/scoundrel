@@ -1,4 +1,5 @@
 import { test, expect } from '@playwright/test'
+import { DESCENT } from './fixtures/descent.js'
 
 /**
  * Mobile Responsive Tests
@@ -103,6 +104,98 @@ async function enterDescent(page, viewport = MOBILE_VIEWPORT) {
   await page.locator('.card-face').first().waitFor({ timeout: 15000 })
 }
 
+/**
+ * The widest the header's figures realistically get.
+ *
+ * Max HP tops out in the 40s (base 20, plus The Quiet's +10, plus boons), a
+ * fresh descent deck is 40-odd cards, and a bound weapon shows two figures of
+ * two digits each -- so every read-out is at its longest at once. Narrower
+ * content hides crowding bugs that this position exposes.
+ */
+const WIDE_DESCENT = {
+  ...DESCENT,
+  hp: 43,
+  maxHp: 43,
+  deck: Array.from({ length: 44 }, (_, i) => ({ id: `d${i}`, suit: 'S', rank: 4 })),
+  weapon: { rank: 10, originalRank: 10, lastSlain: { rank: 10 } },
+}
+
+/**
+ * A descent with a weapon already equipped, seeded rather than played.
+ *
+ * enterDescent() reaches the first room of a fresh run, where the player is
+ * still bare-handed and the header reads "Bare-handed." instead of the two
+ * weapon figures -- so anything asserting on those has to start from a position
+ * where a weapon is in hand. The shared fixture is one.
+ */
+async function armedDescent(page, viewport = MOBILE_VIEWPORT, state = DESCENT) {
+  await page.setViewportSize(viewport)
+  await page.addInitScript(({ saveKey, tutorialKey, state }) => {
+    localStorage.setItem(tutorialKey, 'true')
+    localStorage.setItem(saveKey, JSON.stringify({ version: 1, state }))
+  }, { saveKey: SAVE_KEY, tutorialKey: TUTORIAL_KEY, state })
+  await page.goto('/')
+  await page.locator('.card-face').first().waitFor({ timeout: 15000 })
+  // The theme intro is a full-screen overlay; Space skips it. Not Escape, which
+  // would open the pause menu over the room instead.
+  await page.keyboard.press('Space')
+  await page.getByRole('button', { name: 'View kit' }).waitFor({ timeout: 15000 })
+  // Every assertion downstream reads a computed font size, which comes from the
+  // loaded face rather than the fallback.
+  await page.evaluate(() => document.fonts.ready)
+}
+
+/**
+ * Minimum computed font size, in px, for each figure on the descent's mobile
+ * header. Floors, not exact sizes: the figures may grow and the classes may be
+ * restyled, but dropping one back to label size is the regression.
+ *
+ * One floor for all four, because they are deliberately one size -- see the
+ * companion test that asserts they have not drifted apart.
+ */
+const READOUT_MIN_PX = 32
+
+const READOUT_LABELS = ['HP', 'Deck', 'Strikes as', 'Bound to']
+
+/**
+ * Computed font size of the figure sitting under `label` on the mobile header.
+ *
+ * Each read-out is a small uppercase label with its figure as the next sibling,
+ * so the label is what can be located by text -- the figures are bare numerals
+ * that would match half the room.
+ */
+function readoutFigure(page, label) {
+  return page
+    .locator('.md\\:hidden')
+    .first()
+    .getByText(label, { exact: true })
+    .locator('xpath=following-sibling::*[1]')
+}
+
+async function readoutFontSize(page, label) {
+  const figure = readoutFigure(page, label)
+  await expect(figure, `no figure sits under the "${label}" label`).toBeVisible()
+  return figure.evaluate(el => parseFloat(getComputedStyle(el).fontSize))
+}
+
+/**
+ * How many lines the header label `label` has taken.
+ *
+ * Every label on the header carries `leading-none`, so its line height is its
+ * font size and the rendered height divides straight into a line count. Rounded
+ * because sub-pixel font metrics put the single-line case a hair either side
+ * of exactly 1.
+ */
+async function labelLineCount(page, label) {
+  const el = page.locator('.md\\:hidden').first().getByText(label, { exact: true })
+  await expect(el, `no "${label}" label on the mobile header`).toBeVisible()
+  return el.evaluate(node => {
+    const style = getComputedStyle(node)
+    const lineHeight = parseFloat(style.lineHeight) || parseFloat(style.fontSize)
+    return Math.round(node.getBoundingClientRect().height / lineHeight)
+  })
+}
+
 const kitIconButton = page => page.getByRole('button', { name: 'View kit' })
 const sanctuaryKitButton = page => page.getByRole('button', { name: 'Kit', exact: true })
 const fleeButton = page => page.getByRole('button', { name: /Flee the room/i })
@@ -119,6 +212,82 @@ test.describe('Mobile Responsive - Descent View', () => {
     await expect(mobileHeader.getByText('HP', { exact: true })).toBeVisible()
     await expect(mobileHeader.getByText('Deck', { exact: true })).toBeVisible()
     await expect(kitIconButton(page)).toBeVisible()
+  })
+
+  test('the header read-outs are large enough to read at a glance', async ({ page }) => {
+    // HP, cards left, and what the weapon swings at are the figures a player
+    // checks every turn on a phone, so they are sized like headings rather than
+    // like labels. Asserted as a floor on the computed size rather than an
+    // exact class, so restyling stays free but shrinking them back to body copy
+    // does not.
+    await armedDescent(page)
+
+    for (const label of READOUT_LABELS) {
+      const px = await readoutFontSize(page, label)
+      expect(px, `the "${label}" figure is ${px}px, under the ${READOUT_MIN_PX}px floor`)
+        .toBeGreaterThanOrEqual(READOUT_MIN_PX)
+    }
+  })
+
+  test('the header figures are all the same size', async ({ page }) => {
+    // They are read together -- HP against the weapon's reach against how much
+    // deck is left -- so sizing one above another would rank them, and nothing
+    // about the game says which would win. Asserted as equality between the
+    // four rather than against a number, so raising them all stays a one-line
+    // change and raising only one does not pass.
+    await armedDescent(page)
+
+    const sizes = {}
+    for (const label of READOUT_LABELS) sizes[label] = await readoutFontSize(page, label)
+
+    const distinct = new Set(Object.values(sizes))
+    expect(distinct.size, `header figures differ in size: ${JSON.stringify(sizes)}`).toBe(1)
+  })
+
+  test('the header figures never crowd each other, even at 320px', async ({ page }) => {
+    // Four figures at one size stop fitting on one line on the narrowest
+    // phones. When they did not fit, the weapon panel squeezed rather than
+    // wrapping, and "Strikes as" broke onto two lines -- which drags its label
+    // down over the neighbouring "Bound to" and leaves the two numbers sitting
+    // side by side with nothing left to say which is which. The panel now
+    // drops to a second line instead of compressing.
+    //
+    // The tell is the labels, not the figures: the figures end up adjacent
+    // rather than strictly overlapping, so a box-intersection check reads clean
+    // on the broken layout. A label that has taken a second line does not.
+    for (const viewport of [{ width: 320, height: 568 }, MOBILE_VIEWPORT]) {
+      await armedDescent(page, viewport, WIDE_DESCENT)
+
+      for (const label of READOUT_LABELS) {
+        const lines = await labelLineCount(page, label)
+        expect(lines, `at ${viewport.width}px the "${label}" label wrapped onto ${lines} lines`)
+          .toBe(1)
+      }
+
+      // Crowding must not be relieved by shrinking a figure instead.
+      for (const label of READOUT_LABELS) {
+        const px = await readoutFontSize(page, label)
+        expect(px, `at ${viewport.width}px the "${label}" figure shrank to ${px}px`)
+          .toBeGreaterThanOrEqual(READOUT_MIN_PX)
+      }
+
+      // ...nor by letting the header push the page sideways.
+      const scrollWidth = await page.evaluate(() => document.documentElement.scrollWidth)
+      expect(scrollWidth, `the page scrolls sideways at ${viewport.width}px`)
+        .toBeLessThanOrEqual(viewport.width)
+    }
+  })
+
+  test('the sigil count is not on the mobile header', async ({ page }) => {
+    // It moves once per descent and never mid-room, so it was the one figure
+    // here that no turn depends on -- and the width it held was the width the
+    // figures above needed to grow into. It is still on the desktop rail
+    // (asserted further down) and on both outcome screens.
+    await enterDescent(page)
+
+    const mobileHeader = page.locator('.md\\:hidden').first()
+    await expect(mobileHeader).toBeVisible()
+    await expect(mobileHeader.getByText(/sigil/i)).toHaveCount(0)
   })
 
   test('should have no vertical scrollbar on mobile during descent', async ({ page }) => {
@@ -185,7 +354,11 @@ test.describe('Mobile Responsive - Sanctuary View', () => {
 
     const mobileHeader = page.locator('.md\\:hidden').first()
     await expect(mobileHeader).toBeVisible()
-    await expect(mobileHeader.getByText('Sigils')).toBeVisible()
+    // Same trade as the descent header: the sigil count is gone, while HP and
+    // the carried weapon stay and are sized to match what the descent shows, so
+    // neither figure changes size when the player descends.
+    await expect(mobileHeader.getByText('HP', { exact: true })).toBeVisible()
+    await expect(mobileHeader.getByText(/sigil/i)).toHaveCount(0)
     await expect(sanctuaryKitButton(page)).toBeVisible()
     await expect(page.getByRole('button', { name: 'Boons', exact: true })).toBeVisible()
   })

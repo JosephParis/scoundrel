@@ -202,38 +202,58 @@ export function DescentView({ game, setGame }) {
       <MapPeekModal cards={game.mapPeek} onClose={onCloseMapPeek} />
       <KitModal open={kitOpen} onClose={() => setKitOpen(false)} game={game} theme={theme} />
 
-      {/* Mobile compact header - shows only on small screens */}
+      {/* Mobile compact header - shows only on small screens.
+          These four numbers are the whole read of the room at a glance -- HP,
+          cards left, and what the weapon swings at -- so on a phone they are
+          sized to be legible without looking, and the room below simply starts
+          lower. The sigil count is deliberately absent: it changes once per
+          descent and never mid-room, so it costs width here that the numbers
+          the player actually reads every turn were paying for. It stays on the
+          desktop rail, and both outcome screens still report it.
+          All four figures are one size: they are read together, and a size
+          difference between them would rank them, which nothing about the game
+          supports -- HP matters as much as the weapon's reach. */}
       <div className="md:hidden mb-2">
-        <div className="flex items-center gap-2">
+        <div className="flex flex-wrap items-center gap-2.5">
           {/* HP + Deck */}
-          <div className="flex items-center gap-2">
+          <div className="flex items-center gap-2.5 shrink-0">
             <div className="flex flex-col items-center justify-center">
-              <div className="text-[8px] uppercase tracking-wider text-slate-500 leading-none mb-0.5">HP</div>
-              <div className="font-mono font-bold text-parchment text-lg leading-none">
-                {game.hp}<span className="text-slate-500 text-sm">/{game.maxHp}</span>
+              <div className="text-[9px] uppercase tracking-wider text-slate-500 leading-none mb-1">HP</div>
+              <div className="font-mono font-bold text-parchment text-4xl leading-none">
+                {game.hp}<span className="text-slate-500 text-xl">/{game.maxHp}</span>
               </div>
             </div>
 
             <div className="flex flex-col items-center justify-center">
-              <div className="text-[8px] uppercase tracking-wider text-slate-500 leading-none mb-0.5">Deck</div>
-              <div className="font-mono font-bold text-parchment text-lg leading-none">{game.deck.length}</div>
+              <div className="text-[9px] uppercase tracking-wider text-slate-500 leading-none mb-1">Deck</div>
+              <div className="font-mono font-bold text-parchment text-4xl leading-none">{game.deck.length}</div>
             </div>
           </div>
 
-          {/* Weapon panel - gets its own ~1/3 width */}
+          {/* Weapon panel and kit button, wrapping as one unit so the button
+              never orphans onto a line of its own.
+
+              The panel takes whatever the read-outs above leave, down to a
+              floor. Below that floor its two labels ("Strikes as", "Bound to")
+              stop fitting side by side, and squeezing them runs the two figures
+              together with no way to tell which is which -- so at that point
+              the pair drops to a second line and the room starts lower instead.
+              The basis is the width the labels need plus the button, not a
+              round number: 150 + gap + 32. */}
+          <div className="flex items-center gap-2.5 flex-1 basis-[192px] min-w-0">
           {game.weapon ? (
-            <div className="panel p-2 flex-1 min-w-0">
-              <div className="text-[8px] uppercase tracking-widest text-slate-500 mb-1">Weapon</div>
-              <div className="flex items-center gap-3">
+            <div className="panel px-2 py-1.5 flex-1 min-w-0">
+              <div className="text-[9px] uppercase tracking-widest text-slate-500 leading-none mb-1">Weapon</div>
+              <div className="flex items-center gap-2">
                 <div className="flex-1 min-w-0">
-                  <div className="text-[8px] uppercase tracking-wider text-slate-500 leading-none">Strikes as</div>
-                  <div className="font-mono font-bold text-parchment text-3xl leading-none">
+                  <div className="text-[9px] uppercase tracking-wider text-slate-500 leading-none mb-1">Strikes as</div>
+                  <div className="font-mono font-bold text-parchment text-4xl leading-none">
                     {describeWeaponStrength(game, game.weapon).value}
                   </div>
                 </div>
                 <div className="text-center">
-                  <div className="text-[8px] uppercase tracking-wider text-slate-500 leading-none">Bound to</div>
-                  <div className={`font-mono font-bold leading-none text-3xl ${
+                  <div className="text-[9px] uppercase tracking-wider text-slate-500 leading-none mb-1">Bound to</div>
+                  <div className={`font-mono font-bold leading-none text-4xl ${
                     game.weapon.lastSlain ? 'text-parchment' : 'text-stone-700'
                   }`}>
                     {game.weapon.lastSlain ? rankLabel(game.weapon.lastSlain.rank) : '–'}
@@ -242,26 +262,19 @@ export function DescentView({ game, setGame }) {
               </div>
             </div>
           ) : (
-            <div className="panel p-2 flex-1 min-w-0">
-              <div className="text-[8px] uppercase tracking-widest text-slate-500 mb-1">Weapon</div>
-              <div className="text-sm text-slate-500 italic">Bare-handed.</div>
+            <div className="panel px-2 py-1.5 flex-1 min-w-0">
+              <div className="text-[9px] uppercase tracking-widest text-slate-500 leading-none mb-1">Weapon</div>
+              <div className="text-base text-slate-500 italic leading-none">Bare-handed.</div>
             </div>
           )}
 
-          {/* Sigils and menu */}
-          <div className="flex items-center gap-2 shrink-0">
-            <div className="flex items-center gap-1">
-              <span className="text-[9px] uppercase tracking-wider text-slate-500">Sigils</span>
-              <span className="font-mono text-rune font-medium">{game.sigilsEarned}/{game.sigilTarget}</span>
-            </div>
-
-            <button
-              onClick={() => setKitOpen(true)}
-              className="shrink-0 w-7 h-7 rounded-md bg-stone-800 hover:bg-stone-700 border border-stone-700 transition flex items-center justify-center"
-              aria-label="View kit"
-            >
-              <span className="text-slate-400 text-base leading-none">⋮</span>
-            </button>
+          <button
+            onClick={() => setKitOpen(true)}
+            className="shrink-0 w-8 h-8 rounded-md bg-stone-800 hover:bg-stone-700 border border-stone-700 transition flex items-center justify-center"
+            aria-label="View kit"
+          >
+            <span className="text-slate-400 text-base leading-none">⋮</span>
+          </button>
           </div>
         </div>
       </div>
