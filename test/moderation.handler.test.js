@@ -106,6 +106,39 @@ describe('/api/moderation — blocking', () => {
     ])
   })
 
+  it('lists published handles with ?rows=1', async () => {
+    canned = [['from runs r', [{
+      run_key: 'sub-1:123', account_id: 'sub-1', player_name: 'Cassandra',
+      outcome: 'victory', duration_ms: '900000', ended_at: '1750000000000',
+      game_version: '0.4', dev: false, blocked: false,
+    }]]]
+    const res = await call({ query: { rows: '1' } })
+    expect(res.statusCode).toBe(200)
+    expect(res.body.rows[0]).toEqual({
+      runKey: 'sub-1:123', accountId: 'sub-1', playerName: 'Cassandra',
+      outcome: 'victory', durationMs: 900000, endedAt: 1750000000000,
+      gameVersion: '0.4', dev: false, blocked: false,
+    })
+  })
+
+  it('shows only runs that actually published a handle', async () => {
+    await call({ query: { rows: '1' } })
+    const listing = ran('from runs r')[0]
+    // A run with no handle is not on the board, so it is not moderation's
+    // business -- and including them would bury the handles in the noise.
+    expect(listing.text).toContain("playerName")
+    expect(listing.text).toContain('order by r.ended_at desc')
+  })
+
+  it('marks rows whose account is already blocked', async () => {
+    canned = [['from runs r', [{
+      run_key: 'k', account_id: 'sub-9', player_name: 'Rude', outcome: 'death',
+      duration_ms: null, ended_at: null, game_version: null, dev: null, blocked: true,
+    }]]]
+    const { body } = await call({ query: { rows: '1' } })
+    expect(body.rows[0]).toMatchObject({ blocked: true, durationMs: null, endedAt: null, dev: false })
+  })
+
   it('blocks an account with a reason', async () => {
     const res = await call({ method: 'POST', body: { accountId: 'sub-1', reason: 'spam' } })
     expect(res.statusCode).toBe(200)

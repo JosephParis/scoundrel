@@ -8,6 +8,7 @@ import { adminAuthorized, ensureBlockedTable, GUEST_ID } from './_lib/moderation
  * SQL session against production at midnight.
  *
  *   GET    /api/moderation                 list blocked accounts
+ *   GET    /api/moderation?rows=1          list recently published handles
  *   POST   /api/moderation                 block one: { accountId, reason? }
  *   DELETE /api/moderation?accountId=<id>  unblock one
  *   DELETE /api/moderation?runKey=<key>    delete one leaderboard row
@@ -50,6 +51,39 @@ async function listBlocked(res) {
       accountId: r.account_id,
       reason: r.reason || null,
       createdAt: r.created_at,
+    })),
+  })
+}
+
+// Everything a run has published, newest first, so the admin sees a new handle
+// on arrival rather than having to already know it exists. Deliberately not the
+// ranked board: an abusive handle is worth removing whether or not it placed.
+// The run key is exposed here and nowhere else -- it is what a delete needs, and
+// this route is the only one that requires the admin token to read a run.
+const ROWS_LIMIT = 200
+
+async function listRows(res) {
+  const rows = await sql`
+    select r.run_key, r.account_id, btrim(r.record->>'playerName') player_name,
+           r.outcome, r.duration_ms, r.ended_at, r.game_version, r.dev,
+           (bl.account_id is not null) blocked
+    from runs r
+    left join blocked_accounts bl on bl.account_id = r.account_id
+    where btrim(coalesce(r.record->>'playerName', '')) <> ''
+    order by r.ended_at desc nulls last
+    limit ${ROWS_LIMIT}
+  `
+  return res.status(200).json({
+    rows: rows.map(r => ({
+      runKey: r.run_key,
+      accountId: r.account_id,
+      playerName: r.player_name,
+      outcome: r.outcome,
+      durationMs: r.duration_ms === null ? null : Number(r.duration_ms),
+      endedAt: r.ended_at === null ? null : Number(r.ended_at),
+      gameVersion: r.game_version || null,
+      dev: r.dev === true,
+      blocked: r.blocked === true,
     })),
   })
 }
@@ -112,7 +146,13 @@ export default async function handler(req, res) {
 
   try {
     await ensureBlockedTable(sql)
-    if (method === 'GET') return await listBlocked(res)
+    if (method === 'GET') {
+      if (req.query?.rows === '1' || req.query?.rows === 'true') {
+        await ensureRunsTable(sql)
+        return await listRows(res)
+      }
+      return await listBlocked(res)
+    }
     if (method === 'POST') return await block(req, res)
 
     const accountId = firstString(req.query?.accountId)

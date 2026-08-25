@@ -3,13 +3,18 @@ import { GAME_VERSION, VERSION_HISTORY } from '../games/scoundrel/constants'
 import { num, pct, boonName, themeName, frameName, modeName, cardLabel, fmtDuration } from './format'
 import { WinrateTable, CountTable, DescentFunnel, ThemeSurvival, PlayerTable, RunShape } from './tables'
 import { FeedbackPanel } from './feedback'
+import { ModerationPanel } from './moderation'
 
 /**
  * Admin-only analytics dashboard (route: /admin). Reads pre-aggregated stats
  * from GET /api/stats, gated by an admin token the user pastes once and we
- * keep in localStorage. Everything here is read-only; the heavy lifting (the
- * SQL aggregation) happens server-side. Display helpers live in ./format and
- * the sortable stat tables in ./tables.
+ * keep in localStorage. The stats half is read-only; the heavy lifting (the SQL
+ * aggregation) happens server-side. Display helpers live in ./format and the
+ * sortable stat tables in ./tables.
+ *
+ * The one place that writes is ./moderation (issue 08) -- block an account,
+ * delete a leaderboard row, delete a feedback note -- which posts to
+ * /api/moderation with this same token.
  *
  * Only works against a deployed build (or `vercel dev`): plain `npm run dev`
  * has no /api route.
@@ -238,7 +243,12 @@ export default function AdminDashboard() {
 
         {data && (
           <div className="grid gap-4 lg:grid-cols-2">
-            <FeedbackPanel rows={data.recentFeedback || []} />
+            <ModerationPanel token={token} />
+            <FeedbackPanel
+              rows={data.recentFeedback || []}
+              token={token}
+              onDeleted={() => load(token, versionsParam)}
+            />
             <PlayerTable rows={data.playerActivity || []} minN={minN} />
             <WinrateTable
               title="Winrate by boon"
