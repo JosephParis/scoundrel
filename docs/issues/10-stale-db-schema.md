@@ -4,7 +4,7 @@ title: "db/schema.sql no longer describes the database"
 priority: P1
 area: docs
 effort: S
-status: open
+status: done
 ---
 
 ## Problem
@@ -64,7 +64,23 @@ against this file, so drift is caught rather than discovered.
 
 ## Acceptance criteria
 
-- [ ] All three tables and every current column present in `schema.sql`
-- [ ] `dev` column documented with its semantics
-- [ ] Running the file against an empty database produces a schema the endpoints accept without further migration
-- [ ] Each table annotated with the endpoint that owns its DDL
+- [x] All three tables and every current column present in `schema.sql`
+- [x] `dev` column documented with its semantics
+- [x] Running the file against an empty database produces a schema the endpoints accept without further migration
+- [x] Each table annotated with the endpoint that owns its DDL
+
+## Resolution
+
+Branch `issue-08-moderation` (closed on the way into issue 08, which needed the
+blocklist table documented somewhere).
+
+`db/schema.sql` now carries five tables, not one: `runs` (with both after-the-fact
+migrations, `game_version` and `dev`), `profiles`, `feedback`, `blocked_accounts`
+and `rate_limits`. Each section names the file that owns its DDL, and the header
+states the standing rule — DDL changed in `api/` gets changed here in the same
+commit.
+
+The four `runs` indexes were checked against `ensureRunsTable` and match. The
+optional `npm run db:verify` script was **not** written: it needs a live
+`DATABASE_URL` to diff against, which an unattended run has no business holding.
+Left as a note here rather than opened as its own issue.
