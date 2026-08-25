@@ -109,6 +109,20 @@ Auth wiring confirmed on the deployment 2026-08-06, both halves:
 - [ ] A hand-rolled POST to `/api/runs` claiming someone else's `accountId` is
       rejected with 401
 - [ ] Hammering `/api/runs` past 30/min returns 429 with `Retry-After`
+- [ ] **Moderation (issue 08) end to end.** None of this can run locally — there
+      is no `/api` in `vite dev` or `vite preview`, so the panel has never made a
+      real request:
+  - [ ] `/api/moderation` returns 401 without the token and 401 with a wrong one
+  - [ ] The Moderation panel on `/admin` opens and lists published handles
+  - [ ] Block a test account; confirm its rows leave the public board and that
+        the ranking has no gap where they were
+  - [ ] Unblock it; confirm the rows come back and the save was untouched
+  - [ ] Delete one run row; confirm it is gone from the board and from `runs`
+  - [ ] Delete one feedback note from the admin feedback view
+  - [ ] Confirm `blocked_accounts` was created on the first call rather than
+        500ing on a missing relation
+  - [ ] Post a run with a screened handle by hand; confirm it is stored with a
+        null `playerName` and does not appear on the board
 - [ ] The `rate_limits` table was created on first use and is being swept
 - [ ] The leaderboard still lists real victories after the 60s floor and the
       rooms/sigil cross-checks — confirm a genuine win is not filtered out
