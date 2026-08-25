@@ -95,6 +95,51 @@ test.describe('leaderboard handle copy', () => {
   })
 })
 
+// -- Issue 08: a screened handle has to say so before the run is played -------
+
+test.describe('screened handle copy', () => {
+  test('warns that a screened name will not be listed', async ({ page }) => {
+    await seed(page, { handle: 'xXnaziXx' })
+    await page.goto('/')
+    await openSettings(page)
+    await expect(page.getByText(/will not be listed on the public leaderboard/i)).toBeVisible()
+    // And does not also claim the opposite.
+    await expect(page.getByText(/Victories are credited to/i)).toHaveCount(0)
+  })
+
+  test('names impersonation as the reason when that is the reason', async ({ page }) => {
+    await seed(page, { handle: 'admin' })
+    await page.goto('/')
+    await openSettings(page)
+    await expect(page.getByText(/reserved for the game and its moderators/i)).toBeVisible()
+  })
+
+  test('leaves an ordinary handle alone', async ({ page }) => {
+    // The false-positive half. A denylist that eats real names is the failure
+    // mode nobody reports, because the player just gives up on the board.
+    await seed(page, { handle: 'Cassandra' })
+    await page.goto('/')
+    await openSettings(page)
+    await expect(page.getByText(/Victories are credited to/i)).toBeVisible()
+    await expect(page.getByText(/will not be listed/i)).toHaveCount(0)
+  })
+
+  test('still lets the name be typed through a screened prefix', async ({ page }) => {
+    // "Nazir" passes through "nazi" on the fourth keystroke. Refusing to store
+    // it would make the name untypable, so the field keeps accepting input and
+    // only the copy changes.
+    await seed(page, { handle: '' })
+    await page.goto('/')
+    await openSettings(page)
+    const input = page.getByLabel('Leaderboard name')
+    await input.fill('nazi')
+    await expect(page.getByText(/will not be listed/i)).toBeVisible()
+    await input.fill('Nazir')
+    await expect(input).toHaveValue('Nazir')
+    await expect(page.getByText(/Victories are credited to/i)).toBeVisible()
+  })
+})
+
 // -- Issue 14: say it at the moment it matters, on the victory screen ---------
 
 test.describe('unlisted-victory nudge', () => {

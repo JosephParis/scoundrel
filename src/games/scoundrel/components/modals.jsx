@@ -5,6 +5,7 @@ import {
   FLAG_IDS, FLAG_META, getFlags, setFlag, resetAllFlags,
 } from '../logic'
 import { settings, useCardLayout, useHandle, MAX_HANDLE_LENGTH } from '../settings'
+import { handleRejectionReason } from '../handleDenylist'
 import { audio, useMuted, useMusicVolume, useSfxVolume } from '../audio'
 
 // -- Settings modal ----------------------------------------------------
@@ -29,11 +30,18 @@ const CARD_LAYOUT_OPTIONS = [
 // entirely — and the copy below has to say so (issue 14). The field is
 // write-through: settings.setHandle sanitizes on every keystroke, so what is
 // shown is exactly what a future run would carry.
+//
+// Screened names (issue 08) are still typable and still stored locally. The
+// field would otherwise be unusable — refusing to store "nazi" means refusing
+// the fourth keystroke of "Nazir" — and the server drops the name from the
+// record either way, so the honest thing is to keep the input working and say
+// plainly that this one will not be listed.
 function LeaderboardHandleSection() {
   const handle = useHandle()
   // What a run would actually be credited to: sanitizeHandle keeps a trailing
   // space so it can be typed, but nothing is ever posted under one.
   const credited = handle.trim()
+  const rejected = handleRejectionReason(credited)
   return (
     <section className="mt-6">
       <div className="text-[10px] uppercase tracking-[0.3em] text-slate-500 mb-3">
@@ -50,10 +58,14 @@ function LeaderboardHandleSection() {
         spellCheck={false}
         className="w-full rounded-md border border-stone-700 bg-stone-900 px-3 py-2 text-sm text-parchment placeholder:text-slate-600 focus:border-rune focus:outline-none transition"
       />
-      <p className="text-[11.5px] text-slate-400 leading-snug mt-2">
-        {credited
-          ? <>Victories are credited to <span className="text-rune">{credited}</span> on the public leaderboard, visible to everyone.</>
-          : 'Leave this empty and your runs stay off the leaderboard entirely. Set a name only if you want to be listed publicly.'}
+      <p className="text-[11.5px] leading-snug mt-2 text-slate-400">
+        {!credited
+          ? 'Leave this empty and your runs stay off the leaderboard entirely. Set a name only if you want to be listed publicly.'
+          : rejected === 'reserved'
+            ? <span className="text-red-300">That name is reserved for the game and its moderators, so runs under it will not be listed. Pick another to appear on the board.</span>
+            : rejected
+              ? <span className="text-red-300">This name will not be listed on the public leaderboard. Pick another to appear on the board.</span>
+              : <>Victories are credited to <span className="text-rune">{credited}</span> on the public leaderboard, visible to everyone.</>}
       </p>
       <p className="text-[11px] text-slate-500 leading-snug mt-1.5">
         Letters, numbers, spaces, - and _ only, up to {MAX_HANDLE_LENGTH} characters.
