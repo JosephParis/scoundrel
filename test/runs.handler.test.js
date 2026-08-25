@@ -189,3 +189,54 @@ describe('POST /api/runs — validation', () => {
     expect(res.statusCode).toBe(400)
   })
 })
+
+// Issue 08. The client screens the handle too, but the client is a suggestion:
+// this endpoint is reachable with curl, which is the whole reason the check has
+// to exist twice. Storing-minus-the-name rather than rejecting is deliberate --
+// see the note on scrubHandle.
+describe('POST /api/runs — handle screening', () => {
+  function insertedRecords() {
+    return queries
+      .filter(q => q.text.includes('insert into runs'))
+      .map(q => JSON.parse(q.vals.find(v => typeof v === 'string' && v.startsWith('{'))))
+  }
+
+  it('stores an acceptable handle untouched', async () => {
+    const res = await post({ body: record({ playerName: 'Cassandra' }) })
+    expect(res.statusCode).toBe(202)
+    expect(insertedRecords()[0].playerName).toBe('Cassandra')
+  })
+
+  it('stores the run but drops a denylisted handle', async () => {
+    const res = await post({ body: record({ playerName: 'xXnaziXx' }) })
+    expect(res.statusCode).toBe(202)
+    const stored = insertedRecords()
+    expect(stored).toHaveLength(1)              // the run itself is kept
+    expect(stored[0].playerName).toBe(null)     // the name is not
+  })
+
+  it('drops a handle that only reads as a slur through leetspeak', async () => {
+    await post({ body: record({ playerName: 'n1gg3r' }) })
+    expect(insertedRecords()[0].playerName).toBe(null)
+  })
+
+  it('drops a handle impersonating the operator', async () => {
+    await post({ body: record({ playerName: 'admin' }) })
+    expect(insertedRecords()[0].playerName).toBe(null)
+  })
+
+  it('scrubs per record, not per batch', async () => {
+    await post({
+      body: [
+        record({ playerName: 'Cassandra' }),
+        record({ startedAt: NOW - 2 * HOUR, playerName: 'f4gg0t' }),
+      ],
+    })
+    expect(insertedRecords().map(r => r.playerName)).toEqual(['Cassandra', null])
+  })
+
+  it('leaves a run with no handle alone', async () => {
+    await post({ body: record() })
+    expect(insertedRecords()[0].playerName).toBe(undefined)
+  })
+})
