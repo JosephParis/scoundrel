@@ -535,7 +535,7 @@ export default function Scoundrel() {
         onReplayTutorial={() => setTutorialReplayOpen(true)}
         onOpenCredits={() => setCreditsOpen(true)}
       />
-      <main className="flex-1 w-full max-w-7xl px-4 sm:px-6 pt-16 sm:pt-20 pb-8">
+      <main className="flex-1 w-full max-w-7xl px-4 sm:px-6 pt-16 short:pt-14 sm:pt-20 pb-4 short:pb-2 sm:pb-8">
         {game.phase === 'sanctuary' && <SanctuaryView game={game} setGame={setGame} onSkipTutorial={skipTutorial} ascensionUnlocked={ascensionUnlocked} celebrateSigil={sigilCelebrate} onSigilCelebrated={() => setSigilCelebrate(false)} onOpenRules={() => setRulesOpen(true)} />}
         {game.phase === 'descent' && <DescentView game={game} setGame={setGame} />}
         {(game.phase === 'gameover' || game.phase === 'victory') && (

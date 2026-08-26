@@ -110,7 +110,7 @@ export function LogPanel({ lines, className = '', collapsible = false }) {
       <button
         type="button"
         onClick={() => setExpanded(true)}
-        className="panel p-3 w-full flex items-center justify-between text-left hover:border-rune/40 transition"
+        className="panel p-3 short:p-2 w-full flex items-center justify-between text-left hover:border-rune/40 transition"
         aria-expanded="false"
       >
         <span className="text-[10px] uppercase tracking-widest text-slate-500">Log</span>

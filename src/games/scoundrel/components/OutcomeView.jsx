@@ -12,7 +12,7 @@ import { useHandle } from '../settings'
 // only victories are ranked, so there is nothing to be credited for.
 function LeaderboardNudge({ onOpenSettings }) {
   return (
-    <p className="text-[12px] text-slate-400 -mt-2 mb-4 max-w-md">
+    <p className="text-[12px] text-slate-400 -mt-1 short:-mt-2 mb-3 short:mb-2 sm:mb-4 max-w-md">
       This victory is listed as Anonymous: it carries no name.{' '}
       <button
         onClick={onOpenSettings}
@@ -48,22 +48,24 @@ export function OutcomeView({ game, onBeginAgain, onOpenSettings }) {
   // keeps the "big web page" within the viewport without any internal scroll.
   // On narrow screens the columns stack and the page scrolls as usual.
   return (
-    <div className="flex flex-col items-center text-center animate-fade-in pt-2">
-      <div className="space-y-3">
+    <div className="flex flex-col items-center text-center animate-fade-in pt-2 short:pt-0">
+      <div className="space-y-2 short:space-y-1 sm:space-y-3">
         <div className={`font-display text-4xl sm:text-5xl ${won ? 'text-rune' : 'text-blood'}`}>
           {headline}
         </div>
-        <div className="rune-divider mx-auto max-w-xs text-[10px]">
+        <div className="rune-divider mx-auto max-w-xs text-[10px] short:hidden">
           <span>✦</span>
         </div>
-        <div className="text-[11px] text-slate-500 uppercase tracking-widest">
+        {/* The summary panel below repeats this exact count, so on a short screen
+            the duplicate is the cheapest line to drop. */}
+        <div className="text-[11px] text-slate-500 uppercase tracking-widest short:hidden">
           {game.sigilsEarned} of {game.sigilTarget} sigils set
         </div>
       </div>
 
       <button
         onClick={onBeginAgain}
-        className={`my-5 px-10 py-4 rounded-md font-display text-lg tracking-[0.2em] transition ${
+        className={`my-3 short:my-2 sm:my-5 px-10 py-3 short:py-2 sm:py-4 rounded-md font-display text-lg tracking-[0.2em] transition ${
           won
             ? 'bg-gradient-to-b from-amber-500 to-amber-700 hover:from-amber-400 hover:to-amber-600 text-stone-950 border border-amber-600/80 shadow-[0_0_24px_-6px_rgba(251,191,36,0.6)]'
             : 'bg-gradient-to-b from-red-700 to-red-900 hover:from-red-600 hover:to-red-800 text-parchment border border-red-800/80'
@@ -74,14 +76,14 @@ export function OutcomeView({ game, onBeginAgain, onOpenSettings }) {
 
       {anonymous && <LeaderboardNudge onOpenSettings={onOpenSettings} />}
 
-      <div className="w-full max-w-4xl grid gap-5 lg:grid-cols-2 items-start text-left">
-        <div className="panel p-5 sm:p-6">
+      <div className="w-full max-w-4xl grid grid-cols-[1.4fr_1fr] lg:grid-cols-2 gap-3 short:gap-2 sm:gap-5 items-start text-left">
+        <div className="panel p-4 short:p-3 sm:p-6">
           <RunSummary record={record} showDeck={false} />
         </div>
 
-        <div className="space-y-5">
+        <div className="space-y-3 short:space-y-2 sm:space-y-5">
           {deck.length > 0 && (
-            <div className="panel p-5 sm:p-6">
+            <div className="panel p-4 short:p-3 sm:p-6">
               <EndingKitSection deck={deck} />
             </div>
           )}

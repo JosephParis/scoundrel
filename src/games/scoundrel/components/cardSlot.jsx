@@ -174,7 +174,7 @@ export function CardSlot({ card, onClick, onBareHands, weaponDamage, bareDamage,
   const dealStyle = dealIndex != null ? { animationDelay: `${dealIndex * 0.04}s` } : undefined
   if (!card) {
     return (
-      <div className="aspect-[2/3] w-full max-w-[180px] sm:max-w-[220px] md:max-w-[240px] rounded-lg border border-dashed border-stone-800 bg-stone-900/30" />
+      <div className="aspect-[2/3] w-full max-w-[180px] short:max-w-[155px] sm:max-w-[220px] md:max-w-[240px] rounded-lg border border-dashed border-stone-800 bg-stone-900/30" />
     )
   }
   // Shrouded monsters (and any card while Blind, via forceBack) render
@@ -298,7 +298,7 @@ export function CardSlot({ card, onClick, onBareHands, weaponDamage, bareDamage,
   }
 
   return (
-    <div className="group relative w-full max-w-[180px] sm:max-w-[220px] md:max-w-[240px] flex flex-col animate-card-deal" style={dealStyle}>
+    <div className="group relative w-full max-w-[180px] short:max-w-[155px] sm:max-w-[220px] md:max-w-[240px] flex flex-col animate-card-deal" style={dealStyle}>
       {cardIsCue && (
         <div
           className="absolute -top-7 left-1/2 -translate-x-1/2 z-20 text-rune text-2xl animate-bounce pointer-events-none drop-shadow-[0_0_6px_rgba(251,191,36,0.75)]"

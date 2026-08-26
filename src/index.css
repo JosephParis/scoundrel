@@ -1,6 +1,12 @@
 @import url('https://fonts.googleapis.com/css2?family=Cinzel:wght@500;600;700&family=Inter:wght@300;400;500;600;700&display=swap');
 @import "tailwindcss";
 
+/* Short viewports (iPhone SE/8 at 667, small Androids at 740). Height, not
+   width, is what the outcome and descent screens run out of, so the tightest
+   spacing is keyed to height alone and taller phones keep the roomier look.
+   Above this, `short:` utilities simply do not apply. */
+@custom-variant short (@media (max-height: 760px));
+
 @theme {
   --color-blood: #b91c1c;
   --color-blood-glow: #ef4444;
