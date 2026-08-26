@@ -15,6 +15,9 @@
  * Browser autoplay policy: Howler auto-unlocks the AudioContext on the first
  * user gesture, so the opening track may not sound until the first click. That
  * is expected and unavoidable on the web.
+ *
+ * iOS/iPadOS: see configureAudioSession below. Without it the whole game is
+ * silent on any Apple device whose ringer is off, which is most of them.
  */
 import { Howl, Howler } from 'howler'
 import { useSyncExternalStore } from 'react'
@@ -80,6 +83,38 @@ const SFX = {
   descend: { src: '/audio/sfx/descend.mp3' },
 }
 
+/**
+ * Opt this page into the "playback" audio session so sound survives silent mode.
+ *
+ * WebKit runs Web Audio under the `ambient` session category by default, and
+ * ambient audio is silenced by the iPhone ringer switch / the iPad's Control
+ * Centre silent toggle -- independently of the volume buttons, which keep
+ * showing a healthy media level the whole time. No other platform has this
+ * concept, which is why the game sounded fine on Android and desktop and was
+ * mute on iPad with nothing in the console to explain it.
+ *
+ * Declaring `playback` (the category media players use) routes the game like
+ * media instead of like a UI blip, so it ignores the silent switch and keeps
+ * running when the screen locks. The trade is iOS's, not ours: a playback
+ * session takes the audio focus, so it stops whatever the player had going in
+ * another app rather than mixing under it. A muted game is the worse of the
+ * two, and the mute toggle is right there in the top bar.
+ *
+ * Must run before the AudioContext exists -- the category is latched at
+ * context creation -- so the constructor calls this before touching Howler.
+ * Safari 16.4+ only; older iPadOS has no way to ask, and stays silent-switched.
+ */
+function configureAudioSession() {
+  try {
+    if (typeof navigator !== 'undefined' && navigator.audioSession) {
+      navigator.audioSession.type = 'playback'
+    }
+  } catch {
+    // Unsupported value or a locked-down session; Web Audio still works, it
+    // just keeps the default category.
+  }
+}
+
 function loadMuted() {
   try {
     return localStorage.getItem(MUTE_KEY) === 'true'
@@ -98,6 +133,9 @@ function storeMuted(muted) {
 
 class AudioController {
   constructor() {
+    // Before anything else: Howler.mute() below is what first creates the
+    // AudioContext, and the session category can only be chosen up front.
+    configureAudioSession()
     this.muted = loadMuted()
     this.musicVolume = loadVolume(MUSIC_VOL_KEY, DEFAULT_MUSIC_VOLUME)
     this.sfxVolume = loadVolume(SFX_VOL_KEY, DEFAULT_SFX_VOLUME)
