@@ -10,6 +10,28 @@
 const LEADERBOARD_API = '/api/leaderboard'
 
 /**
+ * Stand-in for a run whose player never set a handle. The board lists those
+ * runs rather than dropping them, so every row needs something to show; the
+ * server sends `playerName: null` and this is what fills the gap.
+ */
+export const ANONYMOUS_NAME = 'Anonymous'
+
+/**
+ * What to print in an entry's name column.
+ *
+ * Your own row reads "You" whatever handle is on it -- you know who you are,
+ * and it is the row you are scanning for. Everyone else reads their handle, or
+ * the anonymous stand-in. A handle of whitespace is treated as absent: the
+ * server already trims to null, and this repeats the check so a stray row from
+ * an older deployment can't render a blank name.
+ */
+export function entryDisplayName(entry) {
+  if (entry?.you) return 'You'
+  const name = entry?.playerName?.trim()
+  return name || ANONYMOUS_NAME
+}
+
+/**
  * Fetch the board.
  * @param {object} opts
  * @param {string} [opts.accountId] - the viewer's account id, so the server can

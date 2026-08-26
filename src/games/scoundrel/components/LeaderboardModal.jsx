@@ -1,5 +1,5 @@
 import { useEffect, useState } from 'react'
-import { fetchLeaderboard } from '../../../utils/leaderboard'
+import { fetchLeaderboard, entryDisplayName } from '../../../utils/leaderboard'
 import { getMode } from '../constants'
 import { useHandle } from '../settings'
 
@@ -63,10 +63,10 @@ function Row({ entry }) {
         )}
       </span>
       <span className="min-w-0 flex-1">
-        {/* The endpoint lists only runs carrying a handle, so playerName is
-            always present here — there is no anonymous row to fall back to. */}
+        {/* playerName is null for a player who never set a handle; those runs
+            are listed too, under the anonymous stand-in. */}
         <span className={`block text-sm truncate ${entry.you ? 'text-rune' : 'text-parchment'}`}>
-          {entry.you ? 'You' : entry.playerName}
+          {entryDisplayName(entry)}
         </span>
         <span className="block text-[10px] text-slate-500 truncate">
           {formatDate(entry.endedAt)}
@@ -141,7 +141,7 @@ function LeaderboardBody({ onClose, user }) {
         <h2 className="font-display text-rune text-2xl mb-1">Fastest descents</h2>
         <p className="text-[12px] text-slate-500 mb-4">
           Victories only, fastest first, one entry per player.
-          {!handle.trim() && ' Your runs are not listed until you set a leaderboard name in Settings.'}
+          {!handle.trim() && ' Your runs are listed as Anonymous until you set a leaderboard name in Settings.'}
           {' '}Press <span className="font-mono text-slate-300">Esc</span> or click outside to close.
         </p>
 
@@ -155,8 +155,7 @@ function LeaderboardBody({ onClose, user }) {
           </div>
         ) : data.entries.length === 0 ? (
           <div className="py-12 text-center text-slate-500 text-sm">
-            Nobody is listed yet. Set a leaderboard name, clear a run, and the
-            first time is yours.
+            Nobody is listed yet. Clear a run and the first time is yours.
           </div>
         ) : (
           <>

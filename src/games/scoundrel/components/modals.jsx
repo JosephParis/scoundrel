@@ -44,7 +44,7 @@ function LeaderboardHandleSection() {
         value={handle}
         onChange={e => settings.setHandle(e.target.value)}
         maxLength={MAX_HANDLE_LENGTH}
-        placeholder="Not listed"
+        placeholder="Anonymous"
         aria-label="Leaderboard name"
         autoComplete="off"
         spellCheck={false}
@@ -53,13 +53,13 @@ function LeaderboardHandleSection() {
       <p className="text-[11.5px] text-slate-400 leading-snug mt-2">
         {credited
           ? <>Victories are credited to <span className="text-rune">{credited}</span> on the public leaderboard, visible to everyone.</>
-          : 'Leave this empty and your runs stay off the leaderboard entirely. Set a name only if you want to be listed publicly.'}
+          : 'Leave this empty and your victories are listed publicly as Anonymous. Set a name to be credited by it instead.'}
       </p>
       <p className="text-[11px] text-slate-500 leading-snug mt-1.5">
         Letters, numbers, spaces, - and _ only, up to {MAX_HANDLE_LENGTH} characters.
         Applies to runs you finish from now on. Runs already recorded keep the
         name they were posted under, so a victory you won before setting a name
-        stays unlisted.
+        stays listed as Anonymous.
       </p>
     </section>
   )

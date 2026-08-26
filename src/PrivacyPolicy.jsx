@@ -97,7 +97,7 @@ export default function PrivacyPolicy() {
                 />
                 <Row
                   what="Leaderboard handle"
-                  why="Shown publicly on the fastest-victory board. Optional and blank by default."
+                  why="Shown publicly on the fastest-victory board. Optional and blank by default; without it the entry reads Anonymous."
                   who="Neon (and anyone viewing the board)"
                 />
                 <Row
@@ -147,9 +147,11 @@ export default function PrivacyPolicy() {
 
         <Section title="What is public">
           <p>
-            Only one thing: an entry on the fastest-victory leaderboard, and only if you
-            have typed a handle into Settings. The handle field is empty by default, and a
-            run with no handle is not listed at all.
+            Only one thing: an entry on the fastest-victory leaderboard, listing the time,
+            mode and ascension of a winning run. Every victory that qualifies is listed. If
+            you have typed a handle into Settings, the entry carries that handle; the field
+            is empty by default, and an entry from a run with no handle is shown as
+            &ldquo;Anonymous&rdquo; and carries nothing that identifies you.
           </p>
           <p>
             No name is ever taken from your Google profile for this, and the leaderboard

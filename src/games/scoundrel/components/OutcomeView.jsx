@@ -4,24 +4,23 @@ import { RunSummary, EndingKitSection } from './RunSummary'
 import { buildRunRecord } from '../history'
 import { useHandle } from '../settings'
 
-// A victory with no leaderboard handle is never listed: the board excludes
-// nameless rows outright rather than showing them as "Anonymous". Silently
-// dropping someone's best run is the confusing half of issue 14, so say it
-// here, at the one moment the player cares, and offer the fix in one click.
-// Deliberately not shown on death — only victories are ranked, so there is
-// nothing to miss out on.
+// A victory with no leaderboard handle is listed as "Anonymous" rather than
+// dropped. The run places, so this is no longer a warning that something was
+// lost -- it just tells the player which row is theirs and what it would take
+// to have their own name on it. Still worth saying at the one moment they care
+// about it, and the fix is still one click. Deliberately not shown on death --
+// only victories are ranked, so there is nothing to be credited for.
 function LeaderboardNudge({ onOpenSettings }) {
   return (
     <p className="text-[12px] text-slate-400 -mt-2 mb-4 max-w-md">
-      This victory isn't on the leaderboard: it only lists runs that carry a
-      name.{' '}
+      This victory is listed as Anonymous: it carries no name.{' '}
       <button
         onClick={onOpenSettings}
         className="text-rune underline underline-offset-2 hover:text-amber-300 transition"
       >
         Set one in Settings
       </button>{' '}
-      and the runs you finish from now on will be listed.
+      and the runs you finish from now on will be credited to it.
     </p>
   )
 }
@@ -35,7 +34,7 @@ export function OutcomeView({ game, onBeginAgain, onOpenSettings }) {
   // Trailing space is legal mid-typing but nothing posts under it, so trim
   // before deciding whether this run carries a name.
   const handle = useHandle()
-  const unlisted = won && !handle.trim()
+  const anonymous = won && !handle.trim()
   // Local view-only record; the persisted copy (with account id) is written
   // by the root's recording effect. User isn't needed for display.
   const record = useMemo(() => buildRunRecord(game, null), [game])
@@ -73,7 +72,7 @@ export function OutcomeView({ game, onBeginAgain, onOpenSettings }) {
         {won ? 'ASCEND' : 'BEGIN AGAIN'}
       </button>
 
-      {unlisted && <LeaderboardNudge onOpenSettings={onOpenSettings} />}
+      {anonymous && <LeaderboardNudge onOpenSettings={onOpenSettings} />}
 
       <div className="w-full max-w-4xl grid gap-5 lg:grid-cols-2 items-start text-left">
         <div className="panel p-5 sm:p-6">

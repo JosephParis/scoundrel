@@ -54,36 +54,33 @@ async function openSettings(page) {
   await expect(page.getByRole('heading', { name: 'Settings' })).toBeVisible()
 }
 
-// -- Issue 14: the board has no anonymous listing, so nothing may imply one ---
+// -- The board lists nameless runs as Anonymous, and the copy must say so -----
+//
+// This inverts what issue 14 originally asserted. That issue's complaint was
+// that the copy promised an Anonymous listing the server did not deliver, and
+// it was settled by removing the promise; the server now delivers it, so the
+// promise is what has to be here instead. Either way the rule is the same one:
+// Settings and the board must agree about what an empty name does.
 
 test.describe('leaderboard handle copy', () => {
-  test('the handle placeholder does not promise an Anonymous listing', async ({ page }) => {
-    // The original bug: placeholder="Anonymous" on an empty field reads as
-    // "this is the name you'll appear under", when in fact api/leaderboard.js
-    // drops nameless rows and the player appears nowhere at all.
+  test('the handle placeholder shows what an empty name lists as', async ({ page }) => {
+    // The placeholder is the shortest possible answer to "what happens if I
+    // leave this blank", so it has to be the literal name the board will show.
     await seed(page, { handle: '' })
     await page.goto('/')
     await openSettings(page)
-    const input = page.getByLabel('Leaderboard name')
-    await expect(input).toHaveAttribute('placeholder', /^(?!.*anonymous).*$/i)
-    await expect(input).toHaveAttribute('placeholder', 'Not listed')
+    await expect(page.getByLabel('Leaderboard name')).toHaveAttribute('placeholder', 'Anonymous')
   })
 
-  test('an empty handle is described as staying off the board entirely', async ({ page }) => {
+  test('an empty handle is described as an Anonymous listing, not an absent one', async ({ page }) => {
     await seed(page, { handle: '' })
     await page.goto('/')
     await openSettings(page)
-    await expect(page.getByText(/stay off the leaderboard entirely/i)).toBeVisible()
-  })
-
-  test('the word Anonymous appears nowhere in Settings', async ({ page }) => {
-    // Belt and braces: catches the promise creeping back in via any other
-    // string in the modal, not just the placeholder it first appeared in.
-    await seed(page, { handle: '' })
-    await page.goto('/')
-    await openSettings(page)
-    const modal = page.locator('.panel', { hasText: 'Leaderboard name' }).first()
-    await expect(modal).not.toContainText(/anonymous/i)
+    await expect(page.getByText(/listed publicly as Anonymous/i)).toBeVisible()
+    // The old promise, now false: an empty name no longer keeps a run off the
+    // board, and nothing in Settings may still claim it does.
+    await expect(page.getByText(/stay off the leaderboard entirely/i)).toHaveCount(0)
+    await expect(page.getByText(/not listed/i)).toHaveCount(0)
   })
 
   test('a set handle is named as the credit', async ({ page }) => {
@@ -95,13 +92,17 @@ test.describe('leaderboard handle copy', () => {
   })
 })
 
-// -- Issue 14: say it at the moment it matters, on the victory screen ---------
+// -- Say it at the moment it matters, on the victory screen ------------------
 
-test.describe('unlisted-victory nudge', () => {
-  test('a victory with no handle says so and links to Settings', async ({ page }) => {
+test.describe('anonymous-victory nudge', () => {
+  const NUDGE = /listed as Anonymous/i
+
+  test('a victory with no handle says how it is listed and links to Settings', async ({ page }) => {
     await seed(page, { handle: '', outcome: 'victory' })
     await page.goto('/')
-    await expect(page.getByText(/isn't on the leaderboard/i)).toBeVisible()
+    await expect(page.getByText(NUDGE)).toBeVisible()
+    // And it must not still read as a loss -- the run does place now.
+    await expect(page.getByText(/isn't on the leaderboard/i)).toHaveCount(0)
     await page.getByRole('button', { name: /Set one in Settings/i }).click()
     await expect(page.getByRole('heading', { name: 'Settings' })).toBeVisible()
   })
@@ -109,7 +110,7 @@ test.describe('unlisted-victory nudge', () => {
   test('a victory with a handle shows no nudge', async ({ page }) => {
     await seed(page, { handle: 'Rookwarden', outcome: 'victory' })
     await page.goto('/')
-    await expect(page.getByText(/isn't on the leaderboard/i)).toHaveCount(0)
+    await expect(page.getByText(NUDGE)).toHaveCount(0)
   })
 
   test('a whitespace-only handle counts as no handle', async ({ page }) => {
@@ -118,15 +119,15 @@ test.describe('unlisted-victory nudge', () => {
     // deciding.
     await seed(page, { handle: '   ', outcome: 'victory' })
     await page.goto('/')
-    await expect(page.getByText(/isn't on the leaderboard/i)).toBeVisible()
+    await expect(page.getByText(NUDGE)).toBeVisible()
   })
 
   test('a death shows no nudge', async ({ page }) => {
-    // Only victories are ranked, so there is nothing for a death to miss.
+    // Only victories are ranked, so a death has no listing to be credited for.
     await seed(page, { handle: '', outcome: 'gameover' })
     await page.goto('/')
     await expect(page.getByText(/You fall in the dark/i)).toBeVisible()
-    await expect(page.getByText(/isn't on the leaderboard/i)).toHaveCount(0)
+    await expect(page.getByText(NUDGE)).toHaveCount(0)
   })
 })
 

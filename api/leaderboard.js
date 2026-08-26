@@ -11,16 +11,28 @@ import { ensureRunsTable } from './_lib/runsTable.js'
  * identity that leaves here is `playerName`, the handle the player typed into
  * Settings.
  *
- * A run is listed only if it carries a handle. Runs still reach the `runs`
- * table either way — analytics counts everyone — but the board is opt-in, so a
- * player who never set a handle simply does not appear. There is deliberately
- * no "Anonymous" row: being on a public page is something a player asks for.
+ * Every qualifying victory is listed, handle or not. A run with no handle comes
+ * back with `playerName: null` and the client renders it as "Anonymous" (see
+ * entryDisplayName in src/utils/leaderboard.js), so a player who never opened
+ * Settings still places instead of silently vanishing off a board they earned a
+ * spot on. Nothing identifying travels with an unnamed row — rank, time, mode
+ * and ascension are the whole payload — so this stays anonymous in fact and not
+ * just in name.
  *
  * Only victories qualify — a fast death is not an achievement — and only one
  * row per player, so a quick player can't fill the whole board. Signed-in
  * players group by account (their handle may change; the account is the
- * player). Guests all share account_id 'guest' and so group by handle instead,
- * which is the only thing distinguishing one guest from another.
+ * player), named or not. Guests all share account_id 'guest' and so group by
+ * handle instead, which is the only thing distinguishing one guest from
+ * another.
+ *
+ * Which leaves unnamed guests, who carry nothing to tell them apart: they land
+ * in one shared bucket and the board shows their single fastest run, not one
+ * row each. That is the same anti-flooding rule as everyone else applied to an
+ * identity we genuinely cannot resolve — the alternative, a row per run, hands
+ * one guest with a stopwatch the entire top 25. The cost is real and worth
+ * naming: the second-fastest unnamed guest does not appear. Signing in or
+ * setting a handle is what buys a player their own line.
  *
  * Query params:
  *   limit=<n>       rows to return (default 25, max 100)
@@ -65,17 +77,19 @@ function parseLimit(raw) {
   return Math.min(n, MAX_LIMIT)
 }
 
-// One row per player, their fastest qualifying victory, ranked. Runs without a
-// handle are filtered out entirely (see the opt-in note above), which is also
-// what lets the guest partition key on the handle: it is the only thing
-// separating one guest from another, and the same filter guarantees it is
-// present.
+// One row per player, their fastest qualifying victory, ranked.
 //
 // The partition takes two expressions rather than one concatenated key, so no
 // string building is needed: signed-in players group by account_id alone (the
 // second expression is a constant for them, and their handle may change
 // between runs without splitting them into two entries), while guests, who all
 // share account_id 'guest', additionally group by handle.
+//
+// An unnamed run coalesces to '' in that second expression, which is what puts
+// every unnamed guest in one bucket (see the note above — SQL would treat a
+// bare null as its own group per row, so the coalesce is doing real work here,
+// not tidying). Unnamed signed-in players are unaffected: account_id already
+// separates them, one row each.
 //
 // Kept as a single fragment so the board query and the caller's-own-rank query
 // rank against the same population.
@@ -85,11 +99,11 @@ function rankedBest(versionCond) {
            game_version, player_name,
            row_number() over (order by duration_ms asc, ended_at asc) rank
     from (
-      select r.*, btrim(r.record->>'playerName') player_name,
+      select r.*, nullif(btrim(r.record->>'playerName'), '') player_name,
              row_number() over (
                partition by r.account_id,
                             case when r.account_id = ${GUEST_ID}
-                                 then btrim(r.record->>'playerName')
+                                 then coalesce(btrim(r.record->>'playerName'), '')
                                  else '' end
                order by r.duration_ms asc, r.ended_at asc
              ) player_rn
@@ -115,7 +129,6 @@ function rankedBest(versionCond) {
                    then (r.record->>'sigilTarget')::int end,
               1
             )
-        and btrim(coalesce(r.record->>'playerName', '')) <> ''
         ${versionCond}
     ) per_player
     where player_rn = 1
