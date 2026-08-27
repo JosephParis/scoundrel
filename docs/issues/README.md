@@ -33,7 +33,11 @@ Baseline: `npm run lint` clean, `npm run build` clean. Test suite as it stands:
 | `error-boundary.prod.spec.js` | prod | 8 pass |
 | `mobile-responsive.spec.js` | dev | 27 pass |
 
-**Full suite: 391 unit + 96 e2e passed, 1 skipped (`card-library`, issue 12).**
+**Full suite: 400 unit + 172 e2e passed, 1 skipped (`card-library`, issue 12).**
+Measured 2026-08-27. The table above stopped being itemised at some point:
+`copy-accuracy`, `device-lab`, `itch-build`, `mobile-no-scroll` and
+`robots-and-payload` also run and are not listed. The totals line is the
+baseline that matters — a new failure or a second skip is a regression.
 
 The unit half went 84 → 391 with issue 15. The rules engine now has real
 coverage: `combat.js`, `lifecycle.js`, `logic/sanctuary.js`, `deck.js`,
