@@ -72,6 +72,38 @@
     transform: scale(var(--stage-scale, 1));
   }
 
+  /* Phone scale-to-fit (MobileFitStage.jsx, which is where the reasoning
+     lives). Same shape as the embedded rules above and the same two things the
+     measurement assumes: that the viewport is the hard boundary, and that the
+     stage is free to be taller than it so there is something to measure.
+
+     `fit-locked` is set only once the scale is known to bring the content
+     inside the viewport. Gating the lock on a bare media query instead would
+     hide the bottom of any screen that turned out not to fit, with no scroll
+     left to reach it. */
+  html.fit-locked, html.fit-locked body {
+    height: 100dvh;
+    min-height: 0;
+    overflow: hidden;
+  }
+
+  html.fit-locked #root,
+  html.fit-locked #root > main {
+    position: relative;
+    height: 100dvh;
+    min-height: 0;
+    overflow: hidden;
+  }
+
+  html.fit-locked .mobile-stage {
+    position: absolute;
+    top: 0;
+    left: 0;
+    width: 100%;
+    transform-origin: top center;
+    transform: scale(var(--stage-scale, 1));
+  }
+
   body {
     margin: 0;
     background:

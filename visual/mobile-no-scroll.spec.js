@@ -20,14 +20,23 @@ import { DESCENT, SAVE_KEY, TUTORIAL_KEY } from './fixtures/descent.js'
 
 const HANDLE_KEY = 'scoundrel:leaderboardHandle'
 
-// The shortest viewports Sigil is actually played on. 375x667 (iPhone SE, and
-// every iPhone up to the 8) is the floor: clear it and everything taller is
-// clear too, which is why it is not enough to test only the phone in hand.
+// The heights below are the *usable* viewport, not the screen. That distinction
+// is the whole reason this file needed a second pass: an earlier version tested
+// 375x667 and passed, while a real iPhone SE still scrolled, because Safari's
+// address bar and toolbar take ~114px and the page only ever gets 553 of it.
+// Testing the screen size measures a device nobody is holding.
+//
+// Values are the toolbars-showing state, which is what you land on. Once you
+// scroll they collapse and you get more -- but needing to scroll to earn the
+// room to not scroll is exactly the bug.
 const VIEWPORTS = [
-  { name: 'iPhone SE 375x667', width: 375, height: 667 },
-  { name: 'Android 360x740', width: 360, height: 740 },
-  { name: 'iPhone 12-14 390x844', width: 390, height: 844 },
-  { name: 'iPhone 15 Pro 393x852', width: 393, height: 852 },
+  { name: 'iPhone SE / Safari 375x553', width: 375, height: 553 },
+  { name: 'Android / Chrome 360x650', width: 360, height: 650 },
+  { name: 'iPhone 12-14 / Safari 390x754', width: 390, height: 754 },
+  { name: 'iPhone 15 Pro / Safari 393x762', width: 393, height: 762 },
+  // Installed to the home screen there is no chrome at all, so the full screen
+  // is usable. Kept so the no-chrome case cannot regress unnoticed.
+  { name: 'iPhone SE / installed 375x667', width: 375, height: 667 },
 ]
 
 function outcomeState(phase) {
@@ -101,15 +110,50 @@ for (const vp of VIEWPORTS) {
       // height in both directions.
       await page.waitForTimeout(700)
 
-      const { scrollHeight, clientHeight } = await page.evaluate(() => ({
-        scrollHeight: document.documentElement.scrollHeight,
-        clientHeight: document.documentElement.clientHeight,
-      }))
+      const m = await page.evaluate(() => {
+        const de = document.documentElement
+        const stage = document.querySelector('.mobile-stage')
+        const scale = stage
+          ? Number(getComputedStyle(stage).getPropertyValue('--stage-scale')) || 1
+          : 1
+        return {
+          scrollHeight: de.scrollHeight,
+          clientHeight: de.clientHeight,
+          // Layout height of the stage; the transform does not affect this, so
+          // multiplying by the scale gives what is actually painted.
+          stageHeight: stage ? stage.scrollHeight : de.scrollHeight,
+          scale,
+        }
+      })
 
+      // Two assertions, because either alone can be satisfied by a bug.
+      //
+      // The document not scrolling is necessary but NOT sufficient: once the
+      // stage locks the viewport it sets `overflow: hidden`, which makes
+      // scrollHeight equal clientHeight whether or not anything fits. On its
+      // own this check would pass a screen whose bottom half had been silently
+      // cut off.
       expect(
-        scrollHeight,
-        `${screen.name} overflows ${vp.name} by ${scrollHeight - clientHeight}px — it must fit without scrolling`,
-      ).toBeLessThanOrEqual(clientHeight + 1)
+        m.scrollHeight,
+        `${screen.name} scrolls on ${vp.name} (over by ${m.scrollHeight - m.clientHeight}px)`,
+      ).toBeLessThanOrEqual(m.clientHeight + 1)
+
+      // So also check the painted height really lands inside the viewport --
+      // this is the one that catches content being clipped rather than fitted.
+      const painted = Math.round(m.stageHeight * m.scale)
+      expect(
+        painted,
+        `${screen.name} is clipped on ${vp.name}: ${m.stageHeight}px of content at scale ${m.scale} paints ${painted}px into ${m.clientHeight}px`,
+      ).toBeLessThanOrEqual(m.clientHeight + 1)
+
+      // And the thing the player reaches for has to be on screen, whole. This
+      // is the actual requirement; the heights above are how it is achieved.
+      const box = await screen.ready(page).first().boundingBox()
+      expect(box, `${screen.name}: could not locate its primary control`).not.toBeNull()
+      expect(
+        Math.round(box.y + box.height),
+        `${screen.name}: its primary control ends at ${Math.round(box.y + box.height)}px, past the ${m.clientHeight}px viewport on ${vp.name}`,
+      ).toBeLessThanOrEqual(m.clientHeight)
     })
   }
 }
