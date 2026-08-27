@@ -2,6 +2,7 @@ import { defineConfig } from 'vite'
 import react from '@vitejs/plugin-react'
 import tailwindcss from '@tailwindcss/vite'
 import { execSync } from 'node:child_process'
+import { readFile } from 'node:fs/promises'
 
 // Build stamp. Resolved once when the config loads (i.e. at build time), then
 // frozen into the client bundle via `define` below so the site can show which
@@ -75,12 +76,55 @@ function htmlStandalone() {
   }
 }
 
+
+// The device lab (visual/lab/index.html), served at /lab.
+//
+// `apply: 'serve'` and the configureServer-only hook mean it exists in `vite
+// dev` and nowhere else: it is not in public/, so no build copies it, and no
+// deployment can expose it. That matters because it is a tool for looking at
+// the app, not part of it.
+//
+// It is served from the app's own origin on purpose. The lab writes the game's
+// localStorage keys and its frames read them back, which only works same-origin
+// -- an html file opened over file:// would be a different origin and could
+// seed nothing.
+//
+// The device and screen list is injected from visual/fixtures/devices.js, the
+// same module visual/mobile-no-scroll.spec.js imports, so the lab you look at
+// and the guard CI runs can never drift.
+function deviceLab() {
+  return {
+    name: 'sigil-device-lab',
+    apply: 'serve',
+    configureServer(server) {
+      server.middlewares.use('/lab', async (req, res, next) => {
+        // Only the page itself; anything deeper is not ours.
+        if (req.url !== '/' && req.url !== '') return next()
+        try {
+          const [html, fixtures] = await Promise.all([
+            readFile(new URL('./visual/lab/index.html', import.meta.url), 'utf8'),
+            import('./visual/fixtures/devices.js'),
+          ])
+          const data = JSON.stringify({
+            VIEWPORTS: fixtures.VIEWPORTS,
+            SCREENS: fixtures.SCREENS,
+          })
+          res.setHeader('Content-Type', 'text/html; charset=utf-8')
+          res.end(html.replace('__DEVICE_FIXTURES__', data))
+        } catch (err) {
+          next(err)
+        }
+      })
+    },
+  }
+}
+
 export default defineConfig({
   // './' so the bundle works from any directory depth. itch serves it from
   // /html/<project-id>/, and an absolute base would send every asset request to
   // the portal's root.
   base: isStandalone ? './' : '/',
-  plugins: [react(), tailwindcss(), htmlSiteUrl(), htmlStandalone()],
+  plugins: [react(), tailwindcss(), htmlSiteUrl(), htmlStandalone(), deviceLab()],
   define: {
     // Override entries on import.meta.env so client code reads them with no
     // extra globals and ESLint stays happy. Values are inlined at build time.

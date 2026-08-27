@@ -1,0 +1,164 @@
+<!doctype html>
+<html lang="en">
+<head>
+<meta charset="utf-8">
+<title>Sigil · device lab</title>
+<style>
+  :root {
+    --bg: #0b0d12; --panel: #14171f; --line: #2a2f3a;
+    --ink: #e2e8f0; --dim: #8b94a7; --rune: #fbbf24; --bad: #ef4444; --good: #4ade80;
+  }
+  * { box-sizing: border-box; }
+  body { margin: 0; background: var(--bg); color: var(--ink);
+         font: 14px/1.5 ui-sans-serif, system-ui, sans-serif; }
+  header { position: sticky; top: 0; z-index: 10; background: var(--panel);
+           border-bottom: 1px solid var(--line); padding: 12px 16px;
+           display: flex; gap: 16px; align-items: center; flex-wrap: wrap; }
+  h1 { font-size: 15px; margin: 0; letter-spacing: .14em; text-transform: uppercase; color: var(--rune); }
+  label { color: var(--dim); font-size: 12px; text-transform: uppercase; letter-spacing: .1em; }
+  select, button { background: #1c212b; color: var(--ink); border: 1px solid var(--line);
+                   border-radius: 6px; padding: 7px 11px; font: inherit; }
+  button { cursor: pointer; }
+  button:hover { border-color: var(--rune); }
+  .summary { margin-left: auto; font-variant-numeric: tabular-nums; color: var(--dim); }
+  .hint { padding: 10px 16px; color: var(--dim); font-size: 12px; border-bottom: 1px solid var(--line); }
+  .frames { display: flex; gap: 22px; padding: 22px 16px 60px; align-items: flex-start;
+            overflow-x: auto; }
+  figure { margin: 0; flex: 0 0 auto; }
+  figcaption { padding-bottom: 8px; }
+  .name { font-weight: 600; }
+  .meta { color: var(--dim); font-size: 12px; font-variant-numeric: tabular-nums; }
+  /* The frame is the device. A border outside the box keeps the inner size
+     exactly the viewport being simulated -- the app inside must see the real
+     number or the whole exercise measures nothing. */
+  iframe { display: block; border: 1px solid var(--line); border-radius: 10px;
+           background: #000; }
+  .verdict { margin-top: 8px; font-size: 12px; font-variant-numeric: tabular-nums; }
+  .ok { color: var(--good); }
+  .no { color: var(--bad); }
+  .scaled { color: var(--rune); }
+</style>
+</head>
+<body>
+<header>
+  <h1>Sigil · device lab</h1>
+  <label for="screen">Screen</label>
+  <select id="screen"></select>
+  <button id="reload">Reload all</button>
+  <span class="summary" id="summary">measuring…</span>
+</header>
+<p class="hint">
+  Live frames against the running dev server, each sized to the <em>usable</em> viewport of a real
+  phone — what is left after the browser's own chrome. Same list the guard in
+  <code>visual/mobile-no-scroll.spec.js</code> runs, from <code>visual/fixtures/devices.js</code>.
+  Click into any frame and play; state is seeded per screen. Dev only — never built or deployed.
+</p>
+<div class="frames" id="frames"></div>
+
+<script type="module">
+// Injected by the dev-only middleware in vite.config.js from the same module
+// the Playwright guard imports, so this page cannot drift from what CI checks.
+const { VIEWPORTS, SCREENS } = __DEVICE_FIXTURES__
+
+const $screen = document.getElementById('screen')
+const $frames = document.getElementById('frames')
+const $summary = document.getElementById('summary')
+
+for (const s of SCREENS) {
+  const opt = document.createElement('option')
+  opt.value = s.id
+  opt.textContent = s.name
+  $screen.append(opt)
+}
+$screen.value = localStorage.getItem('lab:screen') || 'victory-anon'
+
+/**
+ * Seed the app's state, then point every frame at it.
+ *
+ * This page is served by the dev server on the app's own origin, so it shares
+ * one localStorage with every frame -- writing the keys here IS seeding the
+ * app. That is also why each frame gets a fresh `src` with a cache-buster
+ * rather than location.reload(): the frames must re-read storage only after it
+ * has been written.
+ */
+function load() {
+  const screen = SCREENS.find(s => s.id === $screen.value)
+  localStorage.clear()
+  localStorage.setItem('lab:screen', screen.id)
+  if (screen.storage) {
+    for (const [k, v] of Object.entries(screen.storage)) localStorage.setItem(k, v)
+  }
+
+  $frames.replaceChildren()
+  for (const vp of VIEWPORTS) {
+    const fig = document.createElement('figure')
+    fig.innerHTML = `
+      <figcaption>
+        <div class="name">${vp.name}</div>
+        <div class="meta">${vp.width}x${vp.height} · ${vp.note}</div>
+      </figcaption>`
+    const frame = document.createElement('iframe')
+    frame.width = vp.width
+    frame.height = vp.height
+    frame.src = `/?lab=${Date.now()}`
+    const verdict = document.createElement('div')
+    verdict.className = 'verdict'
+    verdict.textContent = 'loading…'
+    fig.append(frame, verdict)
+    $frames.append(fig)
+    frame.addEventListener('load', () => measure(frame, vp, verdict))
+  }
+}
+
+/**
+ * Report what the frame actually did, on the same terms the guard asserts:
+ * whether the document scrolls, and what scale the fit stage settled on.
+ * Measured a beat after load so late fonts and the card deal have landed.
+ */
+function measure(frame, vp, out) {
+  setTimeout(() => {
+    let r
+    try {
+      const doc = frame.contentDocument
+      const de = doc.documentElement
+      const stage = doc.querySelector('.mobile-stage')
+      const scale = stage
+        ? Number(frame.contentWindow.getComputedStyle(stage).getPropertyValue('--stage-scale')) || 1
+        : 1
+      r = { over: de.scrollHeight - de.clientHeight, scale }
+    } catch {
+      out.textContent = 'could not read frame'
+      return
+    }
+    const pct = Math.round(r.scale * 100)
+    if (r.over > 1) {
+      out.className = 'verdict no'
+      out.textContent = `✗ scrolls — ${r.over}px over`
+    } else if (r.scale < 1) {
+      out.className = 'verdict scaled'
+      out.textContent = `✓ fits — scaled to ${pct}%`
+    } else {
+      out.className = 'verdict ok'
+      out.textContent = '✓ fits — no scaling'
+    }
+    summarise()
+  }, 900)
+}
+
+function summarise() {
+  const all = [...document.querySelectorAll('.verdict')]
+  const done = all.filter(v => v.textContent.startsWith('✓') || v.textContent.startsWith('✗'))
+  if (done.length < all.length) return
+  const bad = done.filter(v => v.classList.contains('no')).length
+  $summary.textContent = bad === 0
+    ? `${done.length}/${done.length} fit`
+    : `${bad} of ${done.length} still scroll`
+  $summary.className = bad === 0 ? 'summary ok' : 'summary no'
+}
+
+$screen.addEventListener('change', load)
+document.getElementById('reload').addEventListener('click', load)
+load()
+</script>
+</body>
+</html>

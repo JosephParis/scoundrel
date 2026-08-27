@@ -5,6 +5,7 @@
   "type": "module",
   "scripts": {
     "dev": "vite",
+    "lab": "vite --open /lab",
     "build": "vite build",
     "build:itch": "node scripts/build-itch.mjs",
     "lint": "eslint .",
