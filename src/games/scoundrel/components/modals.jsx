@@ -6,6 +6,7 @@ import {
 } from '../logic'
 import { settings, useCardLayout, useHandle, MAX_HANDLE_LENGTH } from '../settings'
 import { audio, useMuted, useMusicVolume, useSfxVolume } from '../audio'
+import { BUILD_SHA, BUILD_HREF, BUILD_TITLE } from '../../../buildInfo.js'
 
 // -- Settings modal ----------------------------------------------------
 
@@ -146,9 +147,11 @@ export function SettingsModal({ open, onClose }) {
 
         <LeaderboardHandleSection />
 
-        <div className="mt-6 pt-4 border-t border-stone-800 text-[11px] text-slate-500">
-          {/* New tab so reading the policy does not discard the open run behind
-              this modal. */}
+        {/* The corner badge these two also live in is desktop-only -- on a phone
+            it sat under a resting thumb and kept getting opened mid-run -- so
+            this is the only way in on mobile. Both open in a new tab, so
+            reading either does not discard the run behind this modal. */}
+        <div className="mt-6 pt-4 border-t border-stone-800 text-[11px] text-slate-500 flex items-center justify-between gap-3">
           <a
             href="/privacy"
             target="_blank"
@@ -156,6 +159,16 @@ export function SettingsModal({ open, onClose }) {
             className="hover:text-rune transition"
           >
             Privacy &amp; what data is collected
+          </a>
+          <a
+            href={BUILD_HREF}
+            target="_blank"
+            rel="noopener noreferrer"
+            title={BUILD_TITLE}
+            aria-label={BUILD_TITLE}
+            className="font-mono shrink-0 text-slate-600 hover:text-rune transition"
+          >
+            {BUILD_SHA}
           </a>
         </div>
       </div>
