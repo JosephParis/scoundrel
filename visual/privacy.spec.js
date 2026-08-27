@@ -55,12 +55,25 @@ test.describe('privacy policy page', () => {
 })
 
 test.describe('privacy policy entry points', () => {
-  test('is reachable from the always-visible footer link', async ({ page }) => {
+  test('is reachable from the corner badge on desktop', async ({ page }) => {
+    await page.setViewportSize({ width: 1280, height: 900 })
     await skipTutorial(page)
     await page.goto('/')
     const link = page.getByRole('link', { name: 'Privacy', exact: true })
     await expect(link).toBeVisible()
     expect(await link.getAttribute('href')).toBe('/privacy')
+  })
+
+  test('the corner badge is gone on a phone, where it was a thumb trap', async ({ page }) => {
+    // Pinned bottom-right it sat under a resting thumb, and a 10px target with
+    // a whole run behind it kept getting opened by accident. Settings is the
+    // way in on mobile now (asserted below), so the corner must be empty --
+    // both halves of it, since the build SHA was the other half of the trap.
+    await page.setViewportSize({ width: 390, height: 754 })
+    await skipTutorial(page)
+    await page.goto('/')
+    await expect(page.getByRole('link', { name: 'Privacy', exact: true })).toBeHidden()
+    await expect(page.locator('a[href*="/commit/"], a[href$="JosephParis/sigil"]')).toBeHidden()
   })
 
   test('is reachable from Settings', async ({ page }) => {
@@ -75,6 +88,22 @@ test.describe('privacy policy entry points', () => {
     expect(await link.getAttribute('href')).toBe('/privacy')
     // A new tab, so reading it does not discard the run behind the modal.
     expect(await link.getAttribute('target')).toBe('_blank')
+  })
+
+  test('carries the build stamp too, since the corner badge is desktop-only', async ({ page }) => {
+    // On a phone this is the only place the build is readable, and "which build
+    // is this?" is the first question any bug report has to answer.
+    await page.setViewportSize({ width: 390, height: 754 })
+    await skipTutorial(page)
+    await page.goto('/')
+    await page.getByRole('button', { name: 'More options' }).click()
+    await page.getByRole('menuitem', { name: /Settings/ }).click()
+    await expect(page.getByRole('heading', { name: 'Settings' })).toBeVisible()
+
+    const build = page.getByRole('link', { name: /^build / })
+    await expect(build).toBeVisible()
+    expect(await build.getAttribute('href')).toContain('github.com/JosephParis/sigil')
+    expect(await build.getAttribute('target')).toBe('_blank')
   })
 
   test('is reachable from the sign-in modal', async ({ page }) => {

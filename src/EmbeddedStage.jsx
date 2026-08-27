@@ -1,4 +1,5 @@
-import { useEffect, useRef } from 'react'
+import { useCallback, useRef } from 'react'
+import { useFitScale } from './useFitScale.js'
 
 /**
  * Scales the whole app down until it fits the frame it is embedded in.
@@ -30,47 +31,24 @@ import { useEffect, useRef } from 'react'
  *     descendants. That is load-bearing, not incidental: the top bar and every
  *     `fixed inset-0` modal therefore position and scale against the stage, so
  *     they keep covering exactly the frame instead of drifting out of it.
+ *
+ * MobileFitStage plays the same trick against browser chrome on a phone; the
+ * measuring loop both rely on is in useFitScale.js.
  */
 export default function EmbeddedStage({ children }) {
   const ref = useRef(null)
 
-  useEffect(() => {
-    const el = ref.current
-    if (!el) return
-
-    let frame = 0
-
-    const fit = () => {
-      frame = 0
-      // Layout height, which a transform does not affect -- so this reads the
-      // natural height even while a previous scale is applied, and no measuring
-      // pass with the transform removed is needed. `fixed` descendants are out
-      // of flow and excluded, which is why an open modal cannot change the fit.
-      const content = el.scrollHeight
-      // clientHeight rather than innerHeight: excludes any scrollbar, and html
-      // is overflow:hidden here so there should not be one either way.
-      const available = document.documentElement.clientHeight
-      const scale = content > 0 ? Math.min(1, available / content) : 1
-      el.style.setProperty('--stage-scale', String(scale))
-    }
-
-    // Height can settle a frame or two after a render -- late webfonts, images.
-    // Coalescing to one rAF keeps a burst of those to a single measurement.
-    const schedule = () => { if (!frame) frame = requestAnimationFrame(fit) }
-
-    // Observing the stage catches content changes; the transform does not
-    // affect the observed layout box, so applying a scale cannot re-trigger it.
-    const observer = new ResizeObserver(schedule)
-    observer.observe(el)
-    window.addEventListener('resize', schedule)
-    schedule()
-
-    return () => {
-      observer.disconnect()
-      window.removeEventListener('resize', schedule)
-      if (frame) cancelAnimationFrame(frame)
-    }
+  const computeScale = useCallback(
+    (content, available) => (content > 0 ? Math.min(1, available / content) : 1),
+    [],
+  )
+  // Set on the stage itself, as before: the CSS reads the custom property off
+  // `.stage`, and keeping it there leaves the document element untouched.
+  const apply = useCallback(scale => {
+    ref.current?.style.setProperty('--stage-scale', String(scale))
   }, [])
+
+  useFitScale(ref, computeScale, apply)
 
   return <div className="stage" ref={ref}>{children}</div>
 }

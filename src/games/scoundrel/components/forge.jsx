@@ -175,7 +175,7 @@ export function CardSuitFan({ cards, selected, onPick, readOnly = false }) {
   if (presentSuits.length === 0) return null
 
   return (
-    <div className="space-y-1.5">
+    <div className="space-y-1.5 short:space-y-1">
       {presentSuits.map(suit => (
         <CardSuitFanRow
           key={suit}
@@ -238,7 +238,7 @@ function CardSuitFanRow({ suit, cards, selected, onPick, readOnly = false }) {
       <div className={`w-6 shrink-0 pt-3 text-center text-base leading-none ${suitColorClass}`}>
         {SUIT_GLYPH[suit]}
       </div>
-      <div className="flex flex-1 pl-2 pt-2 pb-3 overflow-x-auto">
+      <div className="flex flex-1 pl-2 pt-2 pb-2 short:pt-1 short:pb-1 sm:pt-2 sm:pb-3 overflow-x-auto">
         {cards.map((c, i) => {
           const isSelected = !readOnly && selected === c.id
           const cardIsWound = isWound(c)
@@ -253,7 +253,7 @@ function CardSuitFanRow({ suit, cards, selected, onPick, readOnly = false }) {
               : cardIsTool
                 ? 'text-amber-300'
                 : 'text-parchment'
-          const baseClass = `card-fan-item relative aspect-[2/3] w-12 sm:w-14 shrink-0 rounded border-2 p-1 flex flex-col justify-between text-left ${
+          const baseClass = `card-fan-item relative aspect-[2/3] w-10 short:w-9 sm:w-14 shrink-0 rounded border-2 p-1 flex flex-col justify-between text-left ${
             isSelected
               ? 'border-rune bg-stone-700'
               : `${cardBorderTone(c)} bg-stone-900${readOnly ? '' : ' hover:bg-stone-800 hover:border-rune/60'}`

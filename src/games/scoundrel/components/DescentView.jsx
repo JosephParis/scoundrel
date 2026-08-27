@@ -213,8 +213,8 @@ export function DescentView({ game, setGame }) {
           All four figures are one size: they are read together, and a size
           difference between them would rank them, which nothing about the game
           supports -- HP matters as much as the weapon's reach. */}
-      <div className="md:hidden mb-2">
-        <div className="flex flex-wrap items-center gap-2.5">
+      <div className="md:hidden mb-2 short:mb-1">
+        <div className="flex flex-wrap items-center gap-2.5 short:gap-2">
           {/* HP + Deck */}
           <div className="flex items-center gap-2.5 shrink-0">
             <div className="flex flex-col items-center justify-center">
@@ -298,7 +298,7 @@ export function DescentView({ game, setGame }) {
           </PhaseRail>
         </div>
 
-        <div className="space-y-3 md:space-y-5 min-w-0">
+        <div className="space-y-3 short:space-y-2 md:space-y-5 min-w-0">
         <section>
           <div className="hidden md:flex items-baseline justify-between mb-3">
             <h2 className="text-[10px] uppercase tracking-[0.3em] text-slate-500">The room</h2>
@@ -335,7 +335,7 @@ export function DescentView({ game, setGame }) {
               animation traps the tooltip's z-index inside the card's own
               stacking context, so without this the flee button (a later DOM
               sibling) paints on top of the opaque tooltip and shows through. */}
-          <div className={`relative z-10 grid grid-cols-2 ${roomSize === 5 ? 'sm:grid-cols-5' : 'sm:grid-cols-4'} gap-3 md:gap-4 justify-items-center`}>
+          <div className={`relative z-10 grid grid-cols-2 ${roomSize === 5 ? 'sm:grid-cols-5' : 'sm:grid-cols-4'} gap-3 short:gap-2 md:gap-4 justify-items-center`}>
             {(() => { const blind = hasAffliction(game, 'blind'); const obscured = hasAffliction(game, 'obscured'); return game.room.map((c, i) => {
               let weaponDamage = null
               let bareDamage = null
@@ -392,7 +392,7 @@ export function DescentView({ game, setGame }) {
             }) })()}
           </div>
 
-          <div className="mt-2 md:mt-4 flex justify-center">
+          <div className="mt-2 short:mt-1 md:mt-4 flex justify-center">
             <div className="group relative">
               {tutorialCue?.recommendFlee && (
                 <div

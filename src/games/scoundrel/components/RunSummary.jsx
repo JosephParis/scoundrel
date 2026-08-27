@@ -146,7 +146,7 @@ export function Section({ title, children }) {
 function Stat({ label, value }) {
   return (
     <div className="flex flex-col">
-      <span className="text-lg text-parchment leading-none">{value}</span>
+      <span className="text-lg text-parchment leading-none whitespace-nowrap">{value}</span>
       <span className="text-[10px] uppercase tracking-widest text-slate-500 mt-1">{label}</span>
     </div>
   )
@@ -182,7 +182,7 @@ export function RunSummary({ record, showDeck = true }) {
   ]
 
   return (
-    <div className="space-y-5 text-left">
+    <div className="space-y-3 short:space-y-2 sm:space-y-5 text-left">
       <div className="flex items-baseline justify-between gap-3 flex-wrap">
         <span className={`font-display text-xl ${OUTCOME_COLOR[outcome] || 'text-parchment'}`}>
           {OUTCOME_LABEL[outcome] || outcome}
@@ -196,7 +196,7 @@ export function RunSummary({ record, showDeck = true }) {
         <RuneList items={modeItems} />
       </Section>
 
-      <div className="grid grid-cols-3 gap-3 py-3 border-y border-stone-800">
+      <div className="grid grid-cols-3 gap-2 sm:gap-3 py-2 short:py-1 sm:py-3 border-y border-stone-800">
         <Stat label="Rooms" value={roomsEntered || 0} />
         <Stat label="Slain" value={monstersSlain || 0} />
         <Stat label="Time" value={formatDuration(durationMs)} />

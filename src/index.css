@@ -1,6 +1,12 @@
 @import url('https://fonts.googleapis.com/css2?family=Cinzel:wght@500;600;700&family=Inter:wght@300;400;500;600;700&display=swap');
 @import "tailwindcss";
 
+/* Short viewports (iPhone SE/8 at 667, small Androids at 740). Height, not
+   width, is what the outcome and descent screens run out of, so the tightest
+   spacing is keyed to height alone and taller phones keep the roomier look.
+   Above this, `short:` utilities simply do not apply. */
+@custom-variant short (@media (max-height: 760px));
+
 @theme {
   --color-blood: #b91c1c;
   --color-blood-glow: #ef4444;
@@ -58,6 +64,38 @@
   }
 
   html.embedded .stage {
+    position: absolute;
+    top: 0;
+    left: 0;
+    width: 100%;
+    transform-origin: top center;
+    transform: scale(var(--stage-scale, 1));
+  }
+
+  /* Phone scale-to-fit (MobileFitStage.jsx, which is where the reasoning
+     lives). Same shape as the embedded rules above and the same two things the
+     measurement assumes: that the viewport is the hard boundary, and that the
+     stage is free to be taller than it so there is something to measure.
+
+     `fit-locked` is set only once the scale is known to bring the content
+     inside the viewport. Gating the lock on a bare media query instead would
+     hide the bottom of any screen that turned out not to fit, with no scroll
+     left to reach it. */
+  html.fit-locked, html.fit-locked body {
+    height: 100dvh;
+    min-height: 0;
+    overflow: hidden;
+  }
+
+  html.fit-locked #root,
+  html.fit-locked #root > main {
+    position: relative;
+    height: 100dvh;
+    min-height: 0;
+    overflow: hidden;
+  }
+
+  html.fit-locked .mobile-stage {
     position: absolute;
     top: 0;
     left: 0;
