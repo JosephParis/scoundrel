@@ -36,7 +36,7 @@ Environment, in Vercel:
 - [ ] `CRON_SECRET` set — `api/cron-backfill-runs.js` accepts either this or `ADMIN_TOKEN`
 - [ ] `GOOGLE_CLIENT_ID` + `SESSION_SECRET` set (`api/auth.js` 503s without both)
 - [x] `VITE_GOOGLE_CLIENT_ID` set at build time — without it `LoginModal` silently falls back to the local "dev sign-in" form, which must **not** happen in production. **Verified 2026-08-22** against the deploy of `2cfeb5e`: a real `...apps.googleusercontent.com` id is present in the lazy-loaded `scoundrel-*` chunk (grepping `index-*.js` alone reports a false negative — `LoginModal` is not in the entry bundle)
-- [ ] `VITE_PUBLIC_POSTHOG_TOKEN` + `VITE_PUBLIC_POSTHOG_HOST` set
+- [ ] `VITE_PUBLIC_POSTHOG_TOKEN` + `VITE_PUBLIC_POSTHOG_HOST` set — **confirmed NOT set, 2026-08-27** (deploy of `b4a2f17`). The client code is complete; the variable is simply absent from the Vercel project, so `posthog.init` never runs and production has recorded **zero** events since launch. Evidence below.
 
 End-to-end, against the deployed URL:
 
@@ -112,6 +112,40 @@ Auth wiring confirmed on the deployment 2026-08-06, both halves:
 - [ ] The `rate_limits` table was created on first use and is being swept
 - [ ] The leaderboard still lists real victories after the 60s floor and the
       rooms/sigil cross-checks — confirm a genuine win is not filtered out
+
+## PostHog is wired but unconfigured — found 2026-08-27
+
+Checked against the deploy of `b4a2f17`. The instrumentation in the tree is
+complete and needs no work: `main.jsx` defers the SDK past `window.load`,
+`useRunAnalytics` emits `run_started` / `descent_started` / `run_ended` /
+`run_abandoned` with edge-detection and a pre-init buffer, `identify` sends only
+the opaque Google `sub` plus a derived pseudonym (issue 06), and `ErrorBoundary`
+reports crashes. None of it can fire, because the token is missing.
+
+Three independent checks, all negative:
+
+- **No `phc_` token in any served chunk.** Grepped every asset the deployment
+  serves, not just the entry bundle — `index-*`, `posthog-*`, `rolldown-runtime-*`
+  — after the false-negative lesson recorded above for `VITE_GOOGLE_CLIENT_ID`.
+  Note the lazy chunk hashes in a local `dist/` do **not** match production, so
+  probing prod for a locally-built filename returns the SPA rewrite (HTTP 200,
+  `text/html`, ~3KB) rather than a 404. Check `content_type`, not status.
+- **No ingest host in the bundle.** `us.i.posthog.com` appears only inside the
+  vendored `posthog-*` chunk's own source, never in the entry bundle where
+  `POSTHOG_HOST` would be inlined — the init block is unreachable and folds away.
+- **Zero ingest requests at runtime.** Loaded `https://sigildeck.com/` in
+  headless Chromium, waited 9s past `load` (well past the `requestIdleCallback`
+  deadline of 5s): the only PostHog-matching request is the chunk fetch itself,
+  and `window.posthog` is `undefined`.
+
+The failure is silent by design — `main.jsx:45` returns early on a missing token
+so a clean clone runs with no analytics. That is right for local dev and wrong
+for production, where it means the launch cohort's runs are being measured only
+by the `runs` table, with no funnel, no drop-off and no `run_abandoned` signal.
+
+Blocked on a PostHog project that only Joey can create; the token is the whole
+remaining task. Until it is set, the `run_abandoned` event in particular has
+**never executed in production** and is unverified against real traffic.
 
 ## Measurement plan
 
