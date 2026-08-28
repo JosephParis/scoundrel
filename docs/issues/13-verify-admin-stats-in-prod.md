@@ -36,7 +36,7 @@ Environment, in Vercel:
 - [ ] `CRON_SECRET` set — `api/cron-backfill-runs.js` accepts either this or `ADMIN_TOKEN`
 - [ ] `GOOGLE_CLIENT_ID` + `SESSION_SECRET` set (`api/auth.js` 503s without both)
 - [x] `VITE_GOOGLE_CLIENT_ID` set at build time — without it `LoginModal` silently falls back to the local "dev sign-in" form, which must **not** happen in production. **Verified 2026-08-22** against the deploy of `2cfeb5e`: a real `...apps.googleusercontent.com` id is present in the lazy-loaded `scoundrel-*` chunk (grepping `index-*.js` alone reports a false negative — `LoginModal` is not in the entry bundle)
-- [ ] `VITE_PUBLIC_POSTHOG_TOKEN` + `VITE_PUBLIC_POSTHOG_HOST` set — **confirmed NOT set, 2026-08-27** (deploy of `b4a2f17`). The client code is complete; the variable is simply absent from the Vercel project, so `posthog.init` never runs and production has recorded **zero** events since launch. Evidence below.
+- [x] `VITE_PUBLIC_POSTHOG_TOKEN` + `VITE_PUBLIC_POSTHOG_HOST` set — was **absent until 2026-08-27**, so production recorded zero events from launch until then. Set in Vercel and **verified live** on the deploy of `c63bea9`: events and session recordings ingest with HTTP 200. See below, including the bot-detection trap that makes this easy to mis-verify.
 
 End-to-end, against the deployed URL:
 
@@ -113,7 +113,7 @@ Auth wiring confirmed on the deployment 2026-08-06, both halves:
 - [ ] The leaderboard still lists real victories after the 60s floor and the
       rooms/sigil cross-checks — confirm a genuine win is not filtered out
 
-## PostHog is wired but unconfigured — found 2026-08-27
+## PostHog: unconfigured since launch, fixed and verified 2026-08-27
 
 Checked against the deploy of `b4a2f17`. The instrumentation in the tree is
 complete and needs no work: `main.jsx` defers the SDK past `window.load`,
@@ -143,9 +143,43 @@ so a clean clone runs with no analytics. That is right for local dev and wrong
 for production, where it means the launch cohort's runs are being measured only
 by the `runs` table, with no funnel, no drop-off and no `run_abandoned` signal.
 
-Blocked on a PostHog project that only Joey can create; the token is the whole
-remaining task. Until it is set, the `run_abandoned` event in particular has
-**never executed in production** and is unverified against real traffic.
+### Resolved the same day
+
+Joey created the project and set both variables in Vercel. Note Vercel's env-var
+UI warns that a `VITE_`-prefixed value is exposed to the browser and offers to
+strip the prefix — **do not**. A PostHog project key (`phc_…`) is a write-only
+ingest key and is meant to be public, and `main.jsx:35` reads it through
+`import.meta.env`, which only exposes `VITE_*`. Removing the prefix reproduces
+exactly the silent failure above. Choose "Config".
+
+`VITE_*` values are inlined at build time, so setting them changes nothing until
+a rebuild. This docs commit was the redeploy trigger.
+
+Verified on the deploy of `c63bea9`: the token is in the entry bundle,
+`api_host` resolves to `https://us.i.posthog.com`, and a real browser session
+POSTs to `/e/`, `/i/v0/e/` and `/s/` — nine requests, all 200 — across a page
+load and a started descent. Session recording is on.
+
+### The trap: posthog-js silently drops bot traffic
+
+**Analytics cannot be verified from a headless browser.** posthog-js runs its
+full init against a bot UA — remote config fetched, extensions loaded, session
+id generated, debug log clean — and then makes `capture()` a no-op. There is no
+warning. It looks exactly like a broken deployment.
+
+Two independent signals trigger it, and defeating one is not enough:
+
+- `headlesschrome` is in the SDK's default blocked-user-agent list
+- the check ends on `navigator.webdriver`, which Playwright always sets, so an
+  overridden UA alone still yields zero events
+
+Verifying this again means `chromium.launch({ headless: false })` plus an init
+script setting `navigator.webdriver` to false. The **bundle** check is the one
+that works headlessly: grep the served entry chunk for `phc_`, which no bot
+filter can affect.
+
+A few test events and one session recording from this verification are in the
+project, dated 2026-08-27.
 
 ## Measurement plan
 
