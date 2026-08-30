@@ -282,7 +282,7 @@ function RulesContentFull() {
         <RuleRow term="HP">Refills to full.</RuleRow>
         <RuleRow term="Boon">Pick 1 of 3. Permanent for the run.</RuleRow>
         <RuleRow term="Trial">Not shown here. You descend blind and the Trial is named as you arrive, so your kit is a standing answer, not a counter.</RuleRow>
-        <RuleRow term="Forge">After each descent: Inscribe, Upgrade, or Remove a kit card. The offer varies. Permanent.</RuleRow>
+        <RuleRow term="Forge">After each descent: Add, Upgrade, or Remove a kit card. The offer varies. Permanent.</RuleRow>
         <RuleRow term="Weapon">Carries over, arrives rested (binding cleared).</RuleRow>
       </RuleSection>
     </div>

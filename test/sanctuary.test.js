@@ -13,7 +13,7 @@ import {
   applyForgeEdit, skipForgeEdit, dismissMapPeek, pickBoon,
   UPGRADE_BONUS, UPGRADE_RANK_CAP,
 } from '../src/games/scoundrel/logic/sanctuary'
-import { DIAMOND, HEART } from '../src/games/scoundrel/constants'
+import { DIAMOND, HEART, TOOL } from '../src/games/scoundrel/constants'
 import { sanctuaryState, seededRng, scriptedRng, weaponCard, potionCard } from './support/state'
 
 const kitCard = (suit, rank, id, extra = {}) => ({ suit, rank, id, ...extra })
@@ -272,6 +272,41 @@ describe('applyForgeEdit', () => {
       forgeChoices: [elixir],
     })
     expect(applyForgeEdit(s, 'elixir2')).toBe(s)
+  })
+
+  // The three edits are named for the player in plain words -- Add, Upgrade,
+  // Remove -- while the grant type stays keyed `inscribe` in the state, the
+  // save and every recorded run. That split is deliberate and invisible from
+  // the outside, so what is asserted here is the wording: a future rename that
+  // reaches the log line has changed what the player reads.
+  it('logs a plain added card in the player-facing wording', () => {
+    const s = base({
+      forgeGrants: ['inscribe'],
+      forgeChoices: [kitCard(DIAMOND, 4, 'fresh')],
+    })
+    const next = applyForgeEdit(s, 'fresh')
+    expect(next.log.at(-1)).toBe('Added 4♦ to the kit.')
+    expect(next.log.at(-1)).not.toMatch(/inscrib/i)
+  })
+
+  it('logs an added inscription by its frame name, not the raw grant key', () => {
+    const s = base({
+      forgeGrants: ['inscribe'],
+      forgeChoices: [kitCard(TOOL, 4, 'coin', { inscribed: 'lucky_coin' })],
+    })
+    const next = applyForgeEdit(s, 'coin')
+    expect(next.log.at(-1)).toBe('Added Lucky Coin (4) to the kit.')
+    expect(next.log.at(-1)).not.toMatch(/inscrib/i)
+  })
+
+  // The rename must not have leaked into the persisted grant type: run records
+  // and in-progress saves both carry it, and /admin plus PostHog group on it.
+  it('still records the grant type as `inscribe` in the decision funnel', () => {
+    const s = base({
+      forgeGrants: ['inscribe'],
+      forgeChoices: [kitCard(DIAMOND, 4, 'fresh')],
+    })
+    expect(applyForgeEdit(s, 'fresh').forgeEdits[0]).toMatchObject({ type: 'inscribe' })
   })
 
   it('is a no-op outside the sanctuary, with the forge shut, or off-offer', () => {
