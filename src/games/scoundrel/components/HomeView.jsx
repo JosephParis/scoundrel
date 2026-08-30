@@ -7,7 +7,7 @@ import { IS_STANDALONE, HOME_URL } from '../../../buildTarget.js'
 // onOpenCardLibrary is still wired from index.jsx for the parked Card library
 // entry below, so it reads as unused until that entry comes back.
 // eslint-disable-next-line no-unused-vars
-export function HomeView({ open, onResume, onOpenRules, onOpenHistory, onOpenLeaderboard, onOpenCardLibrary, onReplayTutorial, onOpenCredits }) {
+export function HomeView({ open, onResume, onOpenRules, onOpenHistory, onOpenLeaderboard, onOpenCardLibrary, onReplayTutorial, onOpenCredits, onOpenSettings, onOpenFeedback }) {
   if (!open) return null
 
   // TEMPORARY: Card library is parked alongside the rules modal's reference
@@ -24,6 +24,13 @@ export function HomeView({ open, onResume, onOpenRules, onOpenHistory, onOpenLea
     ...(IS_STANDALONE ? [] : [{ label: 'Leaderboard', hint: 'Fastest victories', onClick: onOpenLeaderboard }]),
     // { label: 'Card library', hint: 'Every card in the deck', onClick: onOpenCardLibrary },
     { label: 'Tutorial', hint: 'A guided walkthrough', onClick: onReplayTutorial },
+    // Settings and feedback were reachable only from the top bar, whose corner
+    // badge is desktop-only -- and Settings is where a stuck run is discarded
+    // (issue 27), so on a phone the escape hatch has to be on this menu too.
+    { label: 'Settings', hint: 'Layout, sound, discard a run', onClick: onOpenSettings },
+    // Feedback posts to /api, which the standalone build cannot reach, so it is
+    // offered on the same condition the top bar uses.
+    ...(IS_STANDALONE ? [] : [{ label: 'Send feedback', hint: 'Tell us what broke', onClick: onOpenFeedback }]),
     { label: 'Credits', hint: 'Who built this', onClick: onOpenCredits },
   ]
 

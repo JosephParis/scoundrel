@@ -1,12 +1,8 @@
 import { Component } from 'react'
 import { PostHogContext } from '@posthog/react'
 import { submitFeedback } from './utils/feedback'
+import { discardSavedRun } from './utils/discardRun'
 
-// Only the live run is discarded. Settings, the leaderboard handle, run history
-// and the signed-in session are left alone: a corrupt run is the likely cause of
-// a render crash, and wiping history to fix it would be a worse outcome than the
-// crash. Cloud sync would restore history anyway for a signed-in player.
-const SAVE_KEY = 'scoundrel:save'
 const USER_KEY = 'scoundrel:user'
 
 function currentAccountId() {
@@ -77,11 +73,7 @@ export class ErrorBoundary extends Component {
   }
 
   handleDiscardRun = () => {
-    try {
-      localStorage.removeItem(SAVE_KEY)
-    } catch {
-      // Storage disabled: reloading is still worth trying.
-    }
+    discardSavedRun()
     window.location.reload()
   }
 

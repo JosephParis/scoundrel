@@ -22,6 +22,7 @@ Baseline: `npm run lint` clean, `npm run build` clean. Test suite as it stands:
 | `test/deck.test.js` | vitest | 32 pass |
 | `test/themes.test.js` | vitest | 31 pass |
 | `visual/privacy.spec.js` | dev | 9 pass |
+| `visual/save-reset.spec.js` | dev | 4 pass |
 | `visual/head-and-manifest.spec.js` | dev | 11 pass |
 | `visual/audio-assets.spec.js` | dev | 5 pass |
 | `visual/bare-hands-layout.spec.js` | dev | 7 pass |
@@ -32,7 +33,11 @@ Baseline: `npm run lint` clean, `npm run build` clean. Test suite as it stands:
 | `error-boundary.prod.spec.js` | prod | 8 pass |
 | `mobile-responsive.spec.js` | dev | 27 pass |
 
-**Full suite: 391 unit + 92 e2e passed, 1 skipped (`card-library`, issue 12).**
+**Full suite: 400 unit + 172 e2e passed, 1 skipped (`card-library`, issue 12).**
+Measured 2026-08-27. The table above stopped being itemised at some point:
+`copy-accuracy`, `device-lab`, `itch-build`, `mobile-no-scroll` and
+`robots-and-payload` also run and are not listed. The totals line is the
+baseline that matters — a new failure or a second skip is a regression.
 
 The unit half went 84 → 391 with issue 15. The rules engine now has real
 coverage: `combat.js`, `lifecycle.js`, `logic/sanctuary.js`, `deck.js`,
@@ -95,7 +100,8 @@ payload halved), **19** (`robots.txt` + admin `noindex`), **15** (unit tests
 over the game logic), **09** (the `merge.js` dedupe key that dropped runs —
 closed alongside 15, whose agreement test could not pass while it was broken),
 **21** (`.env` now ignored; nothing had leaked), **20** (README, LICENSE and
-`.env.example`), **22** (nine session docs archived to `docs/archive/`).
+`.env.example`), **22** (nine session docs archived to `docs/archive/`), **27** (a stuck run can
+be discarded from Settings, which the home menu now reaches).
 
 **All P0 blockers are closed.** Live at **https://sigildeck.com** since
 2026-08-06, with the privacy mailbox, auth and DNS all verified against the
@@ -154,9 +160,9 @@ items there are not optional:
   endpoints. That is the one regression that would silently stop recording every
   signed-in run.
 
-Issue 02 left one gap, now tracked as **issue 27**: there is still no save reset
-outside the crash path, so a run that gets *stuck* without throwing has no escape
-hatch. That is the more likely of the two failure modes.
+Issue 02 left one gap, tracked as **issue 27** and now closed: a run that gets
+*stuck* without throwing is discarded from Settings, which the home menu reaches
+on a phone as well as a desktop.
 
 Note for anything touching gameplay: 05 opened version `0.4`, so runs recorded
 from here on stamp `0.4`. If you make another balance-affecting change before
@@ -203,7 +209,7 @@ shipped to users on `0.4` yet, so sharing is usually fine.
 | [12](12-unreachable-glossary-and-card-library.md) | Card library + Boons/Trials glossary unreachable | product | S | open |
 | [13](13-verify-admin-stats-in-prod.md) | Verify `/api/stats` + `/admin` in prod before inviting anyone | product | S | open |
 | [14](14-anonymous-handle-copy-mismatch.md) | **BUG** UI promises "Anonymous" listing; server excludes it | bug | S | open |
-| [27](27-save-reset-outside-crash-path.md) | No save reset for a run stuck without crashing | product | S | open |
+| [27](27-save-reset-outside-crash-path.md) | No save reset for a run stuck without crashing | product | S | **done** |
 
 ### P3 — quality, performance, accessibility
 

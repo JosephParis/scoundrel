@@ -7,6 +7,7 @@ import {
 import { settings, useCardLayout, useHandle, MAX_HANDLE_LENGTH } from '../settings'
 import { audio, useMuted, useMusicVolume, useSfxVolume } from '../audio'
 import { BUILD_SHA, BUILD_HREF, BUILD_TITLE } from '../../../buildInfo.js'
+import { discardSavedRun } from '../../../utils/discardRun'
 
 // -- Settings modal ----------------------------------------------------
 
@@ -147,6 +148,8 @@ export function SettingsModal({ open, onClose }) {
 
         <LeaderboardHandleSection />
 
+        <DiscardRunSection />
+
         {/* The corner badge these two also live in is desktop-only -- on a phone
             it sat under a resting thumb and kept getting opened mid-run -- so
             this is the only way in on mobile. Both open in a new tab, so
@@ -173,6 +176,69 @@ export function SettingsModal({ open, onClose }) {
         </div>
       </div>
     </div>
+  )
+}
+
+// The escape hatch for a run that is stuck without having crashed (issue 27).
+//
+// Retire needs a live run the buttons can advance, Begin Again needs a terminal
+// phase, and the error boundary's copy of this only appears if the app actually
+// throws -- so a player in a state the UI renders but cannot leave had nowhere
+// to go but the browser's storage inspector. This is the same discard the
+// recovery screen performs, reached without a crash.
+//
+// Two steps, because it is destructive and this modal is opened casually for the
+// volume sliders. Closing Settings unmounts this and disarms it.
+function DiscardRunSection() {
+  const [armed, setArmed] = useState(false)
+
+  const discard = () => {
+    discardSavedRun()
+    // Reloading rather than calling freshRun(): this modal has no handle on the
+    // game state, and a reload also clears whatever in-memory state was part of
+    // the stick.
+    window.location.reload()
+  }
+
+  return (
+    <section className="mt-6">
+      <div className="text-[10px] uppercase tracking-[0.3em] text-slate-500 mb-3">
+        Current run
+      </div>
+      {armed ? (
+        <>
+          <p className="text-[12.5px] text-amber-300/90 leading-snug mb-2">
+            Are you sure? This cannot be undone.
+          </p>
+          <div className="flex gap-2">
+            <button
+              onClick={discard}
+              className="px-3 py-2 rounded-md border border-blood/60 text-blood hover:bg-blood/10 text-[13px] font-medium transition"
+            >
+              Yes, discard it
+            </button>
+            <button
+              onClick={() => setArmed(false)}
+              className="px-3 py-2 rounded-md border border-stone-700 text-slate-300 hover:border-stone-500 text-[13px] font-medium transition"
+            >
+              Keep playing
+            </button>
+          </div>
+        </>
+      ) : (
+        <button
+          onClick={() => setArmed(true)}
+          className="px-3 py-2 rounded-md border border-stone-700 text-slate-300 hover:border-blood/60 hover:text-blood text-[13px] font-medium transition"
+        >
+          Discard current run
+        </button>
+      )}
+      <p className="text-[11px] text-slate-500 leading-snug mt-2">
+        Starts a new run from the opening sanctuary. Only the run in progress is
+        thrown away -- past runs, your leaderboard name, these settings and your
+        sign-in are kept.
+      </p>
+    </section>
   )
 }
 

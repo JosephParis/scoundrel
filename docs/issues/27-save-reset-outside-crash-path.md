@@ -4,7 +4,7 @@ title: "No save reset for a run that gets stuck without crashing"
 priority: P2
 area: product
 effort: S
-status: open
+status: done
 ---
 
 ## Problem
@@ -67,8 +67,28 @@ every navigation and will resurrect the key after a reload.
 
 ## Acceptance criteria
 
-- [ ] A reset exists in `SettingsModal`, behind a confirm step
-- [ ] It clears only `scoundrel:save`; history, handle, settings and sign-in survive
-- [ ] Settings is reachable from `HomeView`
-- [ ] Discard-key logic shared with `ErrorBoundary` rather than duplicated
-- [ ] Tests land in the same change
+- [x] A reset exists in `SettingsModal`, behind a confirm step
+- [x] It clears only `scoundrel:save`; history, handle, settings and sign-in survive
+- [x] Settings is reachable from `HomeView`
+- [x] Discard-key logic shared with `ErrorBoundary` rather than duplicated
+- [x] Tests land in the same change
+
+## Resolution (branch `dawn/2026-08-27`)
+
+`src/utils/discardRun.js` now owns `SAVE_KEY` and `discardSavedRun()`;
+`ErrorBoundary` and the new `DiscardRunSection` in `SettingsModal` both call it,
+so they cannot disagree about what a discard clears.
+
+The reset **reloads** rather than calling `freshRun()`. The modal has no handle
+on game state, and a reload also clears whatever in-memory state was part of the
+stick — which is the failure mode this exists for. One consequence worth knowing
+for anyone testing it: the app writes a fresh opening-sanctuary save on load, so
+`scoundrel:save` is repopulated within the same tick. The assertion that means
+anything is that the stored phase is no longer the stuck run's, not that the key
+is absent. `visual/save-reset.spec.js` is written that way.
+
+`HomeView` gained **Settings** and **Send feedback**. Feedback is gated on
+`IS_STANDALONE`, matching `TopBar` — it posts to `/api`, which the standalone
+build cannot reach. Settings is offered unconditionally.
+
+No balance change, so `GAME_VERSION` stays `0.4`.
