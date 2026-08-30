@@ -225,7 +225,7 @@ export function applyForgeEdit(state, cardId) {
         forgeInscribedIds: [...(state.forgeInscribedIds || []), card.id],
       },
       card.inscribed
-        ? `Inscribed ${INSCRIBED_FRAMES[card.inscribed]?.name || 'a tool'}${card.rank > 0 ? ` (${rankLabel(card.rank)})` : ''} into the kit.`
+        ? `Added ${INSCRIBED_FRAMES[card.inscribed]?.name || 'a tool'}${card.rank > 0 ? ` (${rankLabel(card.rank)})` : ''} to the kit.`
         : `Added ${rankLabel(card.rank)}${SUIT_GLYPH[card.suit]} to the kit.`
     )
   } else if (type === 'upgrade') {

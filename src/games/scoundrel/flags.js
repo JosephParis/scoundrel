@@ -43,8 +43,8 @@ export const FLAG_META = {
     description: 'Heavy hits add a Wound to the deck. Off: no Wounds appear.',
   },
   customCards: {
-    name: 'Custom cards (Inscribe)',
-    description: "Inscribe's menu gains the special tool frames (Lucky Coin, Skeleton Key, and the like). Off: Inscribe offers only plain weapons and potions.",
+    name: 'Custom cards (Add)',
+    description: "The Add menu gains the special tool frames (Lucky Coin, Skeleton Key, and the like). Off: Add offers only plain weapons and potions.",
   },
   bosses: {
     name: 'Bosses',

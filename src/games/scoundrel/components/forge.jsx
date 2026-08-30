@@ -11,24 +11,32 @@ import { useCardLayout } from '../settings'
 
 // -- Edit offer --------------------------------------------------------
 
-// Each granted edit (Inscribe / Upgrade / Remove) is a "pick one of a few
+// Each granted edit (Add / Upgrade / Remove) is a "pick one of a few
 // cards" screen in the same visual language as a room or a boon offer. The
 // candidate cards live on game.forgeChoices; the active grant type and the
 // batch progress come from game.forgeGrants / game.forgeGrantIndex.
+//
+// The grant type is still keyed `inscribe` throughout the state, the save and
+// the run records; only the player-facing wording is "Add", to sit alongside
+// the equally plain Upgrade and Remove. `verb` exists because the empty-offer
+// line needs the label in lower case and must not print the raw key.
 
 const EDIT_META = {
   inscribe: {
-    kind: 'Inscribe',
+    kind: 'Add',
+    verb: 'add',
     title: 'Add a tool to your kit',
-    blurb: 'Pick one to inscribe into your kit for the rest of the run.',
+    blurb: 'Pick one to add to your kit for the rest of the run.',
   },
   upgrade: {
     kind: 'Upgrade',
+    verb: 'upgrade',
     title: 'Sharpen a kit card',
     blurb: `Pick one to raise its rank by ${UPGRADE_BONUS} (capped at 10).`,
   },
   remove: {
     kind: 'Remove',
+    verb: 'remove',
     title: 'Thin the kit',
     blurb: 'Pick one to drop. Fewer, better tools come up more often.',
   },
@@ -55,7 +63,7 @@ export function EditOfferPanel({ game, onPick, onSkip }) {
 
       {choices.length === 0 ? (
         <div className="text-center text-[11px] text-slate-500 italic">
-          Nothing to {type} right now. Step away.
+          Nothing to {meta.verb} right now. Step away.
         </div>
       ) : (
         <div className="grid grid-cols-2 sm:grid-cols-4 gap-2.5 justify-items-center">

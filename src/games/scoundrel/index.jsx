@@ -320,6 +320,21 @@ export default function Scoundrel() {
     audio.playMusic(game.phase)
   }, [game.phase])
 
+  // Hold the bed while the run is paused, and pick it up where it left off.
+  // Keyed off game.pausedAt rather than homeOpen because that is already the
+  // canonical "the run is stopped" signal -- it is what the playtime clock
+  // stops on -- so the music and the timer can never disagree. It also inherits
+  // the rule that a terminal run never pauses: the victory and death stings are
+  // one-shots, and holding one because the player opened the menu to look at
+  // the leaderboard would cut it off mid-ring.
+  //
+  // Declared after the phase effect so that when both fire, the bed for the new
+  // phase is selected before this decides whether to hold it.
+  useEffect(() => {
+    if (game.pausedAt) audio.pauseMusic()
+    else audio.resumeMusic()
+  }, [game.pausedAt])
+
   // Sigil-earned chime. Fired off a state diff rather than an action site
   // because a sigil can land from either emptying the deck (back to sanctuary)
   // or the final win; both just bump sigilsEarned. Seeded from the loaded value

@@ -25,8 +25,10 @@ vi.mock('howler', () => {
       this.calls.push(['volume', v])
       return this
     }
-    play() { this.calls.push(['play']); return this }
-    stop() { this.calls.push(['stop']); return this }
+    play() { this._playing = true; this.calls.push(['play']); return this }
+    stop() { this._playing = false; this.calls.push(['stop']); return this }
+    pause() { this._playing = false; this.calls.push(['pause']); return this }
+    playing() { return !!this._playing }
     fade(from, to, ms) { this.calls.push(['fade', from, to, ms]); return this }
     once() { return this }
   }
@@ -43,6 +45,11 @@ const { audio } = await import('../src/games/scoundrel/audio.js')
 const howlFor = src => howls.find(h => h.src === src)
 const played = h => h.calls.some(([name]) => name === 'play')
 const faded = h => h.calls.some(([name]) => name === 'fade')
+const paused = h => h.calls.some(([name]) => name === 'pause')
+const stopped = h => h.calls.some(([name]) => name === 'stop')
+const countOf = (h, name) => h.calls.filter(([n]) => n === name).length
+/** A fade down to silence -- the tail stopMusic runs, as opposed to a fade in. */
+const fadedOut = h => h.calls.some(([n, , to]) => n === 'fade' && to === 0)
 /** Level at the moment play() was called. */
 const levelAtPlay = (h) => {
   const i = h.calls.findIndex(([name]) => name === 'play')
@@ -51,8 +58,11 @@ const levelAtPlay = (h) => {
 }
 
 beforeEach(() => {
+  audio.resumeMusic()   // release a hold a previous test left on the controller
   audio.playMusic(null) // stop whatever the previous test left running
-  howls.forEach(h => { h.calls.length = 0 })
+  // The fade-out path ends on a 'fade' event this mock never fires, so a faded
+  // howl would still read as playing. Reset the double's own state too.
+  howls.forEach(h => { h.calls.length = 0; h._playing = false })
 })
 
 describe('playMusic', () => {
@@ -112,5 +122,84 @@ describe('playMusic', () => {
     audio.playMusic('descent')
     expect(() => audio.playMusic('leaderboard')).not.toThrow()
     expect(howlFor('/audio/music/descent.mp3').calls.some(([n, , to]) => n === 'fade' && to === 0)).toBe(true)
+  })
+})
+
+// Pausing the game pauses the music.
+//
+// The distinction that matters is pause vs stop: stopMusic exists and would
+// have been the one-line answer, but it fades to zero and halts, so resuming
+// would restart the bed from the top every time the player opened the menu.
+// These assert the playhead is kept instead.
+describe('pauseMusic / resumeMusic', () => {
+  test('pausing holds the bed rather than stopping it', () => {
+    audio.playMusic('descent')
+    audio.pauseMusic()
+
+    const bed = howlFor('/audio/music/descent.mp3')
+    expect(paused(bed)).toBe(true)
+    expect(stopped(bed)).toBe(false)
+    // The fade in from playMusic is still on the call list; what must not be
+    // there is the fade *out* to silence that stopMusic would have run.
+    expect(fadedOut(bed)).toBe(false)
+  })
+
+  test('resuming continues the same track instead of restarting it', () => {
+    audio.playMusic('descent')
+    const bed = howlFor('/audio/music/descent.mp3')
+    bed.calls.length = 0
+
+    audio.pauseMusic()
+    audio.resumeMusic()
+
+    // One play() and no stop() between them: Howler resumes from the playhead,
+    // which is the whole point. A restart would show up as a stop or a fade.
+    expect(countOf(bed, 'play')).toBe(1)
+    expect(stopped(bed)).toBe(false)
+    expect(faded(bed)).toBe(false)
+  })
+
+  test('a second pause or a stray resume changes nothing', () => {
+    audio.playMusic('descent')
+    const bed = howlFor('/audio/music/descent.mp3')
+
+    audio.pauseMusic()
+    bed.calls.length = 0
+    audio.pauseMusic()
+    expect(bed.calls).toEqual([])
+
+    audio.resumeMusic()
+    bed.calls.length = 0
+    audio.resumeMusic()
+    expect(bed.calls).toEqual([])
+  })
+
+  test('pausing with no track playing does not throw', () => {
+    expect(() => { audio.pauseMusic(); audio.resumeMusic() }).not.toThrow()
+  })
+
+  test('a phase change while paused selects the bed but stays silent', () => {
+    audio.playMusic('sanctuary')
+    audio.pauseMusic()
+    audio.playMusic('descent')
+
+    const next = howlFor('/audio/music/descent.mp3')
+    expect(played(next)).toBe(false)
+
+    // ...and the menu closing is what finally starts it.
+    audio.resumeMusic()
+    expect(played(next)).toBe(true)
+  })
+
+  test('stopping a held bed halts it flat, since a paused fade never lands', () => {
+    audio.playMusic('sanctuary')
+    audio.pauseMusic()
+    const bed = howlFor('/audio/music/sanctuary.mp3')
+    bed.calls.length = 0
+
+    audio.playMusic('descent') // stops the held bed on the way past
+
+    expect(stopped(bed)).toBe(true)
+    expect(faded(bed)).toBe(false)
   })
 })

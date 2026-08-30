@@ -142,6 +142,10 @@ class AudioController {
     this.listeners = new Set()
     this.howls = new Map() // cacheKey -> Howl
     this.currentMusicId = null
+    // True while the bed is held in place by pauseMusic. Distinct from "no
+    // track": currentMusicId still names the held bed, so resumeMusic knows
+    // what to continue and playMusic knows not to start anything meanwhile.
+    this.musicPaused = false
     // Apply the persisted mute to the global Howler bus up front so a player
     // who muted last visit never hears a stray frame on load.
     Howler.mute(this.muted)
@@ -247,6 +251,10 @@ class AudioController {
     if (!config) return
     const howl = this._howl('music', id, config)
     if (howl._scoundrelFailed) return
+    // Phase moved while the game is paused (retiring from the pause menu, say).
+    // Select the bed but leave it silent -- resumeMusic starts it when the menu
+    // closes. Without this the new track would play over a paused game.
+    if (this.musicPaused) return
     // A cue marked fadeIn: false starts at full level, for cues whose attack is
     // the point (see MUSIC). Everything else eases in.
     if (config.fadeIn === false) {
@@ -265,9 +273,50 @@ class AudioController {
     if (!prev) return
     const howl = this.howls.get(`music:${prev}`)
     if (!howl || howl._scoundrelFailed) return
+    // A held bed has nothing to fade: Howler only runs a fade on a playing
+    // sound, so the 'fade' event would never arrive and the track would sit
+    // paused forever instead of stopping. Halt it flat instead.
+    if (!howl.playing()) {
+      howl.stop()
+      return
+    }
     // Fade out, then halt so a re-entry to this track restarts cleanly.
     howl.fade(howl.volume(), 0, MUSIC_FADE_MS)
     howl.once('fade', () => howl.stop())
+  }
+
+  /** The Howl for the current bed, or null if there is none worth touching. */
+  _currentMusicHowl() {
+    if (!this.currentMusicId) return null
+    const howl = this.howls.get(`music:${this.currentMusicId}`)
+    return howl && !howl._scoundrelFailed ? howl : null
+  }
+
+  /**
+   * Hold the bed where it is. Unlike stopMusic this keeps the playhead, so
+   * resumeMusic continues the bar the player left rather than restarting the
+   * track from the top. Idempotent, and safe with no track playing.
+   */
+  pauseMusic() {
+    if (this.musicPaused) return
+    this.musicPaused = true
+    const howl = this._currentMusicHowl()
+    if (howl?.playing()) howl.pause()
+  }
+
+  /**
+   * Release the hold. Resumes from the playhead, or starts the bed that
+   * playMusic selected while paused (that one begins at full level: it has no
+   * position to continue from, and easing in behind an already-dismissed menu
+   * would just delay the music).
+   */
+  resumeMusic() {
+    if (!this.musicPaused) return
+    this.musicPaused = false
+    const howl = this._currentMusicHowl()
+    if (!howl || howl.playing()) return
+    howl.volume(this.musicVolume)
+    howl.play()
   }
 
   // -- sfx -------------------------------------------------------------

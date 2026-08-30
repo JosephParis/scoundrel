@@ -33,6 +33,48 @@
     height: 100%;
   }
 
+  /* Native touch gestures the browser reserves for itself, given up where they
+     fight the game.
+
+     Every screen already measures exactly viewport-wide, so there is nothing
+     for a sideways drag to scroll to -- yet players report the game zooming
+     and sliding under their thumb. The gesture doing it is double-tap-drag:
+     tap, tap again quickly, keep the finger down, and both iOS Safari and
+     Android Chrome read that as "zoom", then let a sideways drag pan the
+     zoomed page. Sigil is played by tapping cards in quick succession, which
+     is that gesture's opening two taps, so it fires by accident constantly.
+
+     `manipulation` gives up exactly the double-tap gestures and keeps
+     everything else: one finger still pans, and a deliberate pinch still
+     zooms, so nobody who needs to magnify the screen loses the ability. It
+     also removes the browser's wait-and-see pause before a tap becomes a
+     click -- with no second tap to wait for there is nothing to disambiguate
+     -- which is the other half of the "taps don't register" report. */
+  html {
+    touch-action: manipulation;
+    /* No rubber-band, and no Android pull-to-refresh. A downward drag mid-run
+       would otherwise reload the page, and the run goes with it. */
+    overscroll-behavior: none;
+  }
+
+  /* Controls, and the card surfaces that are controls. A drag starting on one
+     of these must not begin a text selection or raise the long-press callout:
+     either one swallows the tap that follows. Prose is deliberately left
+     selectable -- the privacy policy is a document people should be able to
+     quote from.
+
+     The default tap highlight is left alone on purpose. Nothing in the app
+     defines an `:active` style, so that grey flash is currently the only
+     confirmation a touch landed, and clearing it to `transparent` -- the usual
+     companion to these rules -- would make the game feel less responsive while
+     fixing nothing. */
+  button, [role="button"], .card-face, .card-back {
+    -webkit-user-select: none;
+    user-select: none;
+    -webkit-touch-callout: none;
+    touch-action: manipulation;
+  }
+
   /* Embedded builds (itch.io). main.jsx sets this class for the standalone
      target only; the site is untouched.
 
