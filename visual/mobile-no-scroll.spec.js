@@ -62,6 +62,8 @@ for (const vp of VIEWPORTS) {
         return {
           scrollHeight: de.scrollHeight,
           clientHeight: de.clientHeight,
+          scrollWidth: de.scrollWidth,
+          clientWidth: de.clientWidth,
           // Layout height of the stage; the transform does not affect this, so
           // multiplying by the scale gives what is actually painted.
           stageHeight: stage ? stage.scrollHeight : de.scrollHeight,
@@ -88,6 +90,16 @@ for (const vp of VIEWPORTS) {
         painted,
         `${screen.name} is clipped on ${label}: ${m.stageHeight}px of content at scale ${m.scale} paints ${painted}px into ${m.clientHeight}px`,
       ).toBeLessThanOrEqual(m.clientHeight + 1)
+
+      // Nothing may hang off the side either. Height is what this file was
+      // written for, but a screen wider than the viewport is worse on a phone:
+      // it makes a sideways drag scroll the page, which reads to the player as
+      // the game sliding out from under their thumb, and it drags the tap they
+      // meant to make along with it.
+      expect(
+        m.scrollWidth,
+        `${screen.name} scrolls sideways on ${label} (over by ${m.scrollWidth - m.clientWidth}px)`,
+      ).toBeLessThanOrEqual(m.clientWidth + 1)
 
       // And the thing the player reaches for has to be on screen, whole. This
       // is the actual requirement; the heights above are how it is achieved.
