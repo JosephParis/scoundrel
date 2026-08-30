@@ -1,0 +1,91 @@
+<svg xmlns="http://www.w3.org/2000/svg" viewBox="0 0 1200 400" width="1200" height="400">
+  <!-- Wide store banner, 1200x400. Rasterised to docs/itch/banner.png by
+       scripts/generate-icons.mjs.
+
+       Third sibling of og-image.svg (1200x630) and itch-cover.svg (630x500),
+       and the only one of the three with room for the game itself: at 3:1 the
+       wordmark needs less than half the frame, so the rest is a room. The
+       cover cannot do this -- at 630x500 four cards would either shrink past
+       legibility or crowd the title out.
+
+       Card faces are the in-game ones rather than an illustration of them:
+       same parchment gradient (index.css .card-face), same border tones
+       (utils/cardHelpers.js cardBorderTone) and the same four silhouettes the
+       room draws, so the banner and the screenshots below it are the same
+       game. Suit paths are copied from components/SuitIcon.jsx -- if the card
+       art is ever redrawn, re-copy them.
+
+       Icons by Lorc (game-icons.net), CC-BY 3.0, as credited in-game. Any page
+       carrying this banner needs that credit too. -->
+  <defs>
+    <radialGradient id="glow" cx="34%" cy="42%" r="78%">
+      <stop offset="0%" stop-color="#1d1609"/>
+      <stop offset="100%" stop-color="#0b0d12"/>
+    </radialGradient>
+    <!-- The in-game card face, angle trimmed for a shape this small. -->
+    <linearGradient id="face" x1="0" y1="0" x2="0.45" y2="1">
+      <stop offset="0%" stop-color="#f7e9cf"/>
+      <stop offset="48%" stop-color="#efdcb8"/>
+      <stop offset="100%" stop-color="#e6cfa6"/>
+    </linearGradient>
+    <filter id="drop" x="-30%" y="-30%" width="160%" height="160%">
+      <feDropShadow dx="0" dy="6" stdDeviation="10" flood-color="#000" flood-opacity="0.55"/>
+    </filter>
+    <filter id="markGlow" x="-70%" y="-70%" width="240%" height="240%">
+      <feGaussianBlur stdDeviation="9" result="b"/>
+      <feMerge><feMergeNode in="b"/><feMergeNode in="SourceGraphic"/></feMerge>
+    </filter>
+  </defs>
+
+  <rect width="1200" height="400" fill="url(#glow)"/>
+  <rect x="14" y="14" width="1172" height="372" fill="none" stroke="#fbbf24" stroke-opacity="0.22" stroke-width="3"/>
+
+  <!-- The mark, echoing the favicon. -->
+  <g transform="translate(300 128) scale(1.5) translate(-32 -32)" filter="url(#markGlow)">
+    <path d="M32 7 Q36.5 27.5 57 32 Q36.5 36.5 32 57 Q27.5 36.5 7 32 Q27.5 27.5 32 7 Z" fill="#fbbf24"/>
+  </g>
+
+  <text x="300" y="248" text-anchor="middle" font-family="Georgia, 'Times New Roman', serif"
+        font-size="88" letter-spacing="13" fill="#f5e6c8">SIGIL</text>
+  <text x="300" y="292" text-anchor="middle" font-family="Georgia, 'Times New Roman', serif"
+        font-size="23" fill="#d9c9a4">Forge your kit, take a Boon, face the Trial</text>
+  <text x="300" y="326" text-anchor="middle" font-family="Georgia, 'Times New Roman', serif"
+        font-size="14" letter-spacing="5" fill="#8a7f6a">A ROGUELITE DECKBUILDER</text>
+
+  <g transform="translate(676 214) rotate(-16)" filter="url(#drop)">
+    <rect x="-75" y="-105" width="150" height="210" rx="11"
+          fill="url(#face)" stroke="#15803d" stroke-width="3"/>
+    <text x="-62" y="-71" font-family="Georgia, 'Times New Roman', serif"
+          font-size="27" font-weight="bold" fill="#1c1917">J♣</text>
+    <g transform="translate(-44.544 -30.543999999999997) scale(0.174)">
+      <path fill="#166534" d="M179.3 38.94C154.7 77.7 142.7 139.7 168.4 185.9l-16.3 9.2c-6.7-11.9-11.2-24.4-13.9-37.2-34.5-6.3-69.42-7.5-104.98-2.1 34.07 10.1 52.77 23.7 76.68 46.7-26.82 9.7-60.25 30.2-92.93 70.2 35.47-8.8 64.83-11.5 89.43-6.3-36.94 22.5-64.06 56.1-88.34 114.1 35.9-17.2 64.89-18.8 102.94-18.8-23.07 32.7-35.27 77.2-36.31 112.8 24.51-26 57.61-60.2 87.21-79 3 29.9 15 58.3 35.9 85.3-.2-43.9 10.3-88.3 31.6-133.4-18.8 9-32.4 18.1-49.9 29.3 6.2-27.9 12.4-55.8 18.7-83.7-23.3 2.4-39 10-60.5 18.5 16.3-33.1 32.7-66.1 49.1-99.2l16.8 8.3-28.4 57.4c18.4-4.4 28.7-4.1 45.7-1.3-4.5 20.4-9 40.7-13.6 61 65.3-36.2 148.3-45.9 226.7-50 7.6-12.9 13.8-24.2 18.8-34.8l-6.3-24.4-24.4 30.8-7.8-27.5-22.5 29.2-7.5-26.1-23.9 31.5-7.7-28.2-23.8 31.4 1.2-41.1 22.6-42.7 7.6 28.3 23.9-31.5 7.6 28.2 23.5-30 6.5 26.9 24.5-30.8 7.8 27.5 24.6-32c2.3-10.8 4.6-22.4 7.4-35.7-55.5-3.7-106.3 4.8-154 9.8-38-20.8-80.8-26.8-121.9-18.5-13.6-29.69-27.2-59.38-40.9-89.06zM325.5 158.3c-4.5 14.2-13 18.3-24.7 20.6-16.1-4.4-28.3-15.5-34.4-30.2 20.4-3.8 42.4 3.4 59.1 9.6z"/>
+    </g>
+  </g>
+  <g transform="translate(806 199) rotate(-6)" filter="url(#drop)">
+    <rect x="-75" y="-105" width="150" height="210" rx="11"
+          fill="url(#face)" stroke="#15803d" stroke-width="3"/>
+    <text x="-62" y="-71" font-family="Georgia, 'Times New Roman', serif"
+          font-size="27" font-weight="bold" fill="#1c1917">Q♠</text>
+    <g transform="translate(-44.544 -30.543999999999997) scale(0.174)">
+      <path fill="#166534" d="M256.16 15.822c-74.685 0-124.825 36.292-157.865 90.487C66.36 158.692 51.637 228.053 50.68 294.954c44.44 12.795 73.834 28.683 90.46 50.123 15.804 20.383 18.445 45.188 12.157 71.963 23.635 7.218 62.826 11.32 100.986 10.905 38.28-.416 76.213-5.67 96.373-13.44-4.608-25.936-.182-50.215 16.983-70.07 17.928-20.738 48.197-36.53 93.4-49.488-.972-63.406-15.24-132.688-46.868-185.92-20.367-34.277-47.386-61.936-82.97-77.972-62.555 14.347-113.232 44.996-143.62 84.12 25.38 8.96 46.088 21.593 65.35 34.583l10.742 7.244-10.266 7.906c-26.884 20.705-46.28 43.707-65.26 67.48 28.468 22.27 47.56 52.2 29.02 65.186-33.572 23.518-170.713 1.396-119.002-78.754 6.006-9.31 15.307-13.314 26.2-13.496 14.635-.244 32.144 6.414 48.4 16.37 17.11-21.452 35.198-43.144 59.1-63.32-18.538-11.88-37.98-22.425-61.975-29.265l-12.29-3.503 7.066-10.65c28.184-42.48 75.737-75.727 134.613-94.523-13.362-3.012-27.71-4.612-43.118-4.612h-.002zm126.594 189.502c10.892.182 20.19 4.187 26.197 13.496 51.712 80.15-85.427 102.272-119 78.754-31.496-22.06 45.603-93.04 92.804-92.25zM252.2 309.057c13.922 0 38.53 68.05 30.277 79.51-6.48 8.996-54.935 8.617-60.555 0-7.197-11.034 16.31-79.51 30.277-79.51zM354.71 433.13c-10.557 3.91-23.223 6.832-37.17 8.952l5.94 48.89h53.416l-22.185-57.84zm-207.888 1.57-18.5 56.273h47.092l5.914-48.684c-12.764-1.877-24.484-4.38-34.506-7.59zm152.17 9.667c-13.13 1.28-26.996 1.98-41.078 2.21v44.396h46.74l-5.662-46.606zm-99.107.14-5.647 46.466h44.99V446.6c-13.444-.204-26.714-.894-39.343-2.094z"/>
+    </g>
+  </g>
+  <g transform="translate(936 199) rotate(6)" filter="url(#drop)">
+    <rect x="-75" y="-105" width="150" height="210" rx="11"
+          fill="url(#face)" stroke="#7e22ce" stroke-width="3"/>
+    <text x="-62" y="-71" font-family="Georgia, 'Times New Roman', serif"
+          font-size="27" font-weight="bold" fill="#b91c1c">8♥</text>
+    <g transform="translate(-44.544 -30.543999999999997) scale(0.174)">
+      <path fill="#6b21a8" d="M94.055 21.9 18.998 96.96l42.727 23.6-26.98 26.952L142.35 212.39c-40.443 70.148-30.72 161.07 29.2 220.958 71.605 71.606 187.737 71.587 259.356 0 71.62-71.587 71.642-187.654.037-259.22-59.915-59.878-150.896-69.57-221.084-29.177L144.95 37.415l-8.44 8.432-18.588 18.57L94.055 21.9zm47.224 45.598 62.337 103.275 8.098-5.248c44.21-28.663 99.014-34.044 147.166-16.078-1.16-.026-2.328-.04-3.503-.04-38.988 0-70.594 14.807-70.594 33.073 0 18.27 31.606 33.075 70.594 33.075 31.53 0 58.225-9.684 67.287-23.05 15.942 17.34 27.492 37.224 34.65 58.253-7.76-3.387-18.28-6.706-30.902-9.563-31.383-7.1-75.547-11.615-124.305-11.615-48.757 0-92.92 4.514-124.304 11.615-13.71 3.102-24.997 6.75-32.893 10.438a163.85 163.85 0 0 1 18.018-37.383l5.263-8.104-103.33-62.3 13.894-13.88 46.937 25.923 27.914-27.915-26.18-46.635 13.855-13.842zm-1.087 201.287c.482.28.982.56 1.506.84 7.89 4.22 20.41 8.487 36.103 12.037 31.383 7.1 75.547 11.615 124.304 11.615 48.758 0 92.922-4.514 124.305-11.615 15.687-3.55 28.203-7.813 36.094-12.033a164.248 164.248 0 0 1 2.746 17.643c-9.432 4.277-21.204 7.893-35.074 11.032-33.205 7.513-78.27 12.037-128.07 12.037-49.802 0-94.866-4.524-128.07-12.037-14.67-3.32-27-7.17-36.69-11.776a164.503 164.503 0 0 1 2.845-17.745z"/>
+    </g>
+  </g>
+  <g transform="translate(1066 214) rotate(16)" filter="url(#drop)">
+    <rect x="-75" y="-105" width="150" height="210" rx="11"
+          fill="url(#face)" stroke="#6b7280" stroke-width="3"/>
+    <text x="-62" y="-71" font-family="Georgia, 'Times New Roman', serif"
+          font-size="27" font-weight="bold" fill="#b91c1c">9♦</text>
+    <g transform="translate(-44.544 -30.543999999999997) scale(0.174)">
+      <path fill="#44403c" d="m491.844 22.533-83.42 14.865L196.572 249.25c3.262 4.815 5.37 10.72 5.37 16.932 0 5.863-1.71 11.35-4.643 15.996a52.936 52.936 0 0 0-16.027-2.477c-15.724 0-29.904 6.89-39.69 17.796l-9.112-9.113 17.237-17.237a545.915 545.915 0 0 1-13.19-17.6l-19.443 19.44-13.215-13.215 21.828-21.827a548.134 548.134 0 0 1-12.792-20.068L72.093 258.68l58.314 58.314a52.94 52.94 0 0 0-2.49 16.063 52.86 52.86 0 0 0 4.592 21.564l-72.14 72.14-14.56-14.56L21.013 437l14.558 14.56-8.607 8.608 27.246 27.246 8.606-8.61 14.56 14.56 24.798-24.8-14.557-14.556 72.158-72.16a52.885 52.885 0 0 0 21.498 4.562 52.94 52.94 0 0 0 16.063-2.49l58.363 58.363L296.5 401.48a548.745 548.745 0 0 1-20.068-12.793l-21.83 21.83L241.39 397.3l19.442-19.44a550.258 550.258 0 0 1-17.603-13.194l-17.238 17.238-9.16-9.16c10.905-9.785 17.795-23.965 17.795-39.69 0-5.346-.806-10.51-2.285-15.39 4.703-3.04 10.288-4.817 16.265-4.816 6.21 0 11.776 1.77 16.52 4.955L476.98 105.95l14.864-83.417zm-66.227 53.012 13.215 13.215-191.684 191.68-13.214-13.213L425.617 75.545zM181.273 298.39c19.257 0 34.665 15.41 34.665 34.665 0 19.256-15.408 34.666-34.665 34.666-19.256 0-34.666-15.41-34.666-34.665s15.41-34.666 34.666-34.666z"/>
+    </g>
+  </g>
+</svg>

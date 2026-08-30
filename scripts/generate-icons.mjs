@@ -13,6 +13,8 @@
  *   public/favicon.svg          the mark, with its own rounded corners
  *   scripts/icon-maskable.svg   full-bleed variant for Android masking
  *   scripts/og-image.svg        1200x630 social card
+ *   scripts/itch-cover.svg      630x500 store cover
+ *   scripts/itch-banner.svg     1200x400 wide banner
  */
 import { readFileSync, writeFileSync, mkdirSync } from 'node:fs'
 import { fileURLToPath } from 'node:url'
@@ -36,6 +38,12 @@ const TARGETS = [
   {
     out: 'cover.png', width: 630, height: 500,
     src: join(here, 'itch-cover.svg'), dir: join(root, 'docs', 'itch'),
+  },
+  // 3:1 banner for the surfaces a near-square cover cannot fill: itch's page
+  // header, a README hero, a link preview that crops to a strip.
+  {
+    out: 'banner.png', width: 1200, height: 400,
+    src: join(here, 'itch-banner.svg'), dir: join(root, 'docs', 'itch'),
   },
 ]
 

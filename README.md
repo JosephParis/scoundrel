@@ -1,6 +1,6 @@
 # Sigil
 
-A roguelike deckbuilder of one bad night. Forge your kit, descend blind, and earn
+A roguelite deckbuilder. Forge your kit, take a Boon, face the Trial, and earn
 ten sigils to escape.
 
 **Play it: [sigildeck.com](https://sigildeck.com)**

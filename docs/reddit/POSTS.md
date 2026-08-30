@@ -64,8 +64,8 @@ for one rather than making a top-level post.
 ## Shared building blocks
 
 **The pitch (one line):**
-> A solo card roguelike played out of one deck — clear the room, or spend your
-> weapon's edge deciding not to.
+> A dungeon dealt four cards at a time. Play three and leave one for the next
+> room — or flee, and face all four again later.
 
 Do **not** say "44-card deck". It's true of the source deck internally and false
 as a description of play: your kit and the dungeon's rolled monster pool are
@@ -97,7 +97,7 @@ long one gets ignored.
 ## Post A — r/WebGames
 
 **Title** *(verify their tag convention first — bracket genre tags are common)*
-- `[Card/Roguelike] Sigil — a solo card roguelike played out of one deck. Free, no account, ~15 min a run`
+- `[Card/Roguelike] Sigil — a solo card roguelike dealt four cards at a time. Free, no account, ~15 min a run`
 - `[Card Game] Sigil — I built a roguelike out of the print-and-play game Scoundrel. Looking for feedback`
 
 **Body**
