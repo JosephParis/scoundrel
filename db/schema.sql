@@ -1,12 +1,26 @@
--- Scoundrel run-analytics table (Neon Postgres).
+-- Sigil database schema (Neon Postgres).
 --
--- The api/runs.js endpoint creates this automatically on first call, so you do
--- NOT need to run this by hand. It is kept here as documentation and as the
--- canonical place to add indexes/migrations later.
+-- Nothing here needs to be run by hand: every endpoint creates and migrates its
+-- own tables on first call, caching the promise per warm instance. This file is
+-- the readable copy of that DDL -- the place to look before writing an
+-- analytics query or debugging production -- so when you change DDL in api/,
+-- change it here in the same commit. Each section names the file that owns it.
+--
+-- Four tables:
+--   runs             -- one row per finished run       (api/_lib/runsTable.js)
+--   profiles         -- one row per signed-in player   (api/save.js)
+--   feedback         -- one row per note sent in-game  (api/feedback.js)
+--   blocked_accounts -- moderation blocklist           (api/_lib/moderation.js)
+--   rate_limits      -- fixed-window write throttle    (api/_lib/rateLimit.js)
+--
+-- ---------------------------------------------------------------------------
+-- runs -- owned by api/_lib/runsTable.js (ensureRunsTable), written by
+-- api/runs.js and the weekly backfill cron.
 --
 -- Each finished run is one row. Scalar columns are denormalized for cheap
 -- filtering; the full buildRunRecord() blob lives in `record` (jsonb) so the
 -- schema never churns as the record shape evolves.
+-- ---------------------------------------------------------------------------
 
 create table if not exists runs (
   run_key       text primary key,        -- "<account_id>:<started_at>", stable per run
@@ -23,9 +37,18 @@ create table if not exists runs (
   created_at    timestamptz not null default now()
 );
 
--- Added after the table first shipped; api/runs.js applies the same migration
--- in place so existing deployments pick it up. Old rows keep a null version.
+-- Both columns were added after the table first shipped, so ensureRunsTable()
+-- applies the same migrations in place and existing deployments pick them up on
+-- the next call. Old rows keep a null value in each.
+--
+--   game_version -- balance stamp; null rows predate stamping and fall outside
+--                   any specific-version filter.
+--   dev          -- true when the run used the Dev overrides tool, i.e. test
+--                   data. Load-bearing: api/stats.js and api/leaderboard.js
+--                   both filter on `dev is not true`, which reads a legacy null
+--                   as a real run.
 alter table runs add column if not exists game_version text;
+alter table runs add column if not exists dev boolean;
 
 create index if not exists runs_outcome_idx on runs (outcome);
 create index if not exists runs_account_idx on runs (account_id);
@@ -33,8 +56,62 @@ create index if not exists runs_ended_idx   on runs (ended_at);
 create index if not exists runs_version_idx on runs (game_version);
 
 -- ---------------------------------------------------------------------------
--- Fixed-window rate limiting for the open write endpoints (issue 07).
--- Created automatically by api/_lib/rateLimit.js, which owns this DDL.
+-- profiles -- owned by api/save.js. One row per signed-in player: the cloud
+-- copy of the local save blob, plus the email the Google token carried. Guests
+-- never reach this table; their save stays in localStorage.
+--
+-- Blocking a player (see blocked_accounts) deliberately does NOT touch this
+-- row: moderation hides a handle from the public board, it does not delete
+-- anybody's save.
+-- ---------------------------------------------------------------------------
+
+create table if not exists profiles (
+  account_id text primary key,             -- google sub
+  email      text,
+  data       jsonb not null default '{}'::jsonb,  -- merged save blob
+  updated_at timestamptz not null default now()
+);
+
+-- ---------------------------------------------------------------------------
+-- feedback -- owned by api/feedback.js. One row per note a player sends from
+-- the in-game feedback form. Read back by GET /api/stats (recentFeedback) and
+-- deletable through DELETE /api/moderation?feedbackId=<id>, both ADMIN_TOKEN
+-- gated. id is a bigserial so callers never supply one; context is a free jsonb
+-- blob (phase, sigils, mode, ...) that can evolve without a schema change.
+-- ---------------------------------------------------------------------------
+
+create table if not exists feedback (
+  id           bigserial primary key,
+  account_id   text not null,           -- google sub, or 'guest'
+  kind         text,                    -- bug | idea | praise | other
+  message      text not null,
+  game_version text,
+  context      jsonb,
+  created_at   timestamptz not null default now()
+);
+
+create index if not exists feedback_created_idx on feedback (created_at);
+
+-- ---------------------------------------------------------------------------
+-- blocked_accounts -- owned by api/_lib/moderation.js (issue 08). One row per
+-- account whose runs are hidden from the public leaderboard. The save, the
+-- profile and the analytics rows all stay: api/leaderboard.js subtracts this
+-- set when it ranks, and nothing else reads it, so a block is fully reversible
+-- and costs no data.
+--
+-- account_id 'guest' is refused by the endpoint -- every guest shares it, so
+-- blocking it would empty the board for everyone.
+-- ---------------------------------------------------------------------------
+
+create table if not exists blocked_accounts (
+  account_id text primary key,           -- google sub of the blocked player
+  reason     text,                       -- admin's note to their future self
+  created_at timestamptz not null default now()
+);
+
+-- ---------------------------------------------------------------------------
+-- rate_limits -- owned by api/_lib/rateLimit.js. Fixed-window rate limiting for
+-- the open write endpoints (issue 07).
 --
 -- One row per (endpoint, ip, window). The bucket key embeds floor(now/window),
 -- so windows rotate on their own and stale rows are simply never read again; a

@@ -1,4 +1,5 @@
 import { neon } from '@neondatabase/serverless'
+import { adminAuthorized } from './_lib/moderation.js'
 
 /**
  * Admin-only analytics endpoint. GET /api/stats returns pre-aggregated run
@@ -6,7 +7,8 @@ import { neon } from '@neondatabase/serverless'
  * SQL. Aggregation runs in Postgres; payload stays small as data grows.
  *
  * Auth: a single shared secret in the ADMIN_TOKEN env var, sent as
- * `Authorization: Bearer <token>`. Set ADMIN_TOKEN in the Vercel project
+ * `Authorization: Bearer <token>` -- the same check /api/moderation uses, which
+ * is why it lives in _lib/moderation.js. Set ADMIN_TOKEN in the Vercel project
  * settings (and locally for `vercel dev`). Without it the endpoint 503s.
  *
  * Counts come back from Postgres as strings (bigint); the client coerces with
@@ -45,14 +47,6 @@ function whereAnd(conds) {
   return active.reduce((acc, c, i) => (i === 0 ? sql`where ${c}` : sql`${acc} and ${c}`), null)
 }
 
-function authorized(req) {
-  const token = process.env.ADMIN_TOKEN
-  if (!token) return false
-  const header = req.headers.authorization || ''
-  const sent = header.startsWith('Bearer ') ? header.slice(7) : ''
-  return sent.length > 0 && sent === token
-}
-
 export default async function handler(req, res) {
   if (req.method !== 'GET') {
     res.setHeader('Allow', 'GET')
@@ -60,7 +54,7 @@ export default async function handler(req, res) {
   }
   if (!sql) return res.status(503).json({ error: 'database_not_configured' })
   if (!process.env.ADMIN_TOKEN) return res.status(503).json({ error: 'admin_token_not_configured' })
-  if (!authorized(req)) return res.status(401).json({ error: 'unauthorized' })
+  if (!adminAuthorized(req)) return res.status(401).json({ error: 'unauthorized' })
 
   // Optional ?versions=<v1,v2,...> filter. When absent/empty, every aggregation
   // sees the whole table (legacy null-version rows included). When set, `runs`

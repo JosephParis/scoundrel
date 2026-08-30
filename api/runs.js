@@ -3,6 +3,7 @@ import { ensureRunsTable, runKeyFor } from './_lib/runsTable.js'
 import { accountFromRequest } from './_lib/session.js'
 import { parseRunBatch, mayWriteAs } from './_lib/validate.js'
 import { checkRateLimit, clientIp, tooManyRequests } from './_lib/rateLimit.js'
+import { isHandleAllowed } from '../src/games/scoundrel/handleDenylist.js'
 
 /**
  * Vercel serverless function: persist finished-run records into Postgres (Neon)
@@ -24,6 +25,19 @@ import { checkRateLimit, clientIp, tooManyRequests } from './_lib/rateLimit.js'
  * in the Vercel project settings. Without it the endpoint 503s and the client
  * silently moves on; play is never affected.
  *
+ * Handles are screened here as well as in the client (issue 08). A record whose
+ * playerName fails the denylist is stored with the name removed rather than
+ * rejected: the run is real analytics either way, and rejecting the POST would
+ * lose it and tell the author which words to try next.
+ *
+ * Note what stripping the name now means. This was written when the board
+ * listed only runs carrying a handle, so removing the name kept the run off the
+ * public page entirely; b9ad068 changed that, and an unnamed row is now listed
+ * as Anonymous. So a screened run still places — it just carries no name. That
+ * is the intended outcome: the abusive string is what must never be published,
+ * and the victory itself is not the offence. Taking the row off the board as
+ * well is a moderator's decision, and api/moderation.js is where it is made.
+ *
  * The full record blob is stored in a `record` jsonb column so the schema never
  * churns as records evolve (boons, upgrades, death context, ...). Analytics is
  * dev-only: query this table directly with SQL, e.g. winrate by boon pair via
@@ -37,6 +51,18 @@ const sql = process.env.DATABASE_URL ? neon(process.env.DATABASE_URL) : null
 // leaderboard or skew an aggregation.
 const RATE_LIMIT = 30
 const RATE_WINDOW_MS = 60 * 1000
+
+/**
+ * Strip a handle that must not appear on the public board. Returns the record
+ * unchanged when the handle is fine, so the common path allocates nothing.
+ * Both the denormalized column and the stored blob are cleared, since
+ * api/leaderboard.js reads the name out of the blob.
+ */
+export function scrubHandle(record) {
+  const name = typeof record.playerName === 'string' ? record.playerName : ''
+  if (!name.trim() || isHandleAllowed(name)) return record
+  return { ...record, playerName: null }
+}
 
 async function insertRun(record) {
   await sql`
@@ -90,7 +116,7 @@ export default async function handler(req, res) {
     // Sequential inserts keep this simple; batches are small in practice (a
     // fresh run, or one device's short outage backlog) and each is a no-op when
     // the run is already stored.
-    for (const record of records) await insertRun(record)
+    for (const record of records) await insertRun(scrubHandle(record))
     return res.status(202).json({ ok: true, count: records.length })
   } catch {
     return res.status(500).json({ error: 'insert_failed' })

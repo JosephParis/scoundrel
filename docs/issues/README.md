@@ -10,36 +10,50 @@ Baseline: `npm run lint` clean, `npm run build` clean. Test suite as it stands:
 | Suite | Runner | Status |
 |---|---|---|
 | `test/validate.test.js` | vitest | 42 pass |
-| `test/runs.handler.test.js` | vitest | 16 pass |
+| `test/runs.handler.test.js` | vitest | 22 pass |
 | `test/rateLimit.test.js` | vitest | 13 pass |
-| `test/audio.test.js` | vitest | 7 pass |
+| `test/audio.test.js` | vitest | 13 pass |
 | `test/pseudonym.test.js` | vitest | 6 pass |
 | `test/combat.test.js` | vitest | 78 pass |
 | `test/lifecycle.test.js` | vitest | 56 pass |
 | `test/dedupeKeys.test.js` | vitest | 40 pass |
-| `test/sanctuary.test.js` | vitest | 37 pass |
+| `test/sanctuary.test.js` | vitest | 40 pass |
 | `test/history.test.js` | vitest | 33 pass |
 | `test/deck.test.js` | vitest | 32 pass |
 | `test/themes.test.js` | vitest | 31 pass |
-| `visual/privacy.spec.js` | dev | 9 pass |
+| `test/handleDenylist.test.js` | vitest | 41 pass |
+| `test/moderation.handler.test.js` | vitest | 24 pass |
+| `test/leaderboard.handler.test.js` | vitest | 11 pass |
+| `test/leaderboard.test.js` | vitest | 5 pass |
+| `test/audioSession.test.js` | vitest | 4 pass |
+| `visual/copy-accuracy.spec.js` | dev | 15 pass |
+| `visual/itch-build.spec.js` | dev | 11 pass |
+| `visual/robots-and-payload.spec.js` | dev | 8 pass |
+| `visual/privacy.spec.js` | dev | 11 pass |
 | `visual/save-reset.spec.js` | dev | 4 pass |
 | `visual/head-and-manifest.spec.js` | dev | 11 pass |
 | `visual/audio-assets.spec.js` | dev | 5 pass |
-| `visual/bare-hands-layout.spec.js` | dev | 7 pass |
+| `visual/bare-hands-layout.spec.js` | dev | 8 pass |
 | `screens.spec.js` | dev | 6 pass (1 known skip — issue 12) |
 | `mobile-responsive-simple.spec.js` | dev | 12 pass |
 | `tutorial-walkthrough.spec.js` | dev | 1 pass |
 | `dev-tools-gate.prod.spec.js` | prod | 6 pass |
 | `error-boundary.prod.spec.js` | prod | 8 pass |
-| `mobile-responsive.spec.js` | dev | 27 pass |
+| `mobile-responsive.spec.js` | dev | 31 pass |
+| `visual/mobile-no-scroll.spec.js` | dev | 35 pass |
+| `visual/device-lab.spec.js` | dev | 4 pass |
+| `visual/mobile-touch.spec.js` | dev | 3 pass |
 
-**Full suite: 400 unit + 172 e2e passed, 1 skipped (`card-library`, issue 12).**
-Measured 2026-08-27. The table above stopped being itemised at some point:
-`copy-accuracy`, `device-lab`, `itch-build`, `mobile-no-scroll` and
-`robots-and-payload` also run and are not listed. The totals line is the
-baseline that matters — a new failure or a second skip is a regression.
+**Full suite: 491 unit + 179 e2e passed, 1 skipped (`card-library`, issue 12).**
+Measured 2026-08-30, on main, after merging issues 08 and 27. The table above
+had drifted — five suites ran without being listed and three counts were wrong —
+so it was rebuilt from the runners' own output and is now complete. Keep it that
+way, or delete it and keep only this line: the totals are the baseline that
+matters, and a new failure or a second skip is a regression.
 
-The unit half went 84 → 391 with issue 15. The rules engine now has real
+The unit half went 84 → 391 with issue 15, and 391 → 491 with issue 08, which
+added the handle denylist and put the two public-facing handlers — moderation
+and the leaderboard — under test for the first time. The rules engine now has real
 coverage: `combat.js`, `lifecycle.js`, `logic/sanctuary.js`, `deck.js`,
 `themes.js`, `history.js` and the run-dedupe keys. Shared fixtures (a seeded
 rng and the state factories) live in `test/support/state.js` — start there
@@ -101,7 +115,10 @@ over the game logic), **09** (the `merge.js` dedupe key that dropped runs —
 closed alongside 15, whose agreement test could not pass while it was broken),
 **21** (`.env` now ignored; nothing had leaked), **20** (README, LICENSE and
 `.env.example`), **22** (nine session docs archived to `docs/archive/`), **27** (a stuck run can
-be discarded from Settings, which the home menu now reaches).
+be discarded from Settings, which the home menu now reaches), **10** (`db/schema.sql`
+describes all five tables), **08** (moderation: a handle denylist enforced
+server-side, `/api/moderation` behind `ADMIN_TOKEN`, and block / delete controls
+on `/admin`).
 
 **All P0 blockers are closed.** Live at **https://sigildeck.com** since
 2026-08-06, with the privacy mailbox, auth and DNS all verified against the
@@ -112,10 +129,25 @@ The repo root is now **README, LICENSE and the three live design docs**
 `docs/` — see `docs/archive/README.md` for the historical session notes, which
 are kept but are **not** current documentation.
 
-**The open risk before widening access is issue 08.** Leaderboard handles are
-player-supplied and public, and there is no way to remove an abusive one — no
-block, no delete, no audit. That is the thing that changes character the moment
-strangers rather than friends are playing.
+**Issue 08 closed the moderation gap.** Handles are screened server-side, an
+admin can block an account or delete a single row from `/admin`, and blocked
+accounts are subtracted from the public board without touching anyone's save.
+Two caveats before that counts as settled: none of it has been exercised against
+production yet — the panel makes no real request in `vite dev`, so the round trip
+sits on issue 13's checklist — and the word lists are a floor that catches the
+lazy attempt, not a filter that holds against a determined one. The blocklist and
+the row delete are the actual answer to what gets through.
+
+**Merging 08 settled one thing it could not have known about.** The branch was
+cut on 2026-08-23 and assumed a screened handle kept the run off the board,
+because stripping the name did exactly that at the time. `b9ad068` (2026-08-25)
+reversed issue 14 in parallel, so an unnamed row is now listed as Anonymous, and
+a screened run therefore *places* — without a name. That is the behaviour that
+was kept: the abusive string is what must never be published, and the victory
+itself is not the offence. Taking the row off the board as well is a moderator's
+call, which is what `/api/moderation` is for. The Settings copy says so rather
+than implying the run is lost, and `visual/copy-accuracy.spec.js` asserts both
+halves — that the name is refused, and that the run still appears as Anonymous.
 
 ## The game is now called Sigil
 
@@ -195,9 +227,9 @@ shipped to users on `0.4` yet, so sharing is usually fine.
 | # | Issue | Area | Effort | Status |
 |---|---|---|---|---|
 | [07](07-unauthenticated-write-endpoints.md) | `/api/runs` + `/api/feedback` accept unauthenticated writes | security | M | **done** |
-| [08](08-moderation-tools.md) | No moderation path for handles, rows, or feedback | security | M | open |
+| [08](08-moderation-tools.md) | No moderation path for handles, rows, or feedback | security | M | **done** |
 | [09](09-merge-runseed-dedupe-bug.md) | **BUG** `merge.js` omits `runSeed`, dropping runs on sync | bug | S | **done** |
-| [10](10-stale-db-schema.md) | `db/schema.sql` no longer describes the database | docs | S | open |
+| [10](10-stale-db-schema.md) | `db/schema.sql` no longer describes the database | docs | S | **done** |
 | [26](26-dead-mobile-responsive-spec.md) | **BUG** all 25 tests in `mobile-responsive.spec.js` were dead | testing | M | **done** |
 | [28](28-bare-hands-covers-weapon-preview.md) | **BUG** bare-hands button covers the weapon preview | bug | S | **done** |
 
@@ -208,7 +240,7 @@ shipped to users on `0.4` yet, so sharing is usually fine.
 | [11](11-feature-flag-defaults.md) | Decide feature flag defaults (6 of 7 off) | product | S | open |
 | [12](12-unreachable-glossary-and-card-library.md) | Card library + Boons/Trials glossary unreachable | product | S | open |
 | [13](13-verify-admin-stats-in-prod.md) | Verify `/api/stats` + `/admin` in prod before inviting anyone | product | S | open |
-| [14](14-anonymous-handle-copy-mismatch.md) | **BUG** UI promises "Anonymous" listing; server excludes it | bug | S | open |
+| [14](14-anonymous-handle-copy-mismatch.md) | **BUG** UI promises "Anonymous" listing; server excludes it | bug | S | **done** |
 | [27](27-save-reset-outside-crash-path.md) | No save reset for a run stuck without crashing | product | S | **done** |
 
 ### P3 — quality, performance, accessibility
@@ -251,6 +283,8 @@ collect from batch 1 worth acting on.
                     │
 15 (vitest) ───────>├─ 24 (wire test:unit into CI)
 09 (dedupe bug) ───>┘    (09's acceptance criteria want a test)
+
+08 (moderation) ───> 13 (verify the endpoints against production)
 
 23 (DESIGN.md) ────> 25 (rules copy) ──┐
                                        ├─ audit content together

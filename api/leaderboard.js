@@ -1,5 +1,6 @@
 import { neon } from '@neondatabase/serverless'
 import { ensureRunsTable } from './_lib/runsTable.js'
+import { ensureBlockedTable } from './_lib/moderation.js'
 
 /**
  * GET /api/leaderboard — the public fastest-victory board.
@@ -45,6 +46,11 @@ import { ensureRunsTable } from './_lib/runsTable.js'
  *
  * Requires DATABASE_URL. Without it the endpoint 503s and the client shows the
  * board as unavailable; play is never affected.
+ *
+ * Blocked accounts (issue 08) are subtracted here rather than deleted: an
+ * account on the blocklist stops being published everywhere on the board at
+ * once, including the caller's-own-rank query, while its runs stay in the table
+ * for analytics and its save is untouched.
  *
  * Note that durations are computed client-side (wall clock between run start
  * and run end, minus pauses) and are therefore self-reported. The floor below
@@ -110,6 +116,12 @@ function rankedBest(versionCond) {
       from runs r
       where r.outcome = 'victory'
         and r.dev is not true
+        -- Moderation blocklist. Applied inside the ranked subquery so a blocked
+        -- account is gone before row_number() runs: removing it afterwards
+        -- would leave a hole in the ranking where their row used to be.
+        and not exists (
+          select 1 from blocked_accounts bl where bl.account_id = r.account_id
+        )
         and r.duration_ms >= ${MIN_DURATION_MS}
         -- Casts are regex-guarded, not bare ::int. The endpoint that writes these
         -- rows was open and unvalidated until issue 07, so a single stored row
@@ -169,7 +181,7 @@ export default async function handler(req, res) {
     // Idempotent and cached per warm instance (see runsTable.js). Keeps the
     // board working on a deployment where no run has been mirrored yet, rather
     // than 500ing on a missing table.
-    await ensureRunsTable(sql)
+    await Promise.all([ensureRunsTable(sql), ensureBlockedTable(sql)])
     const ranked = rankedBest(versionCond)
     const [rows, selfRows] = await Promise.all([
       sql`select * from ${ranked} b order by rank asc limit ${limit}`,

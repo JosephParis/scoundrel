@@ -269,6 +269,19 @@ test('nothing scrolls, at any frame height', async ({ page }) => {
     await page.setViewportSize({ width: 1280, height })
     await openGame(page)
 
+    // The fit is applied by the app after layout, not by CSS, so a single
+    // measurement can land on the unscaled frame and read as "content past the
+    // bottom" -- which is exactly what this test is looking for, and a false
+    // one. Poll until the fit has engaged; a fit that never engages still
+    // fails, just after the timeout rather than immediately.
+    await expect.poll(
+      () => page.evaluate(() => {
+        const root = document.getElementById('root')
+        return root.scrollHeight - root.clientHeight
+      }),
+      { message: `#root has content past the frame at ${height}px` },
+    ).toBeLessThanOrEqual(1)
+
     const overflow = await page.evaluate(() => {
       const root = document.getElementById('root')
       window.scrollTo(0, 99_999)

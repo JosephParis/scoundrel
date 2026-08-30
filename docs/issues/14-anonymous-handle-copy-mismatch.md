@@ -102,3 +102,27 @@ and present for a whitespace-only handle.
 
 **Not verified in production.** The last acceptance box needs a real
 handle-less and named victory against sigildeck.com — do it with issue 13.
+
+## Superseded (2026-08-25, `b9ad068`)
+
+**The resolution above was reversed, and this file was not updated at the time.**
+Read it as history, not as current behaviour.
+
+The 08-22 fix kept the server rule (no handle, no listing) and removed the
+promise from the copy. `b9ad068` took the alternative this file had argued
+against: the board now lists a nameless victory as Anonymous, because a player
+who never opened Settings could win a record-fast run and silently not place.
+`api/leaderboard.js` drops the handle filter and sends `playerName: null`; the
+client renders the stand-in via `entryDisplayName`. The opt-in property is
+weaker than the 08-22 reasoning wanted, and that was accepted deliberately —
+nothing identifying travels with an unnamed row.
+
+So the copy went back to promising an Anonymous listing, and
+`visual/copy-accuracy.spec.js` was inverted to assert the old claim is gone.
+The `anonymous-victory nudge` block is the current expectation; the
+`unlisted-victory nudge` wording quoted above no longer exists.
+
+Merging issue 08 (2026-08-30) hit this: that branch predated `b9ad068` and its
+screened-handle copy still said a rejected name kept the run off the board. It
+does not — a screened run places as Anonymous. See the note in
+`docs/issues/README.md` under the issue 08 paragraph.

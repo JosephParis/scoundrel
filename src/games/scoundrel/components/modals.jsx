@@ -5,6 +5,7 @@ import {
   FLAG_IDS, FLAG_META, getFlags, setFlag, resetAllFlags,
 } from '../logic'
 import { settings, useCardLayout, useHandle, MAX_HANDLE_LENGTH } from '../settings'
+import { handleRejectionReason } from '../handleDenylist'
 import { audio, useMuted, useMusicVolume, useSfxVolume } from '../audio'
 import { BUILD_SHA, BUILD_HREF, BUILD_TITLE } from '../../../buildInfo.js'
 import { discardSavedRun } from '../../../utils/discardRun'
@@ -25,17 +26,26 @@ const CARD_LAYOUT_OPTIONS = [
 ]
 
 // Opt-in name for the public leaderboard. Empty is the default and the whole
-// point: a run reaches the board only if the player types a name here, so
-// nobody is ever named on a public page without choosing to be. Handle-less
-// runs are not listed anonymously — api/leaderboard.js filters them out
-// entirely — and the copy below has to say so (issue 14). The field is
-// write-through: settings.setHandle sanitizes on every keystroke, so what is
-// shown is exactly what a future run would carry.
+// point: a run reaches the board either way, but it is credited to a name only
+// if the player types one here, so nobody is ever named on a public page
+// without choosing to be. A handle-less victory is listed as Anonymous rather
+// than dropped (issue 14, reversed by b9ad068 once the board could carry an
+// unnamed row), and the copy below has to say so. The field is write-through:
+// settings.setHandle sanitizes on every keystroke, so what is shown is exactly
+// what a future run would carry.
+//
+// Screened names (issue 08) are still typable and still stored locally. The
+// field would otherwise be unusable — refusing to store "nazi" means refusing
+// the fourth keystroke of "Nazir" — and the server strips the name from the
+// record either way, so the honest thing is to keep the input working and say
+// plainly what happens. What happens is that the run still places, as Anonymous:
+// the name is what is refused, not the victory.
 function LeaderboardHandleSection() {
   const handle = useHandle()
   // What a run would actually be credited to: sanitizeHandle keeps a trailing
   // space so it can be typed, but nothing is ever posted under one.
   const credited = handle.trim()
+  const rejected = handleRejectionReason(credited)
   return (
     <section className="mt-6">
       <div className="text-[10px] uppercase tracking-[0.3em] text-slate-500 mb-3">
@@ -53,9 +63,13 @@ function LeaderboardHandleSection() {
         className="w-full rounded-md border border-stone-700 bg-stone-900 px-3 py-2 text-sm text-parchment placeholder:text-slate-600 focus:border-rune focus:outline-none transition"
       />
       <p className="text-[11.5px] text-slate-400 leading-snug mt-2">
-        {credited
-          ? <>Victories are credited to <span className="text-rune">{credited}</span> on the public leaderboard, visible to everyone.</>
-          : 'Leave this empty and your victories are listed publicly as Anonymous. Set a name to be credited by it instead.'}
+        {!credited
+          ? 'Leave this empty and your victories are listed publicly as Anonymous. Set a name to be credited by it instead.'
+          : rejected === 'reserved'
+            ? <span className="text-red-300">That name is reserved for the game and its moderators, so it will not be listed — your victories appear as Anonymous instead. Pick another to be credited by it.</span>
+            : rejected
+              ? <span className="text-red-300">This name will not be listed on the public leaderboard — your victories appear as Anonymous instead. Pick another to be credited by it.</span>
+              : <>Victories are credited to <span className="text-rune">{credited}</span> on the public leaderboard, visible to everyone.</>}
       </p>
       <p className="text-[11px] text-slate-500 leading-snug mt-1.5">
         Letters, numbers, spaces, - and _ only, up to {MAX_HANDLE_LENGTH} characters.
