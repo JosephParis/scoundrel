@@ -108,7 +108,11 @@ The base Scoundrel game already has a pacing curve baked into the 44-card deck. 
 
 Each descent runs with one **Theme**, a deck-and-rules mutation that lasts only for that descent. The dungeon picks the theme, and the player does not learn it until they are already down there.
 
-Themes are roughly tiered:
+Themes are tiered. **The three tiers below are the original pool and are long
+out of date** — the shipped game has five tiers, gated at 2 / 3 / 5 / 7 sigils,
+with far more Trials than are listed here. `src/games/scoundrel/themes.js` is the
+list; what follows is kept for the tier *idea* and the counterplay rule at the
+end of the section, which both still hold.
 
 ### Descent 1: The Quiet (always)
 The opening descent of every run runs under a fixed warm-up theme:
@@ -155,6 +159,10 @@ Design rule: **every theme should have at least one Boon that *wants* it.** A th
 ## 4. Boons (the player's voice)
 
 Three offered each sanctuary visit. All permanent for the rest of the run.
+
+**The list below is the original set and is incomplete** — the shipped pool is
+larger and several of these were retuned or cut. `src/games/scoundrel/boons.js`
+is the list. The tagging rule at the end of the section still holds.
 
 ### Combat
 - **Whetstone**: weapons enter at +1 rank.
@@ -239,7 +247,7 @@ Deck editing is the strongest mechanic in the design. If it triggers every sanct
 
 Things to tune once the systems are real:
 
-- **Theme tier ramp**: Tier 2 currently unlocks after sigil 3, Tier 3 after sigil 5. Move the gates around.
+- **Theme tier ramp**: five tiers, unlocking at 2 / 3 / 5 / 7 sigils (`themes.js`). Move the gates around.
 - **Boon offer count**: currently 3, with one reroll per run.
 - **HP refill in the sanctuary**: currently full. Could be partial to make Iron Will more valuable.
 - **Forge cadence**: every sanctuary visit but the opening one, granting 2 edits through Tier 1-2 and 3 from Tier 3.
@@ -251,7 +259,12 @@ The opening-descent max HP buff has been promoted into the theme system as **The
 
 A tutorial-flavoured starter-room buff (guaranteed weapon + potion in the opening hand) was prototyped and removed. Keep on the shelf for a real tutorial pass later.
 
-## 7. Meta-progression (between runs)
+## 7. Meta-progression (between runs) *(historical — never built)*
+
+**None of this shipped.** There is no Memory Slot, no Codex and no daily seed in
+the game; progression is entirely within a run. The section is kept because the
+*stance* below — no persistent stat boosts, every run a fresh dungeon — is still
+the position, and any future meta layer has to argue with it.
 
 Deliberately light. The point is for each run to start as a real, playable dungeon, not a stat-stick grind.
 
