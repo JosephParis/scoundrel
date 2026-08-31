@@ -96,8 +96,13 @@ export default function PrivacyPolicy() {
                   who="Neon, PostHog"
                 />
                 <Row
-                  what="Leaderboard handle"
-                  why="Shown publicly on the fastest-victory board. Optional and blank by default; without it the entry reads Anonymous."
+                  what="A random device id"
+                  why="Stored with your runs so the leaderboard can tell two signed-out players apart without using their names. Random, created on this device, and never shown to anyone — not even to you."
+                  who="Neon only"
+                />
+                <Row
+                  what="Leaderboard name"
+                  why="Shown publicly on the fastest-victory board. A random name like 'Ashen Vagrant 47' is assigned to your device unless you set your own, and you can ask in Settings not to be named at all."
                   who="Neon (and anyone viewing the board)"
                 />
                 <Row
@@ -148,15 +153,30 @@ export default function PrivacyPolicy() {
         <Section title="What is public">
           <p>
             Only one thing: an entry on the fastest-victory leaderboard, listing the time,
-            mode and ascension of a winning run. Every victory that qualifies is listed. If
-            you have typed a handle into Settings, the entry carries that handle; the field
-            is empty by default, and an entry from a run with no handle is shown as
-            &ldquo;Anonymous&rdquo; and carries nothing that identifies you.
+            mode and ascension of a winning run. Every victory that qualifies is listed,
+            and it carries a name.
+          </p>
+          <p>
+            That name is one of three things. By default it is a random one picked for
+            your device the first time you play &mdash; something like &ldquo;Ashen Vagrant
+            47&rdquo; &mdash; which is generated from a random id and says nothing about
+            who you are. If you set your own name in Settings, or on the victory screen,
+            the entry carries that instead. And if you tick &ldquo;don&rsquo;t list a
+            name&rdquo; in Settings, the entry carries none and reads
+            &ldquo;Anonymous&rdquo;. The run is listed either way; only the name changes.
           </p>
           <p>
             No name is ever taken from your Google profile for this, and the leaderboard
-            deliberately strips account ids before sending anything to your browser, so
-            one player can never learn another&rsquo;s account id.
+            deliberately strips account ids and device ids before sending anything to your
+            browser, so one player can never learn another&rsquo;s.
+          </p>
+          <p>
+            If you play without signing in, your runs carry a random id created on this
+            device. It exists so the board can tell you apart from other signed-out
+            players &mdash; without it, two people who happen to share a name are treated
+            as one, and the slower run is dropped. It is generated from nothing but chance,
+            is never displayed, and is not sent to anyone viewing the board. Clearing your
+            browser storage discards it, and your next run counts as a new player.
           </p>
         </Section>
 

@@ -146,3 +146,108 @@ describe('GET /api/leaderboard — response', () => {
     expect(built('order by rank asc')[0].vals).toContain(25)
   })
 })
+
+// -- Guests are told apart by device, not by name ----------------------------
+//
+// The bug this replaced: guests all post as account_id 'guest', so the query
+// added the player's *name* to the grouping key. Name equality was therefore
+// treated as person equality, and two guests sharing a name -- assigned or
+// typed -- collapsed into one ranked row. The slower of them disappeared from
+// a board they had earned a place on.
+
+describe('/api/leaderboard — guest identity', () => {
+  it('partitions guests on deviceId', async () => {
+    await get()
+    const [ranked] = rankedFragments()
+    expect(ranked.text).toContain("r.record->>'deviceId'")
+  })
+
+  it('still falls back to the name for runs that predate deviceId', async () => {
+    // Record v8 added the field. Every stored row older than it must keep
+    // grouping exactly as it does today, so no board position moves on deploy.
+    await get()
+    const [ranked] = rankedFragments()
+    const partition = ranked.text.slice(ranked.text.indexOf('partition by'))
+    expect(partition).toContain("r.record->>'deviceId'")
+    expect(partition).toContain("btrim(r.record->>'playerName')")
+    // deviceId has to be preferred, or the fallback would never be reached.
+    expect(partition.indexOf("deviceId")).toBeLessThan(partition.indexOf("playerName"))
+  })
+
+  it('does not group signed-in players by anything but their account', async () => {
+    // Their name has never mattered and must not start to: a rename would
+    // otherwise split one player into two entries.
+    await get()
+    const [ranked] = rankedFragments()
+    expect(ranked.text).toContain('partition by r.account_id')
+  })
+})
+
+describe('/api/leaderboard — whose row is whose', () => {
+  const row = (over = {}) => ({
+    rank: 1, account_id: 'guest', device_id: 'dev-a', player_name: 'Rookwarden',
+    ascension: 0, sigils_earned: 10, duration_ms: 600000, ended_at: 1, mode: 'default',
+    game_version: '0.4', ...over,
+  })
+
+  it('marks a guest own row from their device', async () => {
+    // The reason this matters: with two identical names on the board, this is
+    // the only thing that tells the player which one is theirs.
+    canned = [['order by rank', [row()]]]
+    const res = await get({ device: 'dev-a' })
+    expect(res.body.entries[0].you).toBe(true)
+  })
+
+  it('does not mark another guest row', async () => {
+    canned = [['order by rank', [row({ device_id: 'dev-b' })]]]
+    const res = await get({ device: 'dev-a' })
+    expect(res.body.entries[0].you).toBe(false)
+  })
+
+  it('never sends a device id to the client', async () => {
+    // Marking is computed server-side precisely so this value never travels.
+    canned = [['order by rank', [row()]]]
+    const res = await get({ device: 'dev-a' })
+    expect(res.body.entries[0]).not.toHaveProperty('device_id')
+    expect(res.body.entries[0]).not.toHaveProperty('deviceId')
+    expect(JSON.stringify(res.body)).not.toContain('dev-a')
+  })
+
+  it('never sends an account id either', async () => {
+    canned = [['order by rank', [row({ account_id: 'sub-123', device_id: null })]]]
+    const res = await get({ me: 'sub-123' })
+    expect(res.body.entries[0]).not.toHaveProperty('account_id')
+    expect(JSON.stringify(res.body.entries[0])).not.toContain('sub-123')
+  })
+
+  it('does not let a device mark a signed-in row', async () => {
+    // device_id is only meaningful inside the guest bucket; a signed-in run
+    // that happens to carry one must not be claimable by it.
+    canned = [['order by rank', [row({ account_id: 'sub-123' })]]]
+    const res = await get({ device: 'dev-a' })
+    expect(res.body.entries[0].you).toBe(false)
+  })
+
+  it('reports a guest own rank when it falls outside the page', async () => {
+    canned = [['order by rank', [row({ rank: 1, device_id: 'dev-b' })]],
+              ['b.device_id', [row({ rank: 44 })]]]
+    const res = await get({ device: 'dev-a' })
+    expect(res.body.self?.rank).toBe(44)
+    expect(res.body.selfInPage).toBe(false)
+  })
+
+  it('asks for the caller own best by device when there is no account', async () => {
+    await get({ device: 'dev-a' })
+    const self = built('b.device_id')
+    expect(self).toHaveLength(1)
+    expect(self[0].vals).toContain('dev-a')
+  })
+
+  it('prefers the account when both are sent', async () => {
+    // A signed-in player on their own device: the account is the better answer
+    // and the one whose rows the board actually groups.
+    await get({ me: 'sub-123', device: 'dev-a' })
+    expect(built('b.device_id')).toHaveLength(0)
+    expect(built('b.account_id = ')).toHaveLength(1)
+  })
+})

@@ -49,8 +49,35 @@ End-to-end, against the deployed URL:
 - [ ] Band verdicts render (`src/admin/bands.js` against `WINRATE_TARGETS.md`)
 - [ ] Submit feedback from the live site; confirm it appears in the admin feedback view
 - [ ] Play one run with Dev tools; confirm it is `dev: true` and **excluded** from stats
-- [ ] Set a handle, win a run, confirm it appears on the leaderboard; confirm a
-      handle-less victory does **not** (see issue 14)
+- [ ] Win a run without ever opening Settings. Confirm it appears on the
+      leaderboard under the **assigned** name (e.g. `Ashen Vagrant 47`), not as
+      "Anonymous" and not missing. This is the default path every player takes,
+      and it has never run against a real database.
+- [ ] Set your own handle, win a run, confirm the board credits that instead
+- [ ] Tick "don't list a name" in Settings, win a run, confirm the row appears
+      and reads Anonymous — the run is listed either way (issue 14, twice
+      superseded; read its file before assuming what the rule is)
+- [ ] **`/api/claim`:** win a run, then rename yourself from the victory screen.
+      Confirm the board row that was already written changes name. A 404 here
+      leaves the run under its old name silently, which is the failure mode
+      nobody reports.
+- [ ] Rename as a **guest** as well as signed in — the two take different
+      authorisation paths (session vs. the run key's `runSeed`)
+- [ ] Win a run on a second device and confirm the two guests get **separate
+      rows**. They are now told apart by `deviceId`, not by name, so force the
+      hard case: set the *same* name on both devices and confirm both still
+      place. That is the defect this replaced, and it is invisible until two
+      real devices post.
+- [ ] Confirm the `handles` table is created on first write and that a second
+      owner claiming a taken name is stored disambiguated (`Rookwarden 2`), with
+      the response reporting the stored name rather than the requested one
+- [ ] Confirm an assigned name counts up rather than being suffixed: a second
+      device asking for `Ashen Vagrant 47` should land on `Ashen Vagrant 48`
+- [ ] Open the board signed out and confirm **your own row reads "You"**. Guest
+      self-marking is new (`device=` query param); it never worked before, and
+      it is what makes two same-named rows survivable
+- [ ] Confirm no `deviceId` or `account_id` appears anywhere in the
+      `/api/leaderboard` response body
 - [ ] Confirm the weekly cron (`0 4 * * 1` → `/api/cron-backfill-runs`) is
       registered in Vercel and returns 200 when triggered manually
 - [ ] Sign in on a second device; confirm history merges both ways (and see issue 09)

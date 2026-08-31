@@ -9,6 +9,7 @@ import { getMode, GAME_VERSION } from './constants'
 import { getAscension } from './ascensions'
 import { BOONS } from './boons'
 import { getTheme } from './themes'
+import { MAX_HANDLE_LENGTH } from './handle'
 
 // v2 added `death` (where/how the run ended). v3 added the decision funnels
 // `boonPicks` and `forgeEdits` (offered-vs-chosen). v4 added `retire` (soft
@@ -16,9 +17,11 @@ import { getTheme } from './themes'
 // counts. v5 added `gameVersion` (the balance version stamp, for filtering
 // analytics by ruleset). v6 added `dev` (the run touched the Dev overrides
 // tool, so it is test data and admin stats exclude it). v7 added `playerName`
-// (the opt-in handle shown on the public leaderboard; null unless set). Older
+// (the opt-in handle shown on the public leaderboard; null unless set). v8
+// added `deviceId` (an opaque per-device id, so guest runs can be told apart
+// without using the player's name as identity -- see api/leaderboard.js). Older
 // records simply lack the newer fields; readers treat them as null/[]/0/false.
-const RECORD_VERSION = 7
+const RECORD_VERSION = 8
 const GUEST_ID = 'guest'
 
 function outcomeOf(state) {
@@ -49,21 +52,21 @@ function namedBoons(state) {
   return (state.boons || []).map(id => ({ id, name: BOONS[id]?.name || id }))
 }
 
-// Longest handle the record will carry. Mirrors MAX_HANDLE_LENGTH in
-// settings.js, restated rather than imported so this module stays free of the
-// localStorage-backed settings singleton. The caller passes an already
-// sanitized handle; this is the last clamp before it is stored.
-const MAX_HANDLE_LENGTH = 16
-
 /**
- * The name a run is credited to on the public leaderboard, or null when the
- * run stays off it. Null is not an anonymous listing: api/leaderboard.js
- * excludes nameless rows, so such a run is absent from the board rather than
- * shown without a name. Nothing is derived from the player's Google profile:
- * the only source is the handle they typed into Settings, which is empty by
- * default, so a name reaches the public board only because its owner chose to
- * put it there.
- * @param {string} handle - the player's opt-in handle ('' when unset)
+ * The name a run is credited to on the public leaderboard, or null when it
+ * carries none. Null is a real listing, not an exclusion: the run still places
+ * and the board shows it as Anonymous.
+ *
+ * Reaching null now takes a deliberate choice. Every player is given a random
+ * name (assignedName.js), so a record is nameless only when its owner asked to
+ * be unlisted in Settings. Nothing is ever derived from the player's Google
+ * profile -- the name is either typed or randomly assigned.
+ *
+ * MAX_HANDLE_LENGTH comes from handle.js, which exists so this module can share
+ * the limit without importing the localStorage-backed settings singleton. The
+ * caller passes an already sanitized name; this is the last clamp before it is
+ * stored.
+ * @param {string} handle - the effective name ('' when the player is unlisted)
  */
 function leaderboardName(handle) {
   return String(handle ?? '').trim().slice(0, MAX_HANDLE_LENGTH).trim() || null
@@ -80,11 +83,14 @@ function finalWeaponOf(state) {
  * Build a stored record from a terminal game state.
  * @param {object} state - game state with phase 'victory' or 'gameover'
  * @param {object|null} user - signed-in user ({ sub }) or null for guest
- * @param {string} [handle] - the player's opt-in leaderboard handle. Omitted
+ * @param {string} [handle] - the player's effective leaderboard name. Omitted
  *   by callers that only need the record for display or analytics, which
  *   leaves the run anonymous on the board.
+ * @param {string} [deviceId] - opaque per-device id. Only guest runs need it:
+ *   every guest posts as 'guest', so this is the one thing that can tell two of
+ *   them apart on the board. Omitted by display-only callers.
  */
-export function buildRunRecord(state, user, handle = '') {
+export function buildRunRecord(state, user, handle = '', deviceId = null) {
   const now = Date.now()
   const startedAt = state.runStartedAt || now
   // Paused wall-clock: accumulated total plus any pause still open at run end.
@@ -108,6 +114,10 @@ export function buildRunRecord(state, user, handle = '') {
     // Opt-in display name for the public leaderboard. Null unless the player
     // set a handle in Settings.
     playerName: leaderboardName(handle),
+    // Identity, as opposed to playerName, which is a label. Kept even for
+    // signed-in runs: it costs one short string and means the board never has
+    // to care which of the two it is looking at.
+    deviceId: deviceId || null,
     startedAt,
     endedAt: now,
     durationMs: Math.max(0, now - startedAt - pausedMs),

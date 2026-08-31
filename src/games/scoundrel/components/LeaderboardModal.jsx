@@ -2,6 +2,7 @@ import { useEffect, useState } from 'react'
 import { fetchLeaderboard, entryDisplayName } from '../../../utils/leaderboard'
 import { getMode } from '../constants'
 import { useHandle } from '../settings'
+import { deviceSeed } from '../assignedName'
 
 // The public fastest-victory board. Only wins are ranked, one entry per
 // player, fastest first. Data comes from /api/leaderboard, which is absent in
@@ -103,6 +104,9 @@ function LeaderboardBody({ onClose, user }) {
     const controller = new AbortController()
     fetchLeaderboard({
       accountId: user?.sub,
+      // Signed out, this is the only thing that can mark a row as yours --
+      // every guest posts as 'guest', so the account id identifies no one.
+      deviceId: deviceSeed(),
       limit: BOARD_LIMIT,
       signal: controller.signal,
     })

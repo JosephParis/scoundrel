@@ -42,7 +42,9 @@ const finished = (over = {}) => ({
 describe('buildRunRecord shape', () => {
   it('stamps the current record and balance versions', () => {
     const rec = buildRunRecord(finished(), null)
-    expect(rec.v).toBe(7)
+    // v8 added deviceId. Bump this deliberately: the number is what tells a
+    // reader which fields a stored record can be trusted to have.
+    expect(rec.v).toBe(8)
     expect(rec.gameVersion).toBe(GAME_VERSION)
   })
 
@@ -191,6 +193,34 @@ describe('buildRunRecord playerName', () => {
     expect(buildRunRecord(finished(), null, null).playerName).toBeNull()
     expect(buildRunRecord(finished(), null, undefined).playerName).toBeNull()
     expect(buildRunRecord(finished(), null, 12345).playerName).toBe('12345')
+  })
+})
+
+describe('buildRunRecord deviceId', () => {
+  it('carries the device id it is given', () => {
+    // Identity, as opposed to playerName, which is only a label. The board
+    // groups guests on this, so a run without it cannot be told apart from
+    // any other guest's.
+    expect(buildRunRecord(finished(), null, '', 'dev-abc').deviceId).toBe('dev-abc')
+  })
+
+  it('is null when the caller does not supply one', () => {
+    // Display-only callers build records they never store.
+    expect(buildRunRecord(finished(), null).deviceId).toBeNull()
+    expect(buildRunRecord(finished(), null, 'Ashgrave').deviceId).toBeNull()
+    expect(buildRunRecord(finished(), null, '', '').deviceId).toBeNull()
+  })
+
+  it('is kept on signed-in runs too', () => {
+    // The board does not need it there, but storing it unconditionally means
+    // no reader has to branch on which kind of run it is looking at.
+    expect(buildRunRecord(finished(), { sub: 'sub-1' }, '', 'dev-abc').deviceId).toBe('dev-abc')
+  })
+
+  it('is independent of the name', () => {
+    const rec = buildRunRecord(finished(), null, 'Rookwarden', 'dev-abc')
+    expect(rec.playerName).toBe('Rookwarden')
+    expect(rec.deviceId).toBe('dev-abc')
   })
 })
 

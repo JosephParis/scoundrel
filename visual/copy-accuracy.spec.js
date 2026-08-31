@@ -1,4 +1,5 @@
 import { test, expect } from '@playwright/test'
+import { assignedNameFor } from '../src/games/scoundrel/assignedName.js'
 
 // Player-facing copy that makes a promise the code has to keep (issues 14, 25).
 //
@@ -10,10 +11,20 @@ import { test, expect } from '@playwright/test'
 const TUTORIAL_KEY = 'scoundrel:tutorialCompleted'
 const HANDLE_KEY = 'scoundrel:leaderboardHandle'
 const SAVE_KEY = 'scoundrel:save'
+const DEVICE_KEY = 'scoundrel:deviceId'
+const ANON_KEY = 'scoundrel:leaderboardAnonymous'
 
-async function seed(page, { handle = null, outcome = null } = {}) {
-  await page.addInitScript(({ tutorialKey, handleKey, saveKey, handle, outcome }) => {
+// Pinned so the assigned name is the same on every run. assignedNameFor is
+// imported rather than hard-coded: the name is derived, and a literal here
+// would silently rot the day the vocabulary changes.
+const DEVICE_SEED = 'e2e-fixed-device'
+const ASSIGNED = assignedNameFor(DEVICE_SEED)
+
+async function seed(page, { handle = null, outcome = null, anonymous = false } = {}) {
+  await page.addInitScript(({ tutorialKey, handleKey, saveKey, deviceKey, anonKey, handle, outcome, deviceSeed, anonymous }) => {
     localStorage.setItem(tutorialKey, 'true')
+    localStorage.setItem(deviceKey, deviceSeed)
+    if (anonymous) localStorage.setItem(anonKey, '1')
     if (handle !== null) localStorage.setItem(handleKey, handle)
     if (outcome) {
       // Minimal terminal state, mirroring visual/screens.spec.js: every field
@@ -43,7 +54,11 @@ async function seed(page, { handle = null, outcome = null } = {}) {
       }
       localStorage.setItem(saveKey, JSON.stringify({ version: 1, state }))
     }
-  }, { tutorialKey: TUTORIAL_KEY, handleKey: HANDLE_KEY, saveKey: SAVE_KEY, handle, outcome })
+  }, {
+    tutorialKey: TUTORIAL_KEY, handleKey: HANDLE_KEY, saveKey: SAVE_KEY,
+    deviceKey: DEVICE_KEY, anonKey: ANON_KEY,
+    handle, outcome, deviceSeed: DEVICE_SEED, anonymous,
+  })
 }
 
 async function openSettings(page) {
@@ -63,32 +78,46 @@ async function openSettings(page) {
 // Settings and the board must agree about what an empty name does.
 
 test.describe('leaderboard handle copy', () => {
-  test('the handle placeholder shows what an empty name lists as', async ({ page }) => {
+  test('the placeholder shows the name an empty field is actually using', async ({ page }) => {
     // The placeholder is the shortest possible answer to "what happens if I
-    // leave this blank", so it has to be the literal name the board will show.
+    // leave this blank". It used to read "Anonymous"; every player now carries
+    // an assigned name, so that answer would be wrong.
     await seed(page, { handle: '' })
     await page.goto('/')
     await openSettings(page)
-    await expect(page.getByLabel('Leaderboard name')).toHaveAttribute('placeholder', 'Anonymous')
+    await expect(page.getByLabel('Leaderboard name')).toHaveAttribute('placeholder', ASSIGNED)
   })
 
-  test('an empty handle is described as an Anonymous listing, not an absent one', async ({ page }) => {
+  test('an empty handle is credited to the assigned name, not to Anonymous', async ({ page }) => {
     await seed(page, { handle: '' })
     await page.goto('/')
     await openSettings(page)
-    await expect(page.getByText(/listed publicly as Anonymous/i)).toBeVisible()
-    // The old promise, now false: an empty name no longer keeps a run off the
-    // board, and nothing in Settings may still claim it does.
+    await expect(page.getByText(ASSIGNED, { exact: false }).first()).toBeVisible()
+    await expect(page.getByText(/the name this device was given/i)).toBeVisible()
+    // Both older promises, now false: an empty name neither keeps a run off the
+    // board nor lists it as Anonymous.
     await expect(page.getByText(/stay off the leaderboard entirely/i)).toHaveCount(0)
-    await expect(page.getByText(/not listed/i)).toHaveCount(0)
+    await expect(page.getByText(/listed publicly as Anonymous/i)).toHaveCount(0)
   })
 
-  test('a set handle is named as the credit', async ({ page }) => {
+  test('a set handle wins over the assigned one', async ({ page }) => {
     await seed(page, { handle: 'Rookwarden' })
     await page.goto('/')
     await openSettings(page)
     await expect(page.getByText(/Victories are credited to/i)).toBeVisible()
     await expect(page.getByText('Rookwarden', { exact: false }).first()).toBeVisible()
+    await expect(page.getByText(ASSIGNED, { exact: false })).toHaveCount(0)
+  })
+
+  test('opting out is described as a nameless listing, not an absent run', async ({ page }) => {
+    // The one route back to a nameless row. It must not re-tell the old lie
+    // that the run disappears from the board.
+    await seed(page, { handle: '', anonymous: true })
+    await page.goto('/')
+    await openSettings(page)
+    await expect(page.getByText(/listed without a name/i)).toBeVisible()
+    await expect(page.getByText(/still place on the board/i)).toBeVisible()
+    await expect(page.getByText(/stay off the leaderboard entirely/i)).toHaveCount(0)
   })
 })
 
@@ -142,41 +171,43 @@ test.describe('screened handle copy', () => {
 })
 
 // -- Issue 14: say it at the moment it matters, on the victory screen ---------
+//
+// This used to be a nudge shown only to a player with no handle, pointing at
+// Settings. Every player now arrives with a name, so the question changed from
+// "do you want to be listed at all" to "is this the name you want on it", and
+// the answer is given here rather than two screens away.
 
-test.describe('anonymous-victory nudge', () => {
-  const NUDGE = /listed as Anonymous/i
-
-  test('a victory with no handle says how it is listed and links to Settings', async ({ page }) => {
+test.describe('victory-screen naming', () => {
+  test('a victory states the name it went up under', async ({ page }) => {
     await seed(page, { handle: '', outcome: 'victory' })
     await page.goto('/')
-    await expect(page.getByText(NUDGE)).toBeVisible()
-    // And it must not still read as a loss -- the run does place now.
+    await expect(page.getByText(/This victory is listed as/i)).toBeVisible()
+    await expect(page.getByText(ASSIGNED, { exact: false }).first()).toBeVisible()
+    // It must not read as a loss: the run does place.
     await expect(page.getByText(/isn't on the leaderboard/i)).toHaveCount(0)
-    await page.getByRole('button', { name: /Set one in Settings/i }).click()
-    await expect(page.getByRole('heading', { name: 'Settings' })).toBeVisible()
+    await expect(page.getByText(/listed as Anonymous/i)).toHaveCount(0)
   })
 
-  test('a victory with a handle shows no nudge', async ({ page }) => {
+  test('a victory under a chosen name says that name', async ({ page }) => {
     await seed(page, { handle: 'Rookwarden', outcome: 'victory' })
     await page.goto('/')
-    await expect(page.getByText(NUDGE)).toHaveCount(0)
+    await expect(page.getByText(/This victory is listed as/i)).toBeVisible()
+    await expect(page.getByText('Rookwarden', { exact: false }).first()).toBeVisible()
   })
 
-  test('a whitespace-only handle counts as no handle', async ({ page }) => {
-    // sanitizeHandle keeps a trailing space so two-word names can be typed;
-    // nothing is ever posted under one, so the nudge has to trim before
-    // deciding.
-    await seed(page, { handle: '   ', outcome: 'victory' })
+  test('an opted-out victory says it carries no name', async ({ page }) => {
+    await seed(page, { handle: '', outcome: 'victory', anonymous: true })
     await page.goto('/')
-    await expect(page.getByText(NUDGE)).toBeVisible()
+    await expect(page.getByText(/This victory is listed without a name/i)).toBeVisible()
   })
 
-  test('a death shows no nudge', async ({ page }) => {
-    // Only victories are ranked, so a death has no listing to be credited for.
+  test('a death is never asked to name itself', async ({ page }) => {
+    // Only victories are ranked, so there is nothing to be credited for.
     await seed(page, { handle: '', outcome: 'gameover' })
     await page.goto('/')
     await expect(page.getByText(/You fall in the dark/i)).toBeVisible()
-    await expect(page.getByText(NUDGE)).toHaveCount(0)
+    await expect(page.getByText(/This victory is listed/i)).toHaveCount(0)
+    await expect(page.getByRole('button', { name: /Make it yours/i })).toHaveCount(0)
   })
 })
 

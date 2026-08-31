@@ -119,10 +119,31 @@ nothing identifying travels with an unnamed row.
 
 So the copy went back to promising an Anonymous listing, and
 `visual/copy-accuracy.spec.js` was inverted to assert the old claim is gone.
-The `anonymous-victory nudge` block is the current expectation; the
-`unlisted-victory nudge` wording quoted above no longer exists.
 
 Merging issue 08 (2026-08-30) hit this: that branch predated `b9ad068` and its
 screened-handle copy still said a rejected name kept the run off the board. It
 does not — a screened run places as Anonymous. See the note in
 `docs/issues/README.md` under the issue 08 paragraph.
+
+## Superseded again (2026-08-30) — every player now has a name
+
+The question this issue kept re-litigating was "what happens to a run with no
+name". It no longer arises: `assignedName.js` gives every device a name on
+first launch, so a run reaches the board carrying one unless its owner asked
+otherwise. "Anonymous" went from being the default to being an opt-out.
+
+What that changes about the text above:
+
+- The default is an assigned name like `Ashen Vagrant 47`, not an empty field.
+  The Settings placeholder is that name; it is not `"Anonymous"` and not
+  `"Not listed"`.
+- A nameless row still exists and still reads Anonymous, but only for a player
+  who ticked "don't list a name" in Settings (`settings.anonymous`).
+- The `anonymous-victory nudge` spec block is gone too, replaced by
+  `victory-screen naming` in `visual/copy-accuracy.spec.js` and the interaction
+  tests in `visual/leaderboard-name.spec.js`. The victory screen no longer
+  points at Settings; it names itself inline.
+
+The one rule that has survived all three passes unchanged: **nothing is ever
+derived from the player's Google profile.** An assigned name comes from a
+random per-device id.

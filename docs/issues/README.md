@@ -18,15 +18,19 @@ Baseline: `npm run lint` clean, `npm run build` clean. Test suite as it stands:
 | `test/lifecycle.test.js` | vitest | 56 pass |
 | `test/dedupeKeys.test.js` | vitest | 40 pass |
 | `test/sanctuary.test.js` | vitest | 40 pass |
-| `test/history.test.js` | vitest | 33 pass |
+| `test/history.test.js` | vitest | 37 pass |
 | `test/deck.test.js` | vitest | 32 pass |
 | `test/themes.test.js` | vitest | 31 pass |
 | `test/handleDenylist.test.js` | vitest | 41 pass |
 | `test/moderation.handler.test.js` | vitest | 24 pass |
-| `test/leaderboard.handler.test.js` | vitest | 11 pass |
+| `test/leaderboard.handler.test.js` | vitest | 22 pass |
+| `test/claim.handler.test.js` | vitest | 22 pass |
+| `test/assignedName.test.js` | vitest | 17 pass |
+| `test/handles.test.js` | vitest | 21 pass |
 | `test/leaderboard.test.js` | vitest | 5 pass |
 | `test/audioSession.test.js` | vitest | 4 pass |
-| `visual/copy-accuracy.spec.js` | dev | 15 pass |
+| `visual/copy-accuracy.spec.js` | dev | 16 pass |
+| `visual/leaderboard-name.spec.js` | dev | 12 pass |
 | `visual/itch-build.spec.js` | dev | 11 pass |
 | `visual/robots-and-payload.spec.js` | dev | 8 pass |
 | `visual/privacy.spec.js` | dev | 11 pass |
@@ -44,8 +48,9 @@ Baseline: `npm run lint` clean, `npm run build` clean. Test suite as it stands:
 | `visual/device-lab.spec.js` | dev | 4 pass |
 | `visual/mobile-touch.spec.js` | dev | 3 pass |
 
-**Full suite: 491 unit + 179 e2e passed, 1 skipped (`card-library`, issue 12).**
-Measured 2026-08-30, on main, after merging issues 08 and 27. The table above
+**Full suite: 566 unit + 192 e2e passed, 1 skipped (`card-library`, issue 12).**
+Measured 2026-08-30, after merging issues 08 and 27, adding assigned leaderboard
+names, and making those names unique. The table above
 had drifted — five suites ran without being listed and three counts were wrong —
 so it was rebuilt from the runners' own output and is now complete. Keep it that
 way, or delete it and keep only this line: the totals are the baseline that
@@ -148,6 +153,114 @@ itself is not the offence. Taking the row off the board as well is a moderator's
 call, which is what `/api/moderation` is for. The Settings copy says so rather
 than implying the run is lost, and `visual/copy-accuracy.spec.js` asserts both
 halves — that the name is refused, and that the run still appears as Anonymous.
+
+## Every player has a leaderboard name
+
+Added 2026-08-30, after issues 08 and 27 landed. Not from the backlog — it came
+out of looking at what the board would actually show batch 1.
+
+**The problem.** `b9ad068` made a nameless victory list as "Anonymous" rather
+than vanish, which fixed the disappearing-run bug and created a cosmetic one: a
+board where most rows read "Anonymous" looks broken. Worse, it was not only
+cosmetic. Every unnamed guest shares `account_id 'guest'` and coalesces to the
+same empty handle, so `api/leaderboard.js` put all of them in **one bucket and
+showed a single row for the lot** — the second-fastest unnamed guest never
+appeared at all.
+
+**The fix, in two halves.**
+
+- *The default.* `src/games/scoundrel/assignedName.js` gives every device a name
+  on first launch — `Ashen Vagrant 47` — from the same vocabulary as the
+  analytics pseudonyms, seeded by a random per-device id. Nobody is stopped to
+  fill in a field, nobody faces a blank one, and guests are distinguishable on
+  the board because their names differ.
+- *The edit.* The victory screen names itself inline: it states the name the run
+  went up under and offers three suggestions plus a free field. It used to link
+  to Settings, which spent the one moment a player cares about their name
+  sending them somewhere else. **Settings keeps the same control** — it is where
+  you can always find it, and it now also holds the opt-out.
+
+**Three states, not two.** Assigned (default), custom (typed), and an explicit
+"don't list a name" which is the only route back to a nameless row.
+`settings.effectiveName` collapses them into the single string a record carries,
+and is the only one of the four values `buildRunRecord` should ever see.
+
+**Two constraints this had to respect, both older than it.**
+
+- *Nothing is derived from the Google profile.* Still true: a name is typed or
+  randomly assigned, never read from the account.
+- *A run must never be lost.* `/api/runs` is `on conflict (run_key) do nothing`
+  so a replayed offline backlog cannot rewrite stored history. Renaming a run
+  that is already written therefore needs its own path, which is `/api/claim` —
+  it changes `playerName` on one row and nothing else.
+
+**How `/api/claim` decides who may rename a run.** A signed-in run needs a
+session whose `sub` matches the row, as every write has since issue 07. A guest
+has no session and every guest is `'guest'`, so the proof is the run key itself:
+`guest:<startedAt>:<runSeed>`, where `runSeed` is minted at run start and lives
+only in that player's record. Legacy guest runs predate `runSeed` and key on the
+timestamp alone, which is guessable, so **they are refused** rather than left
+open to anyone iterating milliseconds.
+
+**Not verified in production**, like the rest of issue 08's surface: there is no
+`/api` in `vite dev`, so `/api/claim` has never run against a real database. Add
+it to issue 13's checklist — a claim that 404s would leave the run under its old
+name silently.
+
+## Names identify a label; devices identify a player
+
+Added 2026-08-30, straight after assigned names. It closes a defect the assigned
+names made visible rather than one they introduced.
+
+**The defect.** `api/leaderboard.js` grouped guests by their *name*, because
+every guest posts as `account_id 'guest'` and there was nothing else to group
+on. That made name equality mean person equality: two guests sharing a name
+landed in one partition, and since the dedupe runs *inside* the ranking
+subquery, the slower one was removed from the ranked population entirely — not
+ranked lower, absent. It also applied to typed names, so two players who both
+chose "Rookwarden" hit it just as hard as two who were assigned the same name.
+
+**The fix, in two parts.** Both came out of looking at how others solve this:
+Discord's Pomelo move separated a unique identity from a non-unique display
+name, and Unity's anonymous sign-in and Player Network's GuestID both mint a
+device-side id precisely so an unregistered player has a stable identity.
+
+- *Identity.* Records carry `deviceId` (record v8), and the guest branch of the
+  partition groups on it. Names became free to collide without costing anyone a
+  row. Old runs have no `deviceId` and fall back to grouping by name, so no
+  stored row changed behaviour on deploy.
+- *Uniqueness.* `api/_lib/handles.js` makes the name itself unique anyway —
+  first owner to post under it keeps it, later ones are disambiguated. A name
+  ending in a number counts up (`Ashen Vagrant 47` → `48`) rather than being
+  suffixed, which keeps assigned names in register.
+
+**Why uniqueness is settled on the server and not while the player types.**
+Sigil is offline-first: runs queue locally, an unreachable `/api/runs` is an
+expected state, and nothing in the client may block on the network. A
+reservation flow would make naming a network operation, and would need a round
+trip on first launch just to hand a new player their assigned name. So naming
+stays local and instant, and the server settles the string on the way in,
+reporting back what it actually stored. That trade is only sound because a name
+here is a label on a leaderboard row. **If names ever become addresses** — used
+to find, invite, or link to a player — this should become a real reservation
+flow instead.
+
+**A claim is never released.** A record stores the name it was posted under, so
+freeing a name would let a second owner take it while the first owner's older
+rows still carry it, reproducing the duplicate the table exists to prevent.
+Keeping every claim makes the invariant hold with no work from the board: a
+given string belongs to exactly one owner, always. Squatting is the accepted
+cost at this scale.
+
+**A side benefit worth knowing.** The board marks your own row `you: true`, and
+that only ever worked for signed-in players — the code explicitly skipped it for
+guests, since `'guest'` identifies no one. A guest can now send `device=` and get
+their own row marked, which is exactly what is needed on the rare board showing
+two rows with the same name.
+
+**Not verified in production.** Same caveat as everything else on this seam:
+there is no `/api` in `vite dev`, so neither the partition change nor the
+`handles` table has run against a real database. Issue 13 carries the checks.
 
 ## The game is now called Sigil
 

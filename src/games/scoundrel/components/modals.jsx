@@ -4,8 +4,11 @@ import {
   rollForgeGrants, initForgeBatch,
   FLAG_IDS, FLAG_META, getFlags, setFlag, resetAllFlags,
 } from '../logic'
-import { settings, useCardLayout, useHandle, MAX_HANDLE_LENGTH } from '../settings'
+import {
+  settings, useCardLayout, useHandle, useAssignedName, useAnonymous, MAX_HANDLE_LENGTH,
+} from '../settings'
 import { handleRejectionReason } from '../handleDenylist'
+import { nameSuggestions } from '../assignedName'
 import { audio, useMuted, useMusicVolume, useSfxVolume } from '../audio'
 import { BUILD_SHA, BUILD_HREF, BUILD_TITLE } from '../../../buildInfo.js'
 import { discardSavedRun } from '../../../utils/discardRun'
@@ -25,23 +28,28 @@ const CARD_LAYOUT_OPTIONS = [
   },
 ]
 
-// Opt-in name for the public leaderboard. Empty is the default and the whole
-// point: a run reaches the board either way, but it is credited to a name only
-// if the player types one here, so nobody is ever named on a public page
-// without choosing to be. A handle-less victory is listed as Anonymous rather
-// than dropped (issue 14, reversed by b9ad068 once the board could carry an
-// unnamed row), and the copy below has to say so. The field is write-through:
-// settings.setHandle sanitizes on every keystroke, so what is shown is exactly
-// what a future run would carry.
+// Where a player changes the name the board credits them with.
+//
+// Every player already has one: assignedName.js hands out "Ashen Vagrant 47" on
+// first launch, so this field is an edit rather than a blank page, and a player
+// who never opens it still lands on the board under something readable instead
+// of collapsing into the shared "Anonymous" bucket with every other unnamed
+// guest. The victory screen offers the same change at the moment it matters;
+// this stays the place you can always find it.
+//
+// Three states, in the order the copy has to explain them: the assigned name,
+// a typed one, and an explicit "do not name me" which is the only way back to a
+// nameless row. The run places on the board in all three.
 //
 // Screened names (issue 08) are still typable and still stored locally. The
 // field would otherwise be unusable — refusing to store "nazi" means refusing
 // the fourth keystroke of "Nazir" — and the server strips the name from the
 // record either way, so the honest thing is to keep the input working and say
-// plainly what happens. What happens is that the run still places, as Anonymous:
-// the name is what is refused, not the victory.
+// plainly what happens: the run still places, without the name.
 function LeaderboardHandleSection() {
   const handle = useHandle()
+  const assigned = useAssignedName()
+  const anonymous = useAnonymous()
   // What a run would actually be credited to: sanitizeHandle keeps a trailing
   // space so it can be typed, but nothing is ever posted under one.
   const credited = handle.trim()
@@ -51,31 +59,54 @@ function LeaderboardHandleSection() {
       <div className="text-[10px] uppercase tracking-[0.3em] text-slate-500 mb-3">
         Leaderboard name
       </div>
-      <input
-        type="text"
-        value={handle}
-        onChange={e => settings.setHandle(e.target.value)}
-        maxLength={MAX_HANDLE_LENGTH}
-        placeholder="Anonymous"
-        aria-label="Leaderboard name"
-        autoComplete="off"
-        spellCheck={false}
-        className="w-full rounded-md border border-stone-700 bg-stone-900 px-3 py-2 text-sm text-parchment placeholder:text-slate-600 focus:border-rune focus:outline-none transition"
-      />
+      <div className="flex gap-2">
+        <input
+          type="text"
+          value={handle}
+          onChange={e => settings.setHandle(e.target.value)}
+          maxLength={MAX_HANDLE_LENGTH}
+          // The assigned name, so an empty field shows what is actually in use
+          // rather than a word like "Anonymous" that no longer describes it.
+          placeholder={assigned}
+          aria-label="Leaderboard name"
+          autoComplete="off"
+          spellCheck={false}
+          disabled={anonymous}
+          className="w-full rounded-md border border-stone-700 bg-stone-900 px-3 py-2 text-sm text-parchment placeholder:text-slate-600 focus:border-rune focus:outline-none transition disabled:opacity-40"
+        />
+        <button
+          type="button"
+          onClick={() => settings.setHandle(nameSuggestions(1, credited)[0])}
+          disabled={anonymous}
+          className="shrink-0 px-3 rounded-md border border-stone-700 text-[11px] text-slate-400 hover:text-parchment hover:border-stone-500 transition disabled:opacity-40"
+        >
+          Surprise me
+        </button>
+      </div>
       <p className="text-[11.5px] text-slate-400 leading-snug mt-2">
-        {!credited
-          ? 'Leave this empty and your victories are listed publicly as Anonymous. Set a name to be credited by it instead.'
-          : rejected === 'reserved'
-            ? <span className="text-red-300">That name is reserved for the game and its moderators, so it will not be listed — your victories appear as Anonymous instead. Pick another to be credited by it.</span>
-            : rejected
-              ? <span className="text-red-300">This name will not be listed on the public leaderboard — your victories appear as Anonymous instead. Pick another to be credited by it.</span>
-              : <>Victories are credited to <span className="text-rune">{credited}</span> on the public leaderboard, visible to everyone.</>}
+        {anonymous
+          ? 'Your victories are listed without a name. They still place on the board — the row just says Anonymous.'
+          : !credited
+            ? <>Victories are credited to <span className="text-rune">{assigned}</span>, the name this device was given. Type your own to change it.</>
+            : rejected === 'reserved'
+              ? <span className="text-red-300">That name is reserved for the game and its moderators, so it will not be listed — your victories appear as Anonymous instead. Pick another to be credited by it.</span>
+              : rejected
+                ? <span className="text-red-300">This name will not be listed on the public leaderboard — your victories appear as Anonymous instead. Pick another to be credited by it.</span>
+                : <>Victories are credited to <span className="text-rune">{credited}</span> on the public leaderboard, visible to everyone.</>}
       </p>
+      <label className="flex items-center gap-2 text-[11px] text-slate-500 mt-2.5 cursor-pointer hover:text-slate-400">
+        <input
+          type="checkbox"
+          checked={anonymous}
+          onChange={e => settings.setAnonymous(e.target.checked)}
+          className="accent-amber-500"
+        />
+        <span>Don&apos;t list a name against my runs</span>
+      </label>
       <p className="text-[11px] text-slate-500 leading-snug mt-1.5">
         Letters, numbers, spaces, - and _ only, up to {MAX_HANDLE_LENGTH} characters.
         Applies to runs you finish from now on. Runs already recorded keep the
-        name they were posted under, so a victory you won before setting a name
-        stays listed as Anonymous.
+        name they were posted under.
       </p>
     </section>
   )

@@ -32,6 +32,7 @@ const GUEST_ID = 'guest'
 // queue that drains regardless of who is signed in.
 const PENDING_KEY = 'scoundrel:history:pending'
 const RUNS_API = '/api/runs'
+const CLAIM_API = '/api/claim'
 // Keep storage bounded so a heavy player never trips the localStorage quota.
 // Oldest runs fall off the end first.
 const MAX_RUNS = 200
@@ -171,6 +172,59 @@ class LocalHistoryStore {
       writePending(readPending().filter(r => !sentKeys.has(serverKeyOf(r))))
     } catch {
       // Leave the queue intact; the next reconcile retries it.
+    }
+  }
+
+  /**
+   * Put a name on a run that has already finished.
+   *
+   * The victory screen offers this at the moment the player cares, which is
+   * after the run was recorded, so three copies of the name have to move:
+   * the local mirror (what the player's own history shows), the pending queue
+   * (so a run still waiting to post carries the new name when it goes), and
+   * the stored server row (for a run already posted).
+   *
+   * The order matters. Patch local state first, then reconcile -- a queued run
+   * posts with the right name and needs nothing more. Then claim anyway: it is
+   * idempotent, and it is the only thing that can rename a run the server
+   * already has. Calling both is one redundant request on an explicit user
+   * action, which is cheaper than deciding which case we are in and being wrong.
+   *
+   * Never throws. A failed claim leaves the run under its previous name, which
+   * is a cosmetic loss, so it must not break the outcome screen.
+   *
+   * @param {string} accountId - whose history to patch
+   * @param {object} record - the finished record being renamed
+   * @param {string} name - the new name; '' means list the run without one
+   * @returns {Promise<boolean>} whether the server confirmed the change
+   */
+  async claimRun(accountId, record, name) {
+    const key = runKeyOf(record)
+    const playerName = name.trim() || null
+    writeRaw(accountId, readRaw(accountId).map(
+      r => (runKeyOf(r) === key ? { ...r, playerName } : r),
+    ))
+    const serverKey = serverKeyOf(record)
+    writePending(readPending().map(
+      r => (serverKeyOf(r) === serverKey ? { ...r, playerName } : r),
+    ))
+    if (!import.meta.env.PROD) return false
+    await this.reconcile()
+    try {
+      const token = getSessionToken()
+      const res = await fetch(CLAIM_API, {
+        method: 'POST',
+        headers: {
+          'Content-Type': 'application/json',
+          ...(token ? { Authorization: `Bearer ${token}` } : {}),
+        },
+        // deviceId is what a guest owns names as: the run key proves which run
+        // this is, but not which device may claim names for it.
+        body: JSON.stringify({ runKey: serverKey, playerName, deviceId: record.deviceId }),
+      })
+      return res.ok
+    } catch {
+      return false
     }
   }
 
