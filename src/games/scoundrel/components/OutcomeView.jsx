@@ -1,40 +1,117 @@
-import { useMemo } from 'react'
+import { useMemo, useState } from 'react'
 import { LogPanel } from './atoms'
 import { RunSummary, EndingKitSection } from './RunSummary'
 import { buildRunRecord } from '../history'
-import { useHandle } from '../settings'
+import { useEffectiveName, useAnonymous, MAX_HANDLE_LENGTH } from '../settings'
+import { nameSuggestions } from '../assignedName'
 
-// A victory with no leaderboard handle is listed as "Anonymous" rather than
-// dropped. The run places, so this is no longer a warning that something was
-// lost -- it just tells the player which row is theirs and what it would take
-// to have their own name on it. Still worth saying at the one moment they care
-// about it, and the fix is still one click. Deliberately not shown on death --
-// only victories are ranked, so there is nothing to be credited for.
-function LeaderboardNudge({ onOpenSettings }) {
+// Naming yourself, at the one moment you care who won.
+//
+// Every player already carries a name -- assignedName.js gives one out on first
+// launch -- so this is never a blank field demanding to be filled before the
+// board will admit you. It states the name the victory went up under and offers
+// to change it, which is a far smaller ask than the old copy's trip to Settings.
+//
+// Suggestions rather than an empty input: picking is easier than inventing, and
+// the reroll costs nothing. The free field is still there for the player who
+// arrived with a name in mind.
+//
+// Shown on victory only. Deaths are not ranked, so there is nothing to be
+// credited for and nothing to ask about.
+function LeaderboardNudge({ onClaimName }) {
+  const current = useEffectiveName()
+  const anonymous = useAnonymous()
+  const [open, setOpen] = useState(false)
+  const [draft, setDraft] = useState('')
+  const [saved, setSaved] = useState(false)
+  // Rolled once per opening rather than on every render, so the options do not
+  // shuffle under the player's cursor as they type in the field below them.
+  const [options, setOptions] = useState([])
+
+  const reveal = () => {
+    setOptions(nameSuggestions(3, current))
+    setDraft('')
+    setSaved(false)
+    setOpen(true)
+  }
+
+  const commit = (name) => {
+    const next = String(name).trim()
+    if (!next) return
+    setOpen(false)
+    setSaved(true)
+    onClaimName(next)
+  }
+
+  if (!open) {
+    return (
+      <p className="text-[12px] text-slate-400 -mt-1 short:-mt-2 mb-3 short:mb-2 sm:mb-4 max-w-md">
+        {anonymous
+          ? 'This victory is listed without a name.'
+          : <>This victory is listed as <span className="text-rune">{current}</span>.</>}{' '}
+        <button
+          onClick={reveal}
+          className="text-rune underline underline-offset-2 hover:text-amber-300 transition"
+        >
+          {saved ? 'Change it again' : 'Make it yours'}
+        </button>
+      </p>
+    )
+  }
+
   return (
-    <p className="text-[12px] text-slate-400 -mt-1 short:-mt-2 mb-3 short:mb-2 sm:mb-4 max-w-md">
-      This victory is listed as Anonymous: it carries no name.{' '}
-      <button
-        onClick={onOpenSettings}
-        className="text-rune underline underline-offset-2 hover:text-amber-300 transition"
+    <div className="-mt-1 short:-mt-2 mb-3 short:mb-2 sm:mb-4 max-w-md w-full text-left">
+      <div className="flex flex-wrap gap-1.5 justify-center">
+        {options.map(name => (
+          <button
+            key={name}
+            onClick={() => commit(name)}
+            className="px-2.5 py-1 rounded-md border border-stone-700 bg-stone-900/60 text-[11.5px] text-slate-300 hover:text-parchment hover:border-rune transition"
+          >
+            {name}
+          </button>
+        ))}
+        <button
+          onClick={() => setOptions(nameSuggestions(3, current))}
+          aria-label="Show different names"
+          className="px-2 py-1 rounded-md border border-stone-700 text-[11.5px] text-slate-500 hover:text-parchment transition"
+        >
+          ↻
+        </button>
+      </div>
+      <form
+        className="flex gap-1.5 mt-1.5"
+        onSubmit={e => { e.preventDefault(); commit(draft) }}
       >
-        Set one in Settings
-      </button>{' '}
-      and the runs you finish from now on will be credited to it.
-    </p>
+        <input
+          type="text"
+          value={draft}
+          onChange={e => setDraft(e.target.value)}
+          maxLength={MAX_HANDLE_LENGTH}
+          placeholder="or type your own"
+          aria-label="Leaderboard name"
+          autoComplete="off"
+          spellCheck={false}
+          className="flex-1 min-w-0 rounded-md border border-stone-700 bg-stone-900 px-2.5 py-1 text-[12px] text-parchment placeholder:text-slate-600 focus:border-rune focus:outline-none transition"
+        />
+        <button
+          type="submit"
+          disabled={!draft.trim()}
+          className="px-3 rounded-md border border-stone-700 text-[11.5px] text-slate-300 hover:text-parchment hover:border-rune transition disabled:opacity-40"
+        >
+          Claim
+        </button>
+      </form>
+    </div>
   )
 }
 
 // onBeginAgain wraps freshRun() in the root so this file doesn't
 // depend on save/load details.
-export function OutcomeView({ game, onBeginAgain, onOpenSettings }) {
+export function OutcomeView({ game, onBeginAgain, onClaimName }) {
   const won = game.phase === 'victory'
-  // Unconditional: `won &&` in front of the hook call would skip it on the
-  // death screen and change hook order between the two outcomes.
-  // Trailing space is legal mid-typing but nothing posts under it, so trim
-  // before deciding whether this run carries a name.
-  const handle = useHandle()
-  const anonymous = won && !handle.trim()
+  // Every victory now offers this, named or not: the run is on the board either
+  // way, and the question is only whose name is against it.
   // Local view-only record; the persisted copy (with account id) is written
   // by the root's recording effect. User isn't needed for display.
   const record = useMemo(() => buildRunRecord(game, null), [game])
@@ -74,7 +151,7 @@ export function OutcomeView({ game, onBeginAgain, onOpenSettings }) {
         {won ? 'ASCEND' : 'BEGIN AGAIN'}
       </button>
 
-      {anonymous && <LeaderboardNudge onOpenSettings={onOpenSettings} />}
+      {won && <LeaderboardNudge onClaimName={onClaimName} />}
 
       <div className="w-full max-w-4xl grid grid-cols-[1.4fr_1fr] lg:grid-cols-2 gap-3 short:gap-2 sm:gap-5 items-start text-left">
         <div className="panel p-4 short:p-3 sm:p-6">

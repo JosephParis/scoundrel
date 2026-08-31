@@ -34,14 +34,20 @@ function hash32(input) {
 // Deliberately in the game's register, so a PostHog session list reads like the
 // dungeon rather than a docker container. 32 x 32 x 100 = 102,400 combinations,
 // which is far more than this will ever need.
-const ADJECTIVES = [
+//
+// Exported because the player-facing assigned name (assignedName.js) draws on
+// the same two lists. One vocabulary rather than two that drift apart -- but
+// note the two have different rules: this one may produce any length, while a
+// leaderboard handle has 16 characters to fit in, so that module filters these
+// down rather than reusing pseudonymFor directly.
+export const ADJECTIVES = [
   'Ashen', 'Bitter', 'Bleak', 'Brazen', 'Candlelit', 'Cold', 'Cracked', 'Dim',
   'Dusty', 'Fading', 'Gilded', 'Grim', 'Hollow', 'Hushed', 'Iron', 'Lantern',
   'Lost', 'Muted', 'Pale', 'Quiet', 'Ragged', 'Rusted', 'Salted', 'Silent',
   'Sombre', 'Sunken', 'Tarnished', 'Thin', 'Veiled', 'Weary', 'Wan', 'Withered',
 ]
 
-const NOUNS = [
+export const NOUNS = [
   'Almoner', 'Beggar', 'Bellringer', 'Cutpurse', 'Deacon', 'Digger', 'Drifter',
   'Envoy', 'Fencer', 'Gravedigger', 'Herald', 'Hermit', 'Jester', 'Keeper',
   'Lamplighter', 'Mason', 'Miner', 'Novice', 'Pilgrim', 'Poacher', 'Reeve',

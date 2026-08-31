@@ -9,6 +9,7 @@ import { getMode, GAME_VERSION } from './constants'
 import { getAscension } from './ascensions'
 import { BOONS } from './boons'
 import { getTheme } from './themes'
+import { MAX_HANDLE_LENGTH } from './handle'
 
 // v2 added `death` (where/how the run ended). v3 added the decision funnels
 // `boonPicks` and `forgeEdits` (offered-vs-chosen). v4 added `retire` (soft
@@ -49,21 +50,21 @@ function namedBoons(state) {
   return (state.boons || []).map(id => ({ id, name: BOONS[id]?.name || id }))
 }
 
-// Longest handle the record will carry. Mirrors MAX_HANDLE_LENGTH in
-// settings.js, restated rather than imported so this module stays free of the
-// localStorage-backed settings singleton. The caller passes an already
-// sanitized handle; this is the last clamp before it is stored.
-const MAX_HANDLE_LENGTH = 16
-
 /**
- * The name a run is credited to on the public leaderboard, or null when the
- * run stays off it. Null is not an anonymous listing: api/leaderboard.js
- * excludes nameless rows, so such a run is absent from the board rather than
- * shown without a name. Nothing is derived from the player's Google profile:
- * the only source is the handle they typed into Settings, which is empty by
- * default, so a name reaches the public board only because its owner chose to
- * put it there.
- * @param {string} handle - the player's opt-in handle ('' when unset)
+ * The name a run is credited to on the public leaderboard, or null when it
+ * carries none. Null is a real listing, not an exclusion: the run still places
+ * and the board shows it as Anonymous.
+ *
+ * Reaching null now takes a deliberate choice. Every player is given a random
+ * name (assignedName.js), so a record is nameless only when its owner asked to
+ * be unlisted in Settings. Nothing is ever derived from the player's Google
+ * profile -- the name is either typed or randomly assigned.
+ *
+ * MAX_HANDLE_LENGTH comes from handle.js, which exists so this module can share
+ * the limit without importing the localStorage-backed settings singleton. The
+ * caller passes an already sanitized name; this is the last clamp before it is
+ * stored.
+ * @param {string} handle - the effective name ('' when the player is unlisted)
  */
 function leaderboardName(handle) {
   return String(handle ?? '').trim().slice(0, MAX_HANDLE_LENGTH).trim() || null

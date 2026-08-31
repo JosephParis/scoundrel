@@ -370,7 +370,20 @@ export default function Scoundrel() {
     // Read the handle live rather than through a hook: what matters is the
     // opt-in as it stood when the run ended, and this is the only record that
     // is mirrored to the public board.
-    historyStore.appendRun(accountId, buildRunRecord(game, user, settings.handle))
+    historyStore.appendRun(accountId, buildRunRecord(game, user, settings.effectiveName))
+  }, [game, user])
+
+  // Rename the run the player is looking at, from the outcome screen.
+  //
+  // Two things have to move together: the preference, so every run from here on
+  // carries the new name, and the finished run itself, which was recorded the
+  // moment the game ended and would otherwise keep the old one. Built from the
+  // same inputs as the recording effect above, so the run keys agree and the
+  // claim lands on the row that was actually written.
+  const claimName = useCallback(async (name) => {
+    settings.setHandle(name)
+    const accountId = user?.sub || 'guest'
+    await historyStore.claimRun(accountId, buildRunRecord(game, user, name), name)
   }, [game, user])
 
   // Persist the Boon library on every change so unlocks survive even if
@@ -556,7 +569,7 @@ export default function Scoundrel() {
         {game.phase === 'sanctuary' && <SanctuaryView game={game} setGame={setGame} onSkipTutorial={skipTutorial} ascensionUnlocked={ascensionUnlocked} celebrateSigil={sigilCelebrate} onSigilCelebrated={() => setSigilCelebrate(false)} onOpenRules={() => setRulesOpen(true)} />}
         {game.phase === 'descent' && <DescentView game={game} setGame={setGame} />}
         {(game.phase === 'gameover' || game.phase === 'victory') && (
-          <OutcomeView game={game} onBeginAgain={() => setGame(freshRun())} onOpenSettings={() => setSettingsOpen(true)} />
+          <OutcomeView game={game} onBeginAgain={() => setGame(freshRun())} onClaimName={claimName} />
         )}
       </main>
     </div>

@@ -49,8 +49,23 @@ End-to-end, against the deployed URL:
 - [ ] Band verdicts render (`src/admin/bands.js` against `WINRATE_TARGETS.md`)
 - [ ] Submit feedback from the live site; confirm it appears in the admin feedback view
 - [ ] Play one run with Dev tools; confirm it is `dev: true` and **excluded** from stats
-- [ ] Set a handle, win a run, confirm it appears on the leaderboard; confirm a
-      handle-less victory does **not** (see issue 14)
+- [ ] Win a run without ever opening Settings. Confirm it appears on the
+      leaderboard under the **assigned** name (e.g. `Ashen Vagrant 47`), not as
+      "Anonymous" and not missing. This is the default path every player takes,
+      and it has never run against a real database.
+- [ ] Set your own handle, win a run, confirm the board credits that instead
+- [ ] Tick "don't list a name" in Settings, win a run, confirm the row appears
+      and reads Anonymous — the run is listed either way (issue 14, twice
+      superseded; read its file before assuming what the rule is)
+- [ ] **`/api/claim`:** win a run, then rename yourself from the victory screen.
+      Confirm the board row that was already written changes name. A 404 here
+      leaves the run under its old name silently, which is the failure mode
+      nobody reports.
+- [ ] Rename as a **guest** as well as signed in — the two take different
+      authorisation paths (session vs. the run key's `runSeed`)
+- [ ] Win a run on a second device and confirm the two guests get **different**
+      assigned names and therefore separate rows, rather than collapsing into
+      one shared bucket
 - [ ] Confirm the weekly cron (`0 4 * * 1` → `/api/cron-backfill-runs`) is
       registered in Vercel and returns 200 when triggered manually
 - [ ] Sign in on a second device; confirm history merges both ways (and see issue 09)
