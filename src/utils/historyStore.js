@@ -218,7 +218,9 @@ class LocalHistoryStore {
           'Content-Type': 'application/json',
           ...(token ? { Authorization: `Bearer ${token}` } : {}),
         },
-        body: JSON.stringify({ runKey: serverKey, playerName }),
+        // deviceId is what a guest owns names as: the run key proves which run
+        // this is, but not which device may claim names for it.
+        body: JSON.stringify({ runKey: serverKey, playerName, deviceId: record.deviceId }),
       })
       return res.ok
     } catch {

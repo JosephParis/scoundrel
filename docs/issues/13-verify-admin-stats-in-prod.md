@@ -63,9 +63,21 @@ End-to-end, against the deployed URL:
       nobody reports.
 - [ ] Rename as a **guest** as well as signed in — the two take different
       authorisation paths (session vs. the run key's `runSeed`)
-- [ ] Win a run on a second device and confirm the two guests get **different**
-      assigned names and therefore separate rows, rather than collapsing into
-      one shared bucket
+- [ ] Win a run on a second device and confirm the two guests get **separate
+      rows**. They are now told apart by `deviceId`, not by name, so force the
+      hard case: set the *same* name on both devices and confirm both still
+      place. That is the defect this replaced, and it is invisible until two
+      real devices post.
+- [ ] Confirm the `handles` table is created on first write and that a second
+      owner claiming a taken name is stored disambiguated (`Rookwarden 2`), with
+      the response reporting the stored name rather than the requested one
+- [ ] Confirm an assigned name counts up rather than being suffixed: a second
+      device asking for `Ashen Vagrant 47` should land on `Ashen Vagrant 48`
+- [ ] Open the board signed out and confirm **your own row reads "You"**. Guest
+      self-marking is new (`device=` query param); it never worked before, and
+      it is what makes two same-named rows survivable
+- [ ] Confirm no `deviceId` or `account_id` appears anywhere in the
+      `/api/leaderboard` response body
 - [ ] Confirm the weekly cron (`0 4 * * 1` → `/api/cron-backfill-runs`) is
       registered in Vercel and returns 200 when triggered manually
 - [ ] Sign in on a second device; confirm history merges both ways (and see issue 09)

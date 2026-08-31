@@ -19,6 +19,7 @@ import {
 } from '../../utils/cloudSync'
 import { historyStore } from '../../utils/historyStore'
 import { buildRunRecord } from './history'
+import { deviceSeed } from './assignedName'
 import { useRunAnalytics } from './analytics'
 import { isDevToolsEnabled, isCrashTestRequested } from './flags'
 import { audio } from './audio'
@@ -370,7 +371,7 @@ export default function Scoundrel() {
     // Read the handle live rather than through a hook: what matters is the
     // opt-in as it stood when the run ended, and this is the only record that
     // is mirrored to the public board.
-    historyStore.appendRun(accountId, buildRunRecord(game, user, settings.effectiveName))
+    historyStore.appendRun(accountId, buildRunRecord(game, user, settings.effectiveName, deviceSeed()))
   }, [game, user])
 
   // Rename the run the player is looking at, from the outcome screen.
@@ -383,7 +384,7 @@ export default function Scoundrel() {
   const claimName = useCallback(async (name) => {
     settings.setHandle(name)
     const accountId = user?.sub || 'guest'
-    await historyStore.claimRun(accountId, buildRunRecord(game, user, name), name)
+    await historyStore.claimRun(accountId, buildRunRecord(game, user, name, deviceSeed()), name)
   }, [game, user])
 
   // Persist the Boon library on every change so unlocks survive even if

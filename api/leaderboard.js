@@ -41,6 +41,9 @@ import { ensureBlockedTable } from './_lib/moderation.js'
  *                   adds `self` (their best run and its rank) even when that
  *                   rank falls outside the returned page. Ignored for guests,
  *                   whose account id identifies no one in particular.
+ *   device=<id>     what a guest sends instead of `me`: the opaque per-device
+ *                   id their runs carry. Same effect, and the only way a guest
+ *                   can be shown which row is theirs.
  *   version=<v>     scope the board to one balance version (see GAME_VERSION).
  *                   Absent = all versions.
  *
@@ -87,29 +90,39 @@ function parseLimit(raw) {
 //
 // The partition takes two expressions rather than one concatenated key, so no
 // string building is needed: signed-in players group by account_id alone (the
-// second expression is a constant for them, and their handle may change
-// between runs without splitting them into two entries), while guests, who all
-// share account_id 'guest', additionally group by handle.
+// second expression is a constant for them, and their name may change between
+// runs without splitting them into two entries), while guests, who all share
+// account_id 'guest', need something else to tell them apart.
 //
-// An unnamed run coalesces to '' in that second expression, which is what puts
-// every unnamed guest in one bucket (see the note above — SQL would treat a
-// bare null as its own group per row, so the coalesce is doing real work here,
-// not tidying). Unnamed signed-in players are unaffected: account_id already
-// separates them, one row each.
+// That something is `deviceId`, not the player's name. Grouping guests by name
+// meant name equality was treated as person equality: two guests who happened
+// to share one — assigned or typed — landed in the same bucket, and only the
+// faster was ranked at all. The other vanished from a board they had earned a
+// place on. A name is a label; identity is the device that posted the run.
+//
+// The coalesce chain is a migration path, not tidying. Runs predating record
+// v8 carry no deviceId and fall back to grouping by name, exactly as they
+// always did, so no stored row changes behaviour. The trailing '' catches the
+// oldest rows, which have neither and keep sharing one bucket — SQL would
+// otherwise treat a bare null as its own group per row.
 //
 // Kept as a single fragment so the board query and the caller's-own-rank query
 // rank against the same population.
 function rankedBest(versionCond) {
   return sql`(
     select account_id, ascension, sigils_earned, duration_ms, ended_at, mode,
-           game_version, player_name,
+           game_version, player_name, device_id,
            row_number() over (order by duration_ms asc, ended_at asc) rank
     from (
       select r.*, nullif(btrim(r.record->>'playerName'), '') player_name,
+             nullif(r.record->>'deviceId', '') device_id,
              row_number() over (
                partition by r.account_id,
                             case when r.account_id = ${GUEST_ID}
-                                 then coalesce(btrim(r.record->>'playerName'), '')
+                                 then coalesce(
+                                        nullif(r.record->>'deviceId', ''),
+                                        btrim(r.record->>'playerName'),
+                                        '')
                                  else '' end
                order by r.duration_ms asc, r.ended_at asc
              ) player_rn
@@ -147,9 +160,16 @@ function rankedBest(versionCond) {
   )`
 }
 
-// Shape a DB row for the wire: numbers coerced out of bigint strings, and
-// account_id dropped so no caller ever learns another player's account id.
-function toEntry(row, me) {
+// Shape a DB row for the wire: numbers coerced out of bigint strings, and both
+// account_id and device_id dropped so no caller ever learns another player's
+// identity. `you` is computed here, server-side, precisely so the comparison
+// can be made without either value crossing the wire.
+function toEntry(row, me, device) {
+  // A guest cannot be recognised by account_id -- every guest is 'guest' -- so
+  // their own row is found by the device that posted it. This is what makes two
+  // rows sharing a name survivable: whichever one is yours reads "You".
+  const mine = Boolean(me) && row.account_id === me
+  const myDevice = Boolean(device) && row.account_id === GUEST_ID && row.device_id === device
   return {
     rank: Number(row.rank),
     playerName: row.player_name || null,
@@ -159,7 +179,7 @@ function toEntry(row, me) {
     endedAt: row.ended_at === null ? null : Number(row.ended_at),
     mode: row.mode || 'default',
     gameVersion: row.game_version || null,
-    you: Boolean(me) && row.account_id === me,
+    you: mine || myDevice,
   }
 }
 
@@ -176,6 +196,10 @@ export default async function handler(req, res) {
   // A guest id identifies no one in particular, so it can't mark "your" rows.
   const meRaw = typeof req.query?.me === 'string' ? req.query.me.trim() : ''
   const me = meRaw && meRaw !== GUEST_ID ? meRaw : ''
+  // What a guest sends instead. It marks and ranks only their own rows, and is
+  // never echoed back, so presenting someone else's tells you nothing you could
+  // not already see.
+  const device = typeof req.query?.device === 'string' ? req.query.device.trim() : ''
 
   try {
     // Idempotent and cached per warm instance (see runsTable.js). Keeps the
@@ -189,11 +213,14 @@ export default async function handler(req, res) {
       // when it sits past the returned page. Skipped entirely for guests.
       me
         ? sql`select * from ${ranked} b where b.account_id = ${me} limit 1`
-        : Promise.resolve([]),
+        : device
+          ? sql`select * from ${ranked} b
+                 where b.account_id = ${GUEST_ID} and b.device_id = ${device} limit 1`
+          : Promise.resolve([]),
     ])
 
-    const entries = rows.map(row => toEntry(row, me))
-    const self = selfRows.length > 0 ? toEntry(selfRows[0], me) : null
+    const entries = rows.map(row => toEntry(row, me, device))
+    const self = selfRows.length > 0 ? toEntry(selfRows[0], me, device) : null
 
     // Public and identical for everyone but the `me` marking, so let the CDN
     // absorb the traffic. Short TTL keeps a fresh record visible quickly.

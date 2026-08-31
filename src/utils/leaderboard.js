@@ -37,13 +37,19 @@ export function entryDisplayName(entry) {
  * @param {string} [opts.accountId] - the viewer's account id, so the server can
  *   mark their own rows and report their rank. 'guest' is not sent: it
  *   identifies no one in particular.
+ * @param {string} [opts.deviceId] - what a guest sends instead. Their runs carry
+ *   it, so it is the only thing that can pick their row out of the board --
+ *   which matters most when two rows happen to share a name. Sent only when
+ *   there is no account, since an account is the better answer where it exists.
  * @param {number} [opts.limit] - rows to request (server caps at 100).
  * @param {AbortSignal} [opts.signal] - abort when the modal closes.
  * @returns {Promise<{ok: true, data: object} | {ok: false, reason: string}>}
  */
-export async function fetchLeaderboard({ accountId, limit, signal } = {}) {
+export async function fetchLeaderboard({ accountId, deviceId, limit, signal } = {}) {
   const params = new URLSearchParams()
-  if (accountId && accountId !== 'guest') params.set('me', accountId)
+  const signedIn = accountId && accountId !== 'guest'
+  if (signedIn) params.set('me', accountId)
+  else if (deviceId) params.set('device', deviceId)
   if (limit) params.set('limit', String(limit))
   const query = params.toString()
 

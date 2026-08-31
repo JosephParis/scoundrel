@@ -34,6 +34,13 @@ create table if not exists runs (
   duration_ms   bigint,
   game_version  text,                    -- balance version stamp (GAME_VERSION); null on legacy rows
   record        jsonb not null,          -- full buildRunRecord blob
+  -- Two fields inside `record` are read by queries rather than only by the
+  -- client, so changing them is a schema change in practice:
+  --   playerName  the name the board credits this run to; null reads Anonymous
+  --   deviceId    opaque per-device id (record v8+). How api/leaderboard.js
+  --               tells two guests apart, since every guest is account_id
+  --               'guest'. Absent on older runs, which fall back to grouping
+  --               by playerName.
   created_at    timestamptz not null default now()
 );
 
@@ -238,3 +245,26 @@ create table if not exists rate_limits (
 --        jsonb_array_elements(r.record->'descents') d,
 --        jsonb_array_elements_text(d->'themes') th(v)
 --   group by 1 order by beat_rate desc;
+
+-- One name, one owner, forever.
+--
+-- The public board used to show two identical rows when two players picked the
+-- same name, and worse, guests were told apart *by* their name, so two sharing
+-- one collapsed into a single ranked row and the slower player vanished.
+-- api/leaderboard.js now partitions guests on record->>'deviceId' instead, and
+-- this table makes the name itself unique so the board never shows a duplicate.
+--
+-- Claims are never released. A run stores the name it was posted under, so
+-- freeing a name would let a second owner take it while the first owner's older
+-- rows still carry it -- reproducing the duplicate this exists to prevent.
+-- Keeping every claim means a given string on the board belongs to exactly one
+-- owner, always. Squatting is the accepted cost at this scale.
+--
+-- Written by api/_lib/handles.js on the way into storage rather than reserved
+-- while the player types: naming has to work offline (see that file).
+create table if not exists handles (
+  name_key   text primary key,          -- lower(name); "Rook" and "rook" are one claim
+  name       text not null,             -- as claimed, for display and debugging
+  owner_id   text not null,             -- account_id, or a guest's deviceId
+  claimed_at timestamptz not null default now()
+);

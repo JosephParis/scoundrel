@@ -4,6 +4,7 @@ import { accountFromRequest } from './_lib/session.js'
 import { parseRunBatch, mayWriteAs } from './_lib/validate.js'
 import { checkRateLimit, clientIp, tooManyRequests } from './_lib/rateLimit.js'
 import { isHandleAllowed } from '../src/games/scoundrel/handleDenylist.js'
+import { resolveHandle, ownerOf } from './_lib/handles.js'
 
 /**
  * Vercel serverless function: persist finished-run records into Postgres (Neon)
@@ -29,6 +30,10 @@ import { isHandleAllowed } from '../src/games/scoundrel/handleDenylist.js'
  * playerName fails the denylist is stored with the name removed rather than
  * rejected: the run is real analytics either way, and rejecting the POST would
  * lose it and tell the author which words to try next.
+ *
+ * A name that survives screening is then made unique: the first owner to post
+ * under it keeps it, and a later one is stored as "Rookwarden 2" rather than
+ * producing two identical rows on a board whose job is telling runs apart.
  *
  * Note what stripping the name now means. This was written when the board
  * listed only runs carrying a handle, so removing the name kept the run off the
@@ -116,7 +121,21 @@ export default async function handler(req, res) {
     // Sequential inserts keep this simple; batches are small in practice (a
     // fresh run, or one device's short outage backlog) and each is a no-op when
     // the run is already stored.
-    for (const record of records) await insertRun(scrubHandle(record))
+    for (const record of records) {
+      const scrubbed = scrubHandle(record)
+      // A run with no name claims nothing, so it is stored exactly as it
+      // arrived -- no registry round trip, and no key written onto a record
+      // that did not carry one.
+      if (!scrubbed.playerName) {
+        await insertRun(scrubbed)
+        continue
+      }
+      // Uniqueness is settled here rather than while the player types, because
+      // naming must work offline (see api/_lib/handles.js). A name already held
+      // by someone else is stored disambiguated.
+      const playerName = await resolveHandle(sql, scrubbed.playerName, ownerOf(scrubbed))
+      await insertRun({ ...scrubbed, playerName })
+    }
     return res.status(202).json({ ok: true, count: records.length })
   } catch {
     return res.status(500).json({ error: 'insert_failed' })

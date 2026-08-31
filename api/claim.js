@@ -5,6 +5,7 @@ import { mayWriteAs } from './_lib/validate.js'
 import { checkRateLimit, clientIp, tooManyRequests } from './_lib/rateLimit.js'
 import { isHandleAllowed } from '../src/games/scoundrel/handleDenylist.js'
 import { sanitizeHandle } from '../src/games/scoundrel/handle.js'
+import { resolveHandle } from './_lib/handles.js'
 
 /**
  * POST /api/claim — put a name on a run that is already recorded.
@@ -34,13 +35,18 @@ import { sanitizeHandle } from '../src/games/scoundrel/handle.js'
  * predate `runSeed` and key on `guest:<startedAt>` alone, which is guessable, so
  * they are refused rather than left open to anyone who can iterate timestamps.
  *
- * ## Screened names
+ * ## Screened and taken names
  *
  * A name that fails the denylist is stored as null rather than rejected, which
  * matches /api/runs: the row stays, listed as Anonymous, and the response
  * reports the name that was actually applied so the client can show the truth
  * instead of what was asked for. Refusing outright would tell the author which
  * words to try next.
+ *
+ * A name already held by someone else is disambiguated the same way a posted
+ * run's would be (api/_lib/handles.js), so renaming from the victory screen
+ * cannot produce a duplicate row either. Again the response carries the name
+ * that was actually stored, which is the whole reason it reports one.
  *
  * Requires DATABASE_URL. Without it the endpoint 503s and the client leaves the
  * run under whatever name it was posted with; play is never affected.
@@ -100,7 +106,15 @@ export default async function handler(req, res) {
   // Sanitize before screening, so the denylist sees the same string the rest of
   // the system would store rather than the raw request body.
   const requested = sanitizeHandle(body?.playerName).trim()
-  const applied = requested && isHandleAllowed(requested) ? requested : null
+  const screened = requested && isHandleAllowed(requested) ? requested : null
+
+  // Whose claim this is, for the uniqueness registry. A signed-in run owns
+  // names as its account; a guest owns them as the device that played it, which
+  // it has to present because the run key does not carry it.
+  const owner = parsed.accountId === GUEST_ID
+    ? (typeof body?.deviceId === 'string' ? body.deviceId.trim() : '')
+    : parsed.accountId
+  const applied = await resolveHandle(sql, screened, owner)
 
   try {
     await ensureRunsTable(sql)

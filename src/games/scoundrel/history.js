@@ -17,9 +17,11 @@ import { MAX_HANDLE_LENGTH } from './handle'
 // counts. v5 added `gameVersion` (the balance version stamp, for filtering
 // analytics by ruleset). v6 added `dev` (the run touched the Dev overrides
 // tool, so it is test data and admin stats exclude it). v7 added `playerName`
-// (the opt-in handle shown on the public leaderboard; null unless set). Older
+// (the opt-in handle shown on the public leaderboard; null unless set). v8
+// added `deviceId` (an opaque per-device id, so guest runs can be told apart
+// without using the player's name as identity -- see api/leaderboard.js). Older
 // records simply lack the newer fields; readers treat them as null/[]/0/false.
-const RECORD_VERSION = 7
+const RECORD_VERSION = 8
 const GUEST_ID = 'guest'
 
 function outcomeOf(state) {
@@ -81,11 +83,14 @@ function finalWeaponOf(state) {
  * Build a stored record from a terminal game state.
  * @param {object} state - game state with phase 'victory' or 'gameover'
  * @param {object|null} user - signed-in user ({ sub }) or null for guest
- * @param {string} [handle] - the player's opt-in leaderboard handle. Omitted
+ * @param {string} [handle] - the player's effective leaderboard name. Omitted
  *   by callers that only need the record for display or analytics, which
  *   leaves the run anonymous on the board.
+ * @param {string} [deviceId] - opaque per-device id. Only guest runs need it:
+ *   every guest posts as 'guest', so this is the one thing that can tell two of
+ *   them apart on the board. Omitted by display-only callers.
  */
-export function buildRunRecord(state, user, handle = '') {
+export function buildRunRecord(state, user, handle = '', deviceId = null) {
   const now = Date.now()
   const startedAt = state.runStartedAt || now
   // Paused wall-clock: accumulated total plus any pause still open at run end.
@@ -109,6 +114,10 @@ export function buildRunRecord(state, user, handle = '') {
     // Opt-in display name for the public leaderboard. Null unless the player
     // set a handle in Settings.
     playerName: leaderboardName(handle),
+    // Identity, as opposed to playerName, which is a label. Kept even for
+    // signed-in runs: it costs one short string and means the board never has
+    // to care which of the two it is looking at.
+    deviceId: deviceId || null,
     startedAt,
     endedAt: now,
     durationMs: Math.max(0, now - startedAt - pausedMs),

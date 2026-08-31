@@ -96,6 +96,11 @@ export default function PrivacyPolicy() {
                   who="Neon, PostHog"
                 />
                 <Row
+                  what="A random device id"
+                  why="Stored with your runs so the leaderboard can tell two signed-out players apart without using their names. Random, created on this device, and never shown to anyone — not even to you."
+                  who="Neon only"
+                />
+                <Row
                   what="Leaderboard name"
                   why="Shown publicly on the fastest-victory board. A random name like 'Ashen Vagrant 47' is assigned to your device unless you set your own, and you can ask in Settings not to be named at all."
                   who="Neon (and anyone viewing the board)"
@@ -162,8 +167,16 @@ export default function PrivacyPolicy() {
           </p>
           <p>
             No name is ever taken from your Google profile for this, and the leaderboard
-            deliberately strips account ids before sending anything to your browser, so
-            one player can never learn another&rsquo;s account id.
+            deliberately strips account ids and device ids before sending anything to your
+            browser, so one player can never learn another&rsquo;s.
+          </p>
+          <p>
+            If you play without signing in, your runs carry a random id created on this
+            device. It exists so the board can tell you apart from other signed-out
+            players &mdash; without it, two people who happen to share a name are treated
+            as one, and the slower run is dropped. It is generated from nothing but chance,
+            is never displayed, and is not sent to anyone viewing the board. Clearing your
+            browser storage discards it, and your next run counts as a new player.
           </p>
         </Section>
 
