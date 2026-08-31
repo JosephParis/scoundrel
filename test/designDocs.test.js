@@ -15,6 +15,7 @@ import { readFileSync } from 'node:fs'
 import { fileURLToPath } from 'node:url'
 import { SIGIL_TARGET } from '../src/games/scoundrel/constants'
 import { buildStartingKit } from '../src/games/scoundrel/logic/deck'
+import { rollForgeChoices } from '../src/games/scoundrel/logic/sanctuary'
 
 const read = name => readFileSync(fileURLToPath(new URL(`../${name}`, import.meta.url)), 'utf8')
 
@@ -114,7 +115,20 @@ describe('REWORK.md matches the kit code it specifies', () => {
 
   it('the documented Inscribe rank cap is the one the Forge uses', () => {
     expect(REWORK).toMatch(/cap = 4 \+ sigils earned.{0,40}10/s)
-    expect(SANCTUARY).toMatch(/Math\.min\(10, 4 \+ \(sigils \|\| 0\)\)/)
+    // Asserted by rolling real choices rather than by matching the source. The
+    // expression this used to grep for is one reformat away from failing while
+    // the rule it encodes is unchanged -- and a failure here is supposed to
+    // mean the doc drifted, not that someone moved a bracket.
+    //
+    // An rng pinned just under 1 takes the top of every range, so each roll
+    // lands on the cap itself: enough to catch it moving in either direction.
+    const atCeiling = () => 0.999999
+    for (const sigils of [0, 1, 3, 6, 9, 12]) {
+      const cap = Math.min(10, 4 + sigils)
+      const ranks = rollForgeChoices('inscribe', buildStartingKit(), sigils, atCeiling)
+        .map(card => card.rank)
+      expect(Math.max(...ranks), `cap at ${sigils} sigils`).toBe(cap)
+    }
   })
 
   it('records that the kit has no size cap, matching a codebase that has none', () => {
