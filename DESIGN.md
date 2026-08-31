@@ -1,5 +1,24 @@
 # Scoundrel: Roguelike Design
 
+> **Superseded — this is the pre-rework design, kept for its reasoning.**
+>
+> **[REWORK.md](REWORK.md) describes the game that actually ships.** Where the
+> two disagree, REWORK.md wins, and the code wins over both. This file is
+> retained because the fiction, the premise, and the reasoning behind the
+> mechanics that survived are still only written down here.
+>
+> Three things in here are flatly wrong about the shipped game, and are corrected
+> in place below so nobody builds a mental model on them:
+>
+> | This doc used to say | The shipped game |
+> |---|---|
+> | Seven sigils to escape | **Ten** (`SIGIL_TARGET`, `src/games/scoundrel/constants.js`) |
+> | The next descent's theme is revealed in the sanctuary | You descend **fully blind** — the Trial is named as you arrive |
+> | The player edits a whole 44-card deck, Strike included | The player owns and edits only a **kit** of weapons and potions; the dungeon rolls its own monster pool each descent, and **Strike no longer exists** |
+>
+> Sections marked **(historical)** describe mechanics that were designed and then
+> cut or replaced. They are not a spec of anything running today.
+
 A design plan for turning the 44-card Scoundrel base game into a roguelike. **The dungeon does not move; you do.** You enter the same dungeon again and again. Each visit, it wears a different face. Each visit, you bring something new.
 
 ## 1. Premise
@@ -8,9 +27,9 @@ You are stuck. There's one room in this place that's safe (the **Sanctuary**), p
 
 The sanctuary, the enclosure, and the single exit are fixed features of every setting. The fiction explains them differently but the shape is constant:
 
-- **Sanctuary** = a small enclosed space, warded/sealed against the dungeon, where you sleep, plan, and tinker. This is where you pick Boons, see the next theme, and visit the Forge.
+- **Sanctuary** = a small enclosed space, warded/sealed against the dungeon, where you sleep, plan, and tinker. This is where you pick Boons and visit the Forge. (You do **not** see the next theme — see the banner above.)
 - **Enclosure** = the wider place you can't leave through any normal means: vacuum, lockdown, interdict, grave-stone.
-- **The One Way Out** = a specific door/lift/passage. It has a lock with a defined opening condition (currently: seven sigils, one per completed descent).
+- **The One Way Out** = a specific door/lift/passage. It has a lock with a defined opening condition (ten sigils, one per completed descent).
 
 The setting below uses undead rather than thinking enemies. That matters for the premise: the dungeon is meant to be the *same* dungeon every descent. Intelligent inhabitants (orcs, goblins, warbands) would actively reshape territory between visits, which fights the design. Undead don't plan. What shifts is which of them are stirring, and where, not what they're doing about you.
 
@@ -20,7 +39,7 @@ The setting below uses undead rather than thinking enemies. That matters for the
 
 The mountain-hold was once the greatest of the deep kingdoms. Its halls are full of the dead now, its sublevels are warrens of shambling and risen things, and the dwarves who built it are gone, except for you and the handful of survivors who hold the **great hall** at the hold's heart. The inner threshold is wound with rune-chains laid a thousand years ago by a saint nobody alive remembers; nothing from the dark has ever crossed them. The chains glow faintly. No one knows how to renew them.
 
-You can't leave by any normal path: the lower gates collapsed in the last fall, the side passages buckled when the dead pressed against them, and the deeps have no end. The one way out is the **high gate** at the top of the hold, the gate that opens upward, into open air. Its rune-anchors lost their power when the throne broke. You need to recover **seven throne-shards** from the lower halls, one per descent, and seat them back in their sockets.
+You can't leave by any normal path: the lower gates collapsed in the last fall, the side passages buckled when the dead pressed against them, and the deeps have no end. The one way out is the **high gate** at the top of the hold, the gate that opens upward, into open air. Its rune-anchors lost their power when the throne broke. You need to recover **ten throne-shards** from the lower halls, one per descent, and seat them back in their sockets.
 
 **Who lives down there.** Nothing that plans. Risen dwarves who were the hold's last defenders, still wearing what armour they died in. Wraiths of older warriors bound to the stones they fell on. Ghoul-things that crawled up from the river-passages. In the deepest delvings, things the dwarves found and shouldn't have, that never lived to begin with.
 
@@ -32,26 +51,27 @@ The rest of this doc uses generic terms (descent, theme, sigil, sanctuary) and s
 
 ## 2. The core loop
 
-A **run** is a sequence of **descents** into the dungeon, threaded by visits to the **Sanctuary**, the safe room described in §1. Every descent starts in the sanctuary; every descent ends in the sanctuary, or in death. A descent is one straight playthrough of the base 44-card Scoundrel deck, lightly mutated by dungeon's **Theme** (§3). No internal sub-structure inside a descent. You just play Scoundrel, with whatever rules the theme imposes.
+A **run** is a sequence of **descents** into the dungeon, threaded by visits to the **Sanctuary**, the safe room described in §1. Every descent starts in the sanctuary; every descent ends in the sanctuary, or in death. A descent is one straight playthrough of a deck that is merged and shuffled at descent start from the player's **kit** (weapons and potions they own and edit) and the dungeon's freshly rolled **monster pool** — see [REWORK.md](REWORK.md) §3–§4. It is lightly mutated by the dungeon's **Theme** (§3). No internal sub-structure inside a descent. You just play Scoundrel, with whatever rules the theme imposes.
 
 ```
-[Sanctuary]─▶[Descent 1]─▶[Sanctuary]─▶[Descent 2]─▶[Sanctuary, Forge]─▶[Descent 3]─▶ … ─▶[Descent 7: door opens]
+[Sanctuary]─▶[Descent 1]─▶[Sanctuary]─▶[Descent 2]─▶[Sanctuary, Forge]─▶[Descent 3]─▶ … ─▶[Descent 10: door opens]
 ```
 
 When you return to the sanctuary after a successful descent:
 - HP refills to max.
 - You earn a **sigil** for completing the descent.
 - You pick **one Boon** from three offered. (Player's permanent change.)
-- The next descent's **Theme** is revealed. (Dungeon's transient change.)
-- At sigils 2, 4, and 6, the **Forge** is open during the visit. Edit the deck (§5).
+- The **Forge** opens, on every visit but the opening one. It hands you a small batch of edits to spend on **your kit** — Inscribe, Upgrade, Remove (REWORK.md §5). It does not touch monsters.
 
-The run **ends in victory** when you have **seven sigils**. The way out (the bridge, the surface lift, the gatehouse, the threshold-stone) unlocks. The next descent leads outside instead of back to the sanctuary, and you escape.
+You are told **nothing** about the descent ahead. The Theme is named as you arrive, never before.
 
-The run **ends in defeat** when you die in a descent. Sigils, Boons, and deck edits are lost. The sanctuary persists in fiction (you wake there again) but its contents reset for the next run.
+The run **ends in victory** when you have **ten sigils**. The way out (the bridge, the surface lift, the gatehouse, the threshold-stone) unlocks. The next descent leads outside instead of back to the sanctuary, and you escape.
+
+The run **ends in defeat** when you die in a descent. Sigils, Boons, and the kit are lost. The sanctuary persists in fiction (you wake there again) but its contents reset for the next run.
 
 State that carries between descents (within a run):
 - **Boons**: permanent.
-- **Deck edits**: permanent (Struck cards don't come back; Inscribed cards stay in the deck).
+- **Kit**: permanent. Cards you inscribe, upgrade or remove stay that way for the rest of the run.
 - **Sigils**: permanent.
 - **Weapon**: your equipped weapon carries between descents. Its `lastSlain` constraint resets in the sanctuary, so the weapon arrives "rested" each descent (you can still swap it out by playing a new diamond).
 
@@ -86,9 +106,13 @@ The base Scoundrel game already has a pacing curve baked into the 44-card deck. 
 
 ## 3. Themes (the dungeon's voice)
 
-Each descent runs with one **Theme**, a deck-and-rules mutation that lasts only for that descent. The dungeon picks the theme; the player sees it in the sanctuary and prepares accordingly.
+Each descent runs with one **Theme**, a deck-and-rules mutation that lasts only for that descent. The dungeon picks the theme, and the player does not learn it until they are already down there.
 
-Themes are roughly tiered:
+Themes are tiered. **The three tiers below are the original pool and are long
+out of date** — the shipped game has five tiers, gated at 2 / 3 / 5 / 7 sigils,
+with far more Trials than are listed here. `src/games/scoundrel/themes.js` is the
+list; what follows is kept for the tier *idea* and the counterplay rule at the
+end of the section, which both still hold.
 
 ### Descent 1: The Quiet (always)
 The opening descent of every run runs under a fixed warm-up theme:
@@ -128,13 +152,17 @@ Tier 2 effects pair up; weirder rules.
 
 **Descent 1 of every run always runs under The Quiet** (see above). It's a deliberate warm-up: the deep dream is still asleep, the player gets +10 max HP, the dungeon adds nothing harmful. The Quiet is never rolled by the dungeon for any other descent.
 
-From descent 2 onward, the dungeon escalates. Descents 2–3 always pick a Tier 1 theme; the tier ceiling rises with sigils earned. The player sees the upcoming theme in the sanctuary and can spend their Boon choice as counterplay (e.g., "I see Bitter Brew next, take the Alchemist Boon").
+From descent 2 onward, the dungeon escalates. Descents 2–3 always pick a Tier 1 theme; the tier ceiling rises with sigils earned. **Counterplay is resilience, not prediction.** An earlier draft revealed the upcoming theme so a Boon could be spent against it; the shipped game reveals nothing, so a Boon is chosen for how broadly it holds up (REWORK.md §8).
 
 Design rule: **every theme should have at least one Boon that *wants* it.** A theme without counterplay isn't a challenge, it's a tax. Iron Bones wants Quartermaster (two weapons). Hungry Dark wants Cartographer (foresight). Cramped Halls wants Vanguard (first-hit shield). Bitter Brew wants Alchemist (+2 HP per potion, softening the halved heals). When we add a theme, we either find or invent its counterplay Boon.
 
 ## 4. Boons (the player's voice)
 
 Three offered each sanctuary visit. All permanent for the rest of the run.
+
+**The list below is the original set and is incomplete** — the shipped pool is
+larger and several of these were retuned or cut. `src/games/scoundrel/boons.js`
+is the list. The tagging rule at the end of the section still holds.
 
 ### Combat
 - **Whetstone**: weapons enter at +1 rank.
@@ -163,9 +191,17 @@ Three offered each sanctuary visit. All permanent for the rest of the run.
 
 Boons are tagged (Combat / Survival / Economy / Build). The offer draw biases toward tags you've taken less, so a run can't degenerate into "six Combat Boons in a row."
 
-## 5. The Forge
+## 5. The Forge — deck editing *(historical)*
 
-At sigils 2, 4, and 6, the Forge opens during the sanctuary visit. Pick **one**:
+**This section describes the pre-rework Forge and is not what ships.** The player
+no longer edits the dungeon's cards at all: the Forge opens every non-opening
+sanctuary visit and grants a batch of edits over the player's own **kit**
+(Inscribe / Upgrade / Remove), described in [REWORK.md](REWORK.md) §5.
+**Strike and Transmute were removed.** Everything below is kept for the fiction
+and for the reasoning about why unrestricted deck editing had to be rationed —
+which is exactly the problem the kit split dissolved.
+
+At sigils 2, 4, and 6, the Forge opened during the sanctuary visit. Pick **one**:
 
 1. **Strike**: remove a monster from the deck *and* a weapon or potion of the **same rank** as a matched offering. Both cards leave the deck for the rest of the run. (See "Strike, in fiction" below.)
 2. **Transmute**: change a card's suit (e.g. a brutal K♠ becomes K♦, a Q♠ becomes Q♥).
@@ -200,6 +236,9 @@ The player picks a frame and fills in a number. Frames cap the numbers so nothin
 
 Inscribed cards persist for the run. They show in their own tray on the sanctuary screen so the player remembers what they've authored into their own deck.
 
+*Of these frames, Inscribe still offers Lucky Coin, Honed Edge, Skeleton Key and
+kin as special kit cards. Cursed Idol was dropped — the player builds only tools.*
+
 ### Why the Forge is gated to three openings per run
 
 Deck editing is the strongest mechanic in the design. If it triggers every sanctuary visit, runs converge on "strike all the spades" within four descents. Three openings (sigils 2, 4, 6) keeps it precious and gives the dungeon time to react between edits. Cadence is tunable.
@@ -208,11 +247,11 @@ Deck editing is the strongest mechanic in the design. If it triggers every sanct
 
 Things to tune once the systems are real:
 
-- **Theme tier ramp**: Tier 2 currently unlocks after sigil 3, Tier 3 after sigil 5. Move the gates around.
+- **Theme tier ramp**: five tiers, unlocking at 2 / 3 / 5 / 7 sigils (`themes.js`). Move the gates around.
 - **Boon offer count**: currently 3, with one reroll per run.
 - **HP refill in the sanctuary**: currently full. Could be partial to make Iron Will more valuable.
-- **Forge cadence**: three openings per run at sigils 2/4/6. Could move to 2/3/5/6 if the player needs more deck control late.
-- **Sigils required to escape**: currently 7. Lower for a tighter run; raise for a longer one. Daily-seed mode could mutate this.
+- **Forge cadence**: every sanctuary visit but the opening one, granting 2 edits through Tier 1-2 and 3 from Tier 3.
+- **Sigils required to escape**: currently 10 (`SIGIL_TARGET`). Lower for a tighter run; raise for a longer one. Daily-seed mode could mutate this.
 
 ### Opening-descent buff (every run)
 
@@ -220,7 +259,12 @@ The opening-descent max HP buff has been promoted into the theme system as **The
 
 A tutorial-flavoured starter-room buff (guaranteed weapon + potion in the opening hand) was prototyped and removed. Keep on the shelf for a real tutorial pass later.
 
-## 7. Meta-progression (between runs)
+## 7. Meta-progression (between runs) *(historical — never built)*
+
+**None of this shipped.** There is no Memory Slot, no Codex and no daily seed in
+the game; progression is entirely within a run. The section is kept because the
+*stance* below — no persistent stat boosts, every run a fresh dungeon — is still
+the position, and any future meta layer has to argue with it.
 
 Deliberately light. The point is for each run to start as a real, playable dungeon, not a stat-stick grind.
 
@@ -230,21 +274,22 @@ Deliberately light. The point is for each run to start as a real, playable dunge
 
 No persistent stat boosts. No "+5 HP at run start forever." Each run is a fresh dungeon.
 
-## 8. Build order
+## 8. Build order *(historical — complete)*
 
-Each step is shippable; the game stays playable at every stage.
+The original build order, all of it shipped. The kit rework's own build order,
+which supersedes steps 6-7 here, is [REWORK.md](REWORK.md) §12.
 
-1. **Sanctuary scaffolding**: wrap the current single-deck game in a run loop. After death-or-victory, show the sanctuary screen, refill HP, descend again. Award one sigil per completed descent; run wins at seven sigils. No Themes or Boons yet, just multi-descent.
+1. **Sanctuary scaffolding**: wrap the current single-deck game in a run loop. After death-or-victory, show the sanctuary screen, refill HP, descend again. Award one sigil per completed descent; run wins at the sigil target. No Themes or Boons yet, just multi-descent.
 2. **Boons (hardcoded set of 4)**: Whetstone, Iron Will, Deep Draught, Vanguard. Pure functions over game state. Apply them at descent start.
 3. **Theme system (Tier 1 only)**: pick a theme each descent and apply its deck/rule mutation. Show it on the sanctuary screen for next-descent preview.
 4. **Theme pool expansion**: fill out Tier 2 and Tier 3.
 5. **Boon pool expansion**: fill out the rest of §4.
-6. **Forge: Strike & Transmute**: the deck-editing actions without custom cards. UI lift is small.
+6. **Forge: Strike & Transmute**: the deck-editing actions without custom cards. *(Both removed by the kit rework.)*
 7. **Forge: Inscribe**: custom card frames, starting with Lucky Coin (easiest hook). Add one frame per cycle.
 8. **Meta layer**: Memory Slots, Codex, daily seed.
 9. **Bosses (deferred)**: see §10.
 
-## 9. Open questions
+## 9. Open questions *(historical)*
 
 - **Should the dungeon ever do something permanent?** v1 says no. Themes are transient, Boons/Forge are permanent, asymmetric. But a late-run "Scar" mechanic (the dungeon permanently mutates the deck after every Nth descent) could match the player's authorship and raise the ceiling. Worth prototyping after step 5 if the player feels too powerful late.
 - **Counterplay coverage**: does every theme actually have a Boon that wants it? Audit this when the pools are filled out.

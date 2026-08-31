@@ -28,6 +28,7 @@ Baseline: `npm run lint` clean, `npm run build` clean. Test suite as it stands:
 | `test/assignedName.test.js` | vitest | 17 pass |
 | `test/handles.test.js` | vitest | 21 pass |
 | `test/leaderboard.test.js` | vitest | 5 pass |
+| `test/designDocs.test.js` | vitest | 10 pass |
 | `test/audioSession.test.js` | vitest | 4 pass |
 | `visual/copy-accuracy.spec.js` | dev | 16 pass |
 | `visual/leaderboard-name.spec.js` | dev | 12 pass |
@@ -48,8 +49,9 @@ Baseline: `npm run lint` clean, `npm run build` clean. Test suite as it stands:
 | `visual/device-lab.spec.js` | dev | 4 pass |
 | `visual/mobile-touch.spec.js` | dev | 3 pass |
 
-**Full suite: 566 unit + 192 e2e passed, 1 skipped (`card-library`, issue 12).**
-Measured 2026-08-30, after merging issues 08 and 27, adding assigned leaderboard
+**Full suite: 576 unit + 192 e2e passed, 1 skipped (`card-library`, issue 12).**
+Unit count measured 2026-08-31 after issue 23; the e2e half was last measured
+2026-08-30, after merging issues 08 and 27, adding assigned leaderboard
 names, and making those names unique. The table above
 had drifted — five suites ran without being listed and three counts were wrong —
 so it was rebuilt from the runners' own output and is now complete. Keep it that
@@ -95,6 +97,12 @@ reason:
 Where an assertion's meaning depends on the environment, assert the environment
 too (see the coarse-pointer guard in `mobile-responsive.spec.js`).
 
+**The design docs are under test too.** `test/designDocs.test.js` holds
+`DESIGN.md` and `REWORK.md` to the constants and functions they describe, which
+is how issue 23's "seven sigils" would have been caught the day it became false.
+If you change the sigil target, the starting kit or the Forge's rank cap, that
+file fails until the prose is updated with it.
+
 One file per issue, each self-contained: problem, evidence with `file:line`,
 why it matters for batch 1, suggested fix, acceptance criteria. You should not
 need to re-derive the audit to work one.
@@ -123,7 +131,9 @@ closed alongside 15, whose agreement test could not pass while it was broken),
 be discarded from Settings, which the home menu now reaches), **10** (`db/schema.sql`
 describes all five tables), **08** (moderation: a handle denylist enforced
 server-side, `/api/moderation` behind `ADMIN_TOKEN`, and block / delete controls
-on `/admin`).
+on `/admin`), **25** (rules copy reviewed), **23** (`DESIGN.md` marked superseded
+and corrected; `REWORK.md` named as the design of record and its last open
+decision closed).
 
 **All P0 blockers are closed.** Live at **https://sigildeck.com** since
 2026-08-06, with the privacy mailbox, auth and DNS all verified against the
@@ -373,9 +383,9 @@ shipped to users on `0.4` yet, so sharing is usually fine.
 | [20](20-readme-license-env-example.md) | No README, LICENSE, or `.env.example` | docs | M | **done** |
 | [21](21-gitignore-env.md) | `.gitignore` misses `.env` while docs point at it | security | S | **done** |
 | [22](22-archive-session-docs.md) | Nine session-artifact docs in the repo root | hygiene | S | **done** |
-| [23](23-stale-design-md.md) | `DESIGN.md` contradicts the shipped game | docs | M | open |
+| [23](23-stale-design-md.md) | `DESIGN.md` contradicts the shipped game | docs | M | **done** |
 | [24](24-duplicate-ci-workflows.md) | Mobile tests run twice per push | ci | S | open |
-| [25](25-rules-copy-review.md) | Review rules copy against the post-rework game | docs | S | open |
+| [25](25-rules-copy-review.md) | Review rules copy against the post-rework game | docs | S | **done** |
 
 ## If you only do five
 

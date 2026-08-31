@@ -1,13 +1,17 @@
 # Scoundrel: The Kit Rework
 
-A proposed major rework of the deck model. Nothing here is committed; this is the
-design of record for the direction, capturing the decisions made so far and the
-ones still open.
+**This is the design of record for the game that ships.** It began as a proposal;
+it is built and live. The build order in §12 is complete through step 6.
 
-This doc sits alongside DESIGN.md (the current shape) and docs/EXTENSIONS.md (growth
-ideas). Where the two conflict with this doc, this doc wins for anything inside
-the rework; everything it does not touch (the run loop, sanctuary, sigils, Boons)
-stays as DESIGN.md describes.
+Read this first. [DESIGN.md](DESIGN.md) is the **pre-rework** design, superseded
+wherever the two disagree — it is kept for the fiction, the premise, and the
+reasoning behind the mechanics that survived, and it carries a banner saying so.
+`docs/EXTENSIONS.md` is growth ideas, not shipped behaviour. Everything this doc
+does not touch (the run loop, sanctuary, sigils, Boons) is still described by
+DESIGN.md, with one correction it is easy to trip over: **the escape condition is
+ten sigils**, not seven (`SIGIL_TARGET` in `src/games/scoundrel/constants.js`).
+
+Where any doc disagrees with the code, the code wins.
 
 ## 1. The one-sentence change
 
@@ -68,11 +72,12 @@ The kit persists whole across descents within a run. Each sanctuary visit the pl
 keeps the recurring choice as "adjust my standing kit," not "reassemble from scratch,"
 which avoids busywork.
 
-### No size cap (decided, for now)
+### No size cap (decided, and shipped)
 
-There is no hard cap on kit size for the first pass. Balance comes from the dungeon
-side (dilution, monster volume, special monsters) rather than a slot limit. A cap is
-a tuning knob we can add later if kits bloat into trivializing the game.
+There is no hard cap on kit size, and none was ever added. Balance comes from the
+dungeon side (dilution, monster volume, special monsters) and from rank ceilings on
+the edits themselves, rather than a slot limit. A slot cap remains a tuning knob
+nobody has needed to reach for — see §11.
 
 ### Starting kit (decided)
 
@@ -226,7 +231,14 @@ Freed from player editing, the monster pool can finally carry the variety:
 
 ## 11. Open decisions
 
-1. **Does the kit ever cap** (section 5)? Left uncapped for now; revisit if kits bloat.
+**None outstanding.**
+
+1. **Does the kit ever cap** (section 5)? **Decided: no — and it shipped that way.**
+   There is no kit size limit anywhere in the code. Kit power is bounded by *rank*
+   instead of slots: an Inscribe rolls a card capped at `4 + sigils earned` (max 10),
+   and an Upgrade raises a card by +2 to a ceiling of 10 (`src/games/scoundrel/logic/sanctuary.js`).
+   Dilution (section 7) carries the rest. Kits have not bloated into trivializing
+   the game, so a slot cap stays a tuning knob nobody has needed to reach for.
 
 Decided and closed: starting kit (low ten, section 5), the editing offering's shape
 (every non-opening visit, one edit, verbs Inscribe / Upgrade / Remove, section 5), keeping
