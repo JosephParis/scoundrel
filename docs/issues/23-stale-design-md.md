@@ -4,7 +4,8 @@ title: "DESIGN.md contradicts the shipped game in several core mechanics"
 priority: P4
 area: docs
 effort: M
-status: open
+status: in-progress
+branch: dawn/2026-08-31
 ---
 
 ## Problem
