@@ -1,9 +1,12 @@
 # Launch-readiness backlog
 
-28 issues, scoped against one milestone: **sending the game to the first batch of
+36 issues, scoped against one milestone: **sending the game to the first batch of
 users.** Issues 01–25 came from a read-only audit of the codebase, API layer, and
 markdown docs; issue 26 surfaced when the full test suite was actually run, and
-issue 28 came from playing it.
+issue 28 came from playing it. **Issues 29–36 came from a second full read on
+2026-08-31**, after the leaderboard-name work landed: a re-audit of the rules
+engine, the sync seam, the API surface and the payload, run against a green
+suite rather than a broken one.
 
 Baseline: `npm run lint` clean, `npm run build` clean. Test suite as it stands:
 
@@ -50,9 +53,8 @@ Baseline: `npm run lint` clean, `npm run build` clean. Test suite as it stands:
 | `visual/mobile-touch.spec.js` | dev | 3 pass |
 
 **Full suite: 576 unit + 192 e2e passed, 1 skipped (`card-library`, issue 12).**
-Unit count measured 2026-08-31 after issue 23; the e2e half was last measured
-2026-08-30, after merging issues 08 and 27, adding assigned leaderboard
-names, and making those names unique. The table above
+**Both halves re-measured 2026-08-31** on `main` at `1be2684` — 576 unit,
+192 e2e, one skip, with lint and build clean. The table above
 had drifted — five suites ran without being listed and three counts were wrong —
 so it was rebuilt from the runners' own output and is now complete. Keep it that
 way, or delete it and keep only this line: the totals are the baseline that
@@ -355,6 +357,9 @@ shipped to users on `0.4` yet, so sharing is usually fine.
 | [10](10-stale-db-schema.md) | `db/schema.sql` no longer describes the database | docs | S | **done** |
 | [26](26-dead-mobile-responsive-spec.md) | **BUG** all 25 tests in `mobile-responsive.spec.js` were dead | testing | M | **done** |
 | [28](28-bare-hands-covers-weapon-preview.md) | **BUG** bare-hands button covers the weapon preview | bug | S | **done** |
+| [29](29-forge-stops-at-seven-sigils.md) | **BUG** the Forge stops opening at sigil 7; the run needs 10 | bug | S | open |
+| [30](30-leaderboard-name-not-synced.md) | **BUG** a signed-in player gets a different name on every device | bug | M | open |
+| [31](31-profile-merge-drops-unknown-fields.md) | The profile merge silently drops fields it does not know | bug | S | open |
 
 ### P2 — product decisions
 
@@ -365,6 +370,7 @@ shipped to users on `0.4` yet, so sharing is usually fine.
 | [13](13-verify-admin-stats-in-prod.md) | Verify `/api/stats` + `/admin` in prod before inviting anyone | product | S | open |
 | [14](14-anonymous-handle-copy-mismatch.md) | **BUG** UI promises "Anonymous" listing; server excludes it | bug | S | **done** |
 | [27](27-save-reset-outside-crash-path.md) | No save reset for a run stuck without crashing | product | S | **done** |
+| [34](34-analytics-funnel-gaps.md) | The funnel cannot see the tutorial, where batch 1 starts | product | M | open |
 
 ### P3 — quality, performance, accessibility
 
@@ -375,6 +381,9 @@ shipped to users on `0.4` yet, so sharing is usually fine.
 | [17](17-prefers-reduced-motion.md) | No `prefers-reduced-motion`; 4 infinite animations | accessibility | S | open |
 | [18](18-google-fonts-blocking-import.md) | Render-blocking Google Fonts `@import` | performance | S | open |
 | [19](19-robots-txt.md) | No `robots.txt` while `/admin` is live | hygiene | S | **done** |
+| [32](32-music-bed-payload.md) | Two music beds are 15MB of the 16MB audio payload | performance | M | open |
+| [33](33-untested-api-handlers.md) | Five API handlers untested, including the one that can lose a save | testing | L | open |
+| [35](35-no-service-worker.md) | No service worker: manifest-only PWA, no offline play | performance | M | open |
 
 ### P4 — hygiene and doc accuracy
 
@@ -386,14 +395,49 @@ shipped to users on `0.4` yet, so sharing is usually fine.
 | [23](23-stale-design-md.md) | `DESIGN.md` contradicts the shipped game | docs | M | **done** |
 | [24](24-duplicate-ci-workflows.md) | Mobile tests run twice per push | ci | S | open |
 | [25](25-rules-copy-review.md) | Review rules copy against the post-rework game | docs | S | **done** |
+| [36](36-doc-drift-schema-and-backlog.md) | `schema.sql` miscounts its tables; README lists a done item as open | docs | S | open |
 
-## If you only do five
+## Pick order
 
-**01** (dev tools), **02** (error boundary), **03** (missing music), **07**
-(unauthenticated writes), **15** (unit tests).
+Ten issues are open. This section is the ordering rule — it beats any
+largest-effort-first default, including an unattended run's.
 
-01–03 are visible to every user on day one. 07 and 15 are what make the data you
-collect from batch 1 worth acting on.
+**Do these before strangers arrive, in this order:**
+
+1. **29** — the Forge stops opening at sigil 7. A rules violation the player can
+   see, in the hardest three descents of the run. Small, contained, testable.
+2. **13** — the production verification pass. **Needs a person** (see below).
+3. **11** then **12** — the flag defaults and the reference UI they gate.
+   **11 needs a person**; 12 follows from it.
+4. **31** then **30** — the profile-shape guard, then the name-sync bug it
+   protects. In that order: 31 is the test that keeps 30 fixed.
+
+**Then, in any order:** 33 (handler tests), 34 (analytics funnel), 32 (audio
+payload), 17 (reduced motion), 18 (fonts), 35 (service worker — after 18 and 32),
+24 (CI duplicate), 36 (doc drift).
+
+### Needs a person, not an agent
+
+Three open items cannot be worked unattended, and an agent should skip them
+rather than approximate them:
+
+- **13** — verification against the real deployment. Needs Vercel env access and
+  a live database; there is no `/api` in `vite dev`.
+- **11** — a product decision about what a live game shows its players. The
+  issue lays out the trade; the answer is Joey's.
+- **The distribution hand-offs** — `docs/reddit/POSTS.md` (playtest posts, and
+  its own pre-post checklist) and `docs/itch/PAGE.md` (the itch.io page). Both
+  need his accounts on outside services. They are not backlog issues and are not
+  meant to become any.
+
+### The standing pick for a long unattended window
+
+**33** (five untested API handlers, effort L). It is the only L open, and it is
+built to be interrupted: every test file committed is real coverage independent
+of the rest. Write `merge.profiles.test.js` and `save.handler.test.js` first —
+they cover the only path that can silently destroy a player's progress.
+
+Issue 15 held this slot until it closed on 2026-08-30. Do not pick it again.
 
 ## Dependencies
 
@@ -408,6 +452,14 @@ collect from batch 1 worth acting on.
 09 (dedupe bug) ───>┘    (09's acceptance criteria want a test)
 
 08 (moderation) ───> 13 (verify the endpoints against production)
+
+31 (shape guard) ──> 30 (name sync: the guard is what keeps it fixed)
+30 (name sync) ────> 13 (adds a cross-device check to the prod pass)
+18 (local fonts) ──> 35 (nothing to precache while the fonts are third-party)
+32 (audio size) ───> 35 (decides what a service worker must not precache)
+35 (service worker) ──> 13 (a stale-shell bug cannot be fixed by deploying)
+29 (forge cadence) ──> 34 (settle how many Forge visits a run has before
+                          instrumenting the choices made in them)
 
 23 (DESIGN.md) ────> 25 (rules copy) ──┐
                                        ├─ audit content together
