@@ -1,12 +1,14 @@
 # Launch-readiness backlog
 
-36 issues, scoped against one milestone: **sending the game to the first batch of
+37 issues, scoped against one milestone: **sending the game to the first batch of
 users.** Issues 01–25 came from a read-only audit of the codebase, API layer, and
 markdown docs; issue 26 surfaced when the full test suite was actually run, and
 issue 28 came from playing it. **Issues 29–36 came from a second full read on
 2026-08-31**, after the leaderboard-name work landed: a re-audit of the rules
 engine, the sync seam, the API surface and the payload, run against a green
-suite rather than a broken one.
+suite rather than a broken one. **Issue 37 came out of a workflow review on
+2026-09-01**: the balance spec is the only design doc in the repo with no
+instrument that can fail it.
 
 Baseline: `npm run lint` clean, `npm run build` clean. Test suite as it stands:
 
@@ -384,6 +386,7 @@ shipped to users on `0.4` yet, so sharing is usually fine.
 | [32](32-music-bed-payload.md) | Two music beds are 15MB of the 16MB audio payload | performance | M | open |
 | [33](33-untested-api-handlers.md) | Five API handlers untested, including the one that can lose a save | testing | L | open |
 | [35](35-no-service-worker.md) | No service worker: manifest-only PWA, no offline play | performance | M | open |
+| [37](37-no-balance-simulator.md) | Nothing can measure the winrate targets the design doc sets | testing | L | open |
 
 ### P4 — hygiene and doc accuracy
 
@@ -399,7 +402,7 @@ shipped to users on `0.4` yet, so sharing is usually fine.
 
 ## Pick order
 
-Ten issues are open. This section is the ordering rule — it beats any
+Eleven issues are open. This section is the ordering rule — it beats any
 largest-effort-first default, including an unattended run's.
 
 **Do these before strangers arrive, in this order:**
@@ -412,9 +415,9 @@ largest-effort-first default, including an unattended run's.
 4. **31** then **30** — the profile-shape guard, then the name-sync bug it
    protects. In that order: 31 is the test that keeps 30 fixed.
 
-**Then, in any order:** 33 (handler tests), 34 (analytics funnel), 32 (audio
-payload), 17 (reduced motion), 18 (fonts), 35 (service worker — after 18 and 32),
-24 (CI duplicate), 36 (doc drift).
+**Then, in any order:** 33 (handler tests), 37 (the balance simulator), 34
+(analytics funnel), 32 (audio payload), 17 (reduced motion), 18 (fonts), 35
+(service worker — after 18 and 32), 24 (CI duplicate), 36 (doc drift).
 
 ### Needs a person, not an agent
 
@@ -432,10 +435,18 @@ rather than approximate them:
 
 ### The standing pick for a long unattended window
 
-**33** (five untested API handlers, effort L). It is the only L open, and it is
-built to be interrupted: every test file committed is real coverage independent
-of the rest. Write `merge.profiles.test.js` and `save.handler.test.js` first —
-they cover the only path that can silently destroy a player's progress.
+**33** (five untested API handlers, effort L). It is built to be interrupted:
+every test file committed is real coverage independent of the rest. Write
+`merge.profiles.test.js` and `save.handler.test.js` first — they cover the only
+path that can silently destroy a player's progress.
+
+**37 is the other open L, and it is equally interruption-safe** — the run loop,
+then the random policy, then the greedy one, then the report, then the baseline,
+each worth having alone. It stays second because 33 guards a player's saved
+progress and 37 guards a number. **Whether 37 should take this slot before batch
+1 is Joey's call, not an agent's** — the case for promoting it is that balance is
+what batch 1 actually experiences, and the measurement is worth much less after
+they have played.
 
 Issue 15 held this slot until it closed on 2026-08-30. Do not pick it again.
 
@@ -460,6 +471,10 @@ Issue 15 held this slot until it closed on 2026-08-30. Do not pick it again.
 35 (service worker) ──> 13 (a stale-shell bug cannot be fixed by deploying)
 29 (forge cadence) ──> 34 (settle how many Forge visits a run has before
                           instrumenting the choices made in them)
+29 (forge cadence) ──> 37 (fix the cadence first; the sim's Forge-visit check
+                          is what keeps it fixed)
+37 (simulator) ──────> 34 (the sim measures the designed curve, telemetry the
+                          real one -- same shape, so build the report once)
 
 23 (DESIGN.md) ────> 25 (rules copy) ──┐
                                        ├─ audit content together
