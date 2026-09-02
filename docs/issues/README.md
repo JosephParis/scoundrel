@@ -39,7 +39,7 @@ Baseline: `npm run lint` clean, `npm run build` clean. Test suite as it stands:
 | `test/assignedName.test.js` | vitest | 17 pass |
 | `test/handles.test.js` | vitest | 21 pass |
 | `test/leaderboard.test.js` | vitest | 5 pass |
-| `test/designDocs.test.js` | vitest | 11 pass |
+| `test/designDocs.test.js` | vitest | 15 pass |
 | `test/audioSession.test.js` | vitest | 4 pass |
 | `visual/copy-accuracy.spec.js` | dev | 16 pass |
 | `visual/leaderboard-name.spec.js` | dev | 12 pass |
@@ -60,7 +60,7 @@ Baseline: `npm run lint` clean, `npm run build` clean. Test suite as it stands:
 | `visual/device-lab.spec.js` | dev | 4 pass |
 | `visual/mobile-touch.spec.js` | dev | 3 pass |
 
-**Full suite: 652 unit + 192 e2e passed, 1 skipped (`card-library`, issue 12).**
+**Full suite: 656 unit + 192 e2e passed, 1 skipped (`card-library`, issue 12).**
 **Both halves re-measured 2026-08-31** on `main` at `1be2684` — 576 unit,
 192 e2e, one skip, with lint and build clean. The table above
 had drifted — five suites ran without being listed and three counts were wrong —
@@ -146,7 +146,8 @@ and corrected; `REWORK.md` named as the design of record and its last open
 decision closed), **29** (the Forge opens on every return again, the A0 cadence
 now derived from `SIGIL_TARGET`), **33** (every API handler under test — the
 save/sync path, the admin stats gate, the Google exchange, feedback and the
-backfill cron; unit total 578 → 652).
+backfill cron; unit total 578 → 652), **36** (`db/schema.sql`'s header lists
+all six tables, and the suite now holds it to the DDL in `api/`).
 
 **All P0 blockers are closed.** Live at **https://sigildeck.com** since
 2026-08-06, with the privacy mailbox, auth and DNS all verified against the
@@ -320,13 +321,15 @@ way — same reasoning as the module path.
 **Issue 13 has grown into the real pre-launch gate.** Everything that cannot be
 tested locally has been pushed onto its checklist, because there is no `/api` in
 `vite dev` or `vite preview` and no scraper or mobile device in the harness. Two
-items there are not optional:
+item there is not optional:
 
-- **Create the privacy contact mailbox** (`src/privacyContact.js`). The policy
-  lists an address that does not exist yet, so deletion requests would vanish.
 - **Confirm signed-in players are not being 401'd** by the hardened write
   endpoints. That is the one regression that would silently stop recording every
   signed-in run.
+
+The privacy contact mailbox (`src/privacyContact.js`) was the other one, and it
+is done: `privacy@sigildeck.com` was verified end to end on 2026-08-06, with a
+message sent from an outside account and a reply received.
 
 Issue 02 left one gap, tracked as **issue 27** and now closed: a run that gets
 *stuck* without throwing is discarded from Settings, which the home menu reaches
@@ -407,11 +410,11 @@ shipped to users on `0.4` yet, so sharing is usually fine.
 | [23](23-stale-design-md.md) | `DESIGN.md` contradicts the shipped game | docs | M | **done** |
 | [24](24-duplicate-ci-workflows.md) | Mobile tests run twice per push | ci | S | open |
 | [25](25-rules-copy-review.md) | Review rules copy against the post-rework game | docs | S | **done** |
-| [36](36-doc-drift-schema-and-backlog.md) | `schema.sql` miscounts its tables; README lists a done item as open | docs | S | open |
+| [36](36-doc-drift-schema-and-backlog.md) | `schema.sql` miscounts its tables; README lists a done item as open | docs | S | **done** |
 
 ## Pick order
 
-Nine issues are open. This section is the ordering rule — it beats any
+Eight issues are open. This section is the ordering rule — it beats any
 largest-effort-first default, including an unattended run's.
 
 **Do these before strangers arrive, in this order:**
@@ -426,7 +429,7 @@ Issue 29 (the Forge cadence) closed on 2026-09-02 and unblocks 34 and 37.
 
 **Then, in any order:** 37 (the balance simulator), 34
 (analytics funnel), 32 (audio payload), 17 (reduced motion), 18 (fonts), 35
-(service worker — after 18 and 32), 24 (CI duplicate), 36 (doc drift).
+(service worker — after 18 and 32), 24 (CI duplicate).
 
 ### Needs a person, not an agent
 

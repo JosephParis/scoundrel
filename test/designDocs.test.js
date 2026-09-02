@@ -11,7 +11,7 @@
 // prose (or, if the game genuinely changed, fix the prose *and* this file).
 
 import { describe, it, expect } from 'vitest'
-import { readFileSync } from 'node:fs'
+import { readFileSync, readdirSync } from 'node:fs'
 import { fileURLToPath } from 'node:url'
 import { SIGIL_TARGET } from '../src/games/scoundrel/constants'
 import { buildStartingKit } from '../src/games/scoundrel/logic/deck'
@@ -19,10 +19,21 @@ import { rollForgeChoices } from '../src/games/scoundrel/logic/sanctuary'
 import { getAscensionEffects } from '../src/games/scoundrel/ascensions'
 
 const read = name => readFileSync(fileURLToPath(new URL(`../${name}`, import.meta.url)), 'utf8')
+const readDir = dir => readdirSync(fileURLToPath(new URL(`../${dir}`, import.meta.url)))
 
 const DESIGN = read('DESIGN.md')
 const REWORK = read('REWORK.md')
 const SANCTUARY = read('src/games/scoundrel/logic/sanctuary.js')
+const SCHEMA = read('db/schema.sql')
+
+// Every table any endpoint creates, read off the DDL itself rather than a list
+// someone has to remember to extend.
+const API_FILES = [
+  ...readDir('api').filter(f => f.endsWith('.js')).map(f => `api/${f}`),
+  ...readDir('api/_lib').filter(f => f.endsWith('.js')).map(f => `api/_lib/${f}`),
+]
+const CREATED_TABLES = API_FILES.flatMap(file =>
+  [...read(file).matchAll(/create table if not exists\s+(\w+)/g)].map(m => ({ file, table: m[1] })))
 
 // Spelled-out counts, because that is how the docs write them in prose.
 const WORD = ['zero', 'one', 'two', 'three', 'four', 'five', 'six', 'seven',
@@ -152,5 +163,39 @@ describe('REWORK.md matches the kit code it specifies', () => {
     // A slot cap would have to be enforced where the kit grows, which is the
     // Inscribe path in sanctuary.js.
     expect(SANCTUARY).not.toMatch(/KIT_(SIZE_)?CAP|MAX_KIT/)
+  })
+})
+
+describe('db/schema.sql is the readable copy of the DDL in api/', () => {
+  it('found the DDL to check against', () => {
+    // A rename that stops these regexes matching would otherwise turn every
+    // assertion below into a vacuous pass.
+    expect(CREATED_TABLES.length).toBeGreaterThan(4)
+  })
+
+  it('describes every table an endpoint creates', () => {
+    for (const { file, table } of CREATED_TABLES) {
+      expect(SCHEMA, `${table}, created in ${file}`)
+        .toMatch(new RegExp(`create table if not exists ${table}\\b`))
+    }
+  })
+
+  it('names each of them, and the owning file, in its header', () => {
+    // The header is the first thing a reader sees while debugging production;
+    // it said "Four tables" and listed five for a while (issue 36).
+    const header = SCHEMA.split('-- ---')[0]
+    for (const { file, table } of CREATED_TABLES) {
+      expect(header, `${table} in the header list`).toContain(table)
+      expect(header, `${file} named as ${table}'s owner`).toContain(file)
+    }
+  })
+
+  it('counts them correctly', () => {
+    const WORDS = ['zero', 'one', 'two', 'three', 'four', 'five', 'six', 'seven',
+      'eight', 'nine', 'ten', 'eleven', 'twelve']
+    const stated = SCHEMA.match(/^-- (\w+) tables:/mi)
+    expect(stated, 'the header states a table count').toBeTruthy()
+    const unique = new Set(CREATED_TABLES.map(t => t.table))
+    expect(stated[1].toLowerCase()).toBe(WORDS[unique.size])
   })
 })
