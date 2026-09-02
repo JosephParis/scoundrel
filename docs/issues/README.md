@@ -29,6 +29,12 @@ Baseline: `npm run lint` clean, `npm run build` clean. Test suite as it stands:
 | `test/handleDenylist.test.js` | vitest | 41 pass |
 | `test/moderation.handler.test.js` | vitest | 24 pass |
 | `test/leaderboard.handler.test.js` | vitest | 22 pass |
+| `test/merge.profiles.test.js` | vitest | 14 pass |
+| `test/save.handler.test.js` | vitest | 14 pass |
+| `test/stats.handler.test.js` | vitest | 14 pass |
+| `test/feedback.handler.test.js` | vitest | 13 pass |
+| `test/auth.handler.test.js` | vitest | 11 pass |
+| `test/cron.handler.test.js` | vitest | 8 pass |
 | `test/claim.handler.test.js` | vitest | 22 pass |
 | `test/assignedName.test.js` | vitest | 17 pass |
 | `test/handles.test.js` | vitest | 21 pass |
@@ -54,7 +60,7 @@ Baseline: `npm run lint` clean, `npm run build` clean. Test suite as it stands:
 | `visual/device-lab.spec.js` | dev | 4 pass |
 | `visual/mobile-touch.spec.js` | dev | 3 pass |
 
-**Full suite: 578 unit + 192 e2e passed, 1 skipped (`card-library`, issue 12).**
+**Full suite: 652 unit + 192 e2e passed, 1 skipped (`card-library`, issue 12).**
 **Both halves re-measured 2026-08-31** on `main` at `1be2684` — 576 unit,
 192 e2e, one skip, with lint and build clean. The table above
 had drifted — five suites ran without being listed and three counts were wrong —
@@ -138,7 +144,9 @@ server-side, `/api/moderation` behind `ADMIN_TOKEN`, and block / delete controls
 on `/admin`), **25** (rules copy reviewed), **23** (`DESIGN.md` marked superseded
 and corrected; `REWORK.md` named as the design of record and its last open
 decision closed), **29** (the Forge opens on every return again, the A0 cadence
-now derived from `SIGIL_TARGET`).
+now derived from `SIGIL_TARGET`), **33** (every API handler under test — the
+save/sync path, the admin stats gate, the Google exchange, feedback and the
+backfill cron; unit total 578 → 652).
 
 **All P0 blockers are closed.** Live at **https://sigildeck.com** since
 2026-08-06, with the privacy mailbox, auth and DNS all verified against the
@@ -385,7 +393,7 @@ shipped to users on `0.4` yet, so sharing is usually fine.
 | [18](18-google-fonts-blocking-import.md) | Render-blocking Google Fonts `@import` | performance | S | open |
 | [19](19-robots-txt.md) | No `robots.txt` while `/admin` is live | hygiene | S | **done** |
 | [32](32-music-bed-payload.md) | Two music beds are 15MB of the 16MB audio payload | performance | M | open |
-| [33](33-untested-api-handlers.md) | Five API handlers untested, including the one that can lose a save | testing | L | open |
+| [33](33-untested-api-handlers.md) | Five API handlers untested, including the one that can lose a save | testing | L | **done** |
 | [35](35-no-service-worker.md) | No service worker: manifest-only PWA, no offline play | performance | M | open |
 | [37](37-no-balance-simulator.md) | Nothing can measure the winrate targets the design doc sets | testing | L | open |
 
@@ -403,7 +411,7 @@ shipped to users on `0.4` yet, so sharing is usually fine.
 
 ## Pick order
 
-Ten issues are open. This section is the ordering rule — it beats any
+Nine issues are open. This section is the ordering rule — it beats any
 largest-effort-first default, including an unattended run's.
 
 **Do these before strangers arrive, in this order:**
@@ -416,7 +424,7 @@ largest-effort-first default, including an unattended run's.
 
 Issue 29 (the Forge cadence) closed on 2026-09-02 and unblocks 34 and 37.
 
-**Then, in any order:** 33 (handler tests), 37 (the balance simulator), 34
+**Then, in any order:** 37 (the balance simulator), 34
 (analytics funnel), 32 (audio payload), 17 (reduced motion), 18 (fonts), 35
 (service worker — after 18 and 32), 24 (CI duplicate), 36 (doc drift).
 
@@ -436,12 +444,10 @@ rather than approximate them:
 
 ### The standing pick for a long unattended window
 
-**33** (five untested API handlers, effort L). It is built to be interrupted:
-every test file committed is real coverage independent of the rest. Write
-`merge.profiles.test.js` and `save.handler.test.js` first — they cover the only
-path that can silently destroy a player's progress.
+**37** (the balance simulator, effort L). Issue 33 held this slot and closed on
+2026-09-02; every API handler now has tests.
 
-**37 is the other open L, and it is equally interruption-safe** — the run loop,
+**37 is interruption-safe the same way 33 was** — the run loop,
 then the random policy, then the greedy one, then the report, then the baseline,
 each worth having alone. It stays second because 33 guards a player's saved
 progress and 37 guards a number. **Whether 37 should take this slot before batch
