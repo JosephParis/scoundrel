@@ -147,7 +147,9 @@ decision closed), **29** (the Forge opens on every return again, the A0 cadence
 now derived from `SIGIL_TARGET`), **33** (every API handler under test — the
 save/sync path, the admin stats gate, the Google exchange, feedback and the
 backfill cron; unit total 578 → 652), **36** (`db/schema.sql`'s header lists
-all six tables, and the suite now holds it to the DDL in `api/`).
+all six tables, and the suite now holds it to the DDL in `api/`), **24** (one
+CI workflow owns the mobile suite; the full suite runs nightly and on demand
+rather than only on main).
 
 **All P0 blockers are closed.** Live at **https://sigildeck.com** since
 2026-08-06, with the privacy mailbox, auth and DNS all verified against the
@@ -408,13 +410,13 @@ shipped to users on `0.4` yet, so sharing is usually fine.
 | [21](21-gitignore-env.md) | `.gitignore` misses `.env` while docs point at it | security | S | **done** |
 | [22](22-archive-session-docs.md) | Nine session-artifact docs in the repo root | hygiene | S | **done** |
 | [23](23-stale-design-md.md) | `DESIGN.md` contradicts the shipped game | docs | M | **done** |
-| [24](24-duplicate-ci-workflows.md) | Mobile tests run twice per push | ci | S | open |
+| [24](24-duplicate-ci-workflows.md) | Mobile tests run twice per push | ci | S | **done** |
 | [25](25-rules-copy-review.md) | Review rules copy against the post-rework game | docs | S | **done** |
 | [36](36-doc-drift-schema-and-backlog.md) | `schema.sql` miscounts its tables; README lists a done item as open | docs | S | **done** |
 
 ## Pick order
 
-Eight issues are open. This section is the ordering rule — it beats any
+Seven issues are open. This section is the ordering rule — it beats any
 largest-effort-first default, including an unattended run's.
 
 **Do these before strangers arrive, in this order:**
@@ -429,7 +431,7 @@ Issue 29 (the Forge cadence) closed on 2026-09-02 and unblocks 34 and 37.
 
 **Then, in any order:** 37 (the balance simulator), 34
 (analytics funnel), 32 (audio payload), 17 (reduced motion), 18 (fonts), 35
-(service worker — after 18 and 32), 24 (CI duplicate).
+(service worker — after 18 and 32).
 
 ### Needs a person, not an agent
 
