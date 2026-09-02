@@ -20,7 +20,7 @@ Baseline: `npm run lint` clean, `npm run build` clean. Test suite as it stands:
 | `test/audio.test.js` | vitest | 13 pass |
 | `test/pseudonym.test.js` | vitest | 6 pass |
 | `test/combat.test.js` | vitest | 78 pass |
-| `test/lifecycle.test.js` | vitest | 56 pass |
+| `test/lifecycle.test.js` | vitest | 57 pass |
 | `test/dedupeKeys.test.js` | vitest | 40 pass |
 | `test/sanctuary.test.js` | vitest | 40 pass |
 | `test/history.test.js` | vitest | 37 pass |
@@ -33,7 +33,7 @@ Baseline: `npm run lint` clean, `npm run build` clean. Test suite as it stands:
 | `test/assignedName.test.js` | vitest | 17 pass |
 | `test/handles.test.js` | vitest | 21 pass |
 | `test/leaderboard.test.js` | vitest | 5 pass |
-| `test/designDocs.test.js` | vitest | 10 pass |
+| `test/designDocs.test.js` | vitest | 11 pass |
 | `test/audioSession.test.js` | vitest | 4 pass |
 | `visual/copy-accuracy.spec.js` | dev | 16 pass |
 | `visual/leaderboard-name.spec.js` | dev | 12 pass |
@@ -54,7 +54,7 @@ Baseline: `npm run lint` clean, `npm run build` clean. Test suite as it stands:
 | `visual/device-lab.spec.js` | dev | 4 pass |
 | `visual/mobile-touch.spec.js` | dev | 3 pass |
 
-**Full suite: 576 unit + 192 e2e passed, 1 skipped (`card-library`, issue 12).**
+**Full suite: 578 unit + 192 e2e passed, 1 skipped (`card-library`, issue 12).**
 **Both halves re-measured 2026-08-31** on `main` at `1be2684` — 576 unit,
 192 e2e, one skip, with lint and build clean. The table above
 had drifted — five suites ran without being listed and three counts were wrong —
@@ -137,7 +137,8 @@ describes all five tables), **08** (moderation: a handle denylist enforced
 server-side, `/api/moderation` behind `ADMIN_TOKEN`, and block / delete controls
 on `/admin`), **25** (rules copy reviewed), **23** (`DESIGN.md` marked superseded
 and corrected; `REWORK.md` named as the design of record and its last open
-decision closed).
+decision closed), **29** (the Forge opens on every return again, the A0 cadence
+now derived from `SIGIL_TARGET`).
 
 **All P0 blockers are closed.** Live at **https://sigildeck.com** since
 2026-08-06, with the privacy mailbox, auth and DNS all verified against the
@@ -359,7 +360,7 @@ shipped to users on `0.4` yet, so sharing is usually fine.
 | [10](10-stale-db-schema.md) | `db/schema.sql` no longer describes the database | docs | S | **done** |
 | [26](26-dead-mobile-responsive-spec.md) | **BUG** all 25 tests in `mobile-responsive.spec.js` were dead | testing | M | **done** |
 | [28](28-bare-hands-covers-weapon-preview.md) | **BUG** bare-hands button covers the weapon preview | bug | S | **done** |
-| [29](29-forge-stops-at-seven-sigils.md) | **BUG** the Forge stops opening at sigil 7; the run needs 10 | bug | S | open |
+| [29](29-forge-stops-at-seven-sigils.md) | **BUG** the Forge stops opening at sigil 7; the run needs 10 | bug | S | **done** |
 | [30](30-leaderboard-name-not-synced.md) | **BUG** a signed-in player gets a different name on every device | bug | M | open |
 | [31](31-profile-merge-drops-unknown-fields.md) | The profile merge silently drops fields it does not know | bug | S | open |
 
@@ -402,18 +403,18 @@ shipped to users on `0.4` yet, so sharing is usually fine.
 
 ## Pick order
 
-Eleven issues are open. This section is the ordering rule — it beats any
+Ten issues are open. This section is the ordering rule — it beats any
 largest-effort-first default, including an unattended run's.
 
 **Do these before strangers arrive, in this order:**
 
-1. **29** — the Forge stops opening at sigil 7. A rules violation the player can
-   see, in the hardest three descents of the run. Small, contained, testable.
-2. **13** — the production verification pass. **Needs a person** (see below).
-3. **11** then **12** — the flag defaults and the reference UI they gate.
+1. **13** — the production verification pass. **Needs a person** (see below).
+2. **11** then **12** — the flag defaults and the reference UI they gate.
    **11 needs a person**; 12 follows from it.
-4. **31** then **30** — the profile-shape guard, then the name-sync bug it
+3. **31** then **30** — the profile-shape guard, then the name-sync bug it
    protects. In that order: 31 is the test that keeps 30 fixed.
+
+Issue 29 (the Forge cadence) closed on 2026-09-02 and unblocks 34 and 37.
 
 **Then, in any order:** 33 (handler tests), 37 (the balance simulator), 34
 (analytics funnel), 32 (audio payload), 17 (reduced motion), 18 (fonts), 35

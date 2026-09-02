@@ -16,6 +16,7 @@ import { fileURLToPath } from 'node:url'
 import { SIGIL_TARGET } from '../src/games/scoundrel/constants'
 import { buildStartingKit } from '../src/games/scoundrel/logic/deck'
 import { rollForgeChoices } from '../src/games/scoundrel/logic/sanctuary'
+import { getAscensionEffects } from '../src/games/scoundrel/ascensions'
 
 const read = name => readFileSync(fileURLToPath(new URL(`../${name}`, import.meta.url)), 'utf8')
 
@@ -129,6 +130,21 @@ describe('REWORK.md matches the kit code it specifies', () => {
         .map(card => card.rank)
       expect(Math.max(...ranks), `cap at ${sigils} sigils`).toBe(cap)
     }
+  })
+
+  it('the documented every-visit Forge cadence is the one the base game runs', () => {
+    // REWORK.md has promised a Forge on every return since the kit rework; the
+    // A0 default was a hand-written [1..7] and quietly stopped honouring it when
+    // SIGIL_TARGET went 7 -> 10 (issue 29). Read the doc, then hold the base
+    // game's sigil set to it: every return but the opening visit, and no more.
+    expect(REWORK).toMatch(/opens on \*\*every sanctuary visit except the opening one\*\*/)
+    const opens = new Set(getAscensionEffects(0).forgeSigils)
+    expect(opens.has(0), 'the opening visit has no Forge').toBe(false)
+    for (let sigils = 1; sigils < SIGIL_TARGET; sigils += 1) {
+      expect(opens.has(sigils), `the Forge opens at ${sigils} sigils`).toBe(true)
+    }
+    // Nothing beyond the target: the last descent ends the run.
+    expect(opens.size).toBe(SIGIL_TARGET - 1)
   })
 
   it('records that the kit has no size cap, matching a codebase that has none', () => {
