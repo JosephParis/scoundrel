@@ -1,4 +1,8 @@
-@import url('https://fonts.googleapis.com/css2?family=Cinzel:wght@500;600;700&family=Inter:wght@300;400;500;600;700&display=swap');
+/* Self-hosted, and generated: see scripts/fetch-fonts.mjs for which weights are
+   vendored and why this is not an @import to fonts.googleapis.com any more
+   (issue 18). The short version is that the Steam build is offline, and a game
+   made of typography does not survive losing its typefaces. */
+@import './fonts.css';
 @import "tailwindcss";
 
 /* Short viewports (iPhone SE/8 at 667, small Androids at 740). Height, not
@@ -73,6 +77,31 @@
     user-select: none;
     -webkit-touch-callout: none;
     touch-action: manipulation;
+  }
+
+  /* The desktop shell (the Steam build). main.jsx sets this class for that
+     target only; the site and the itch bundle are untouched.
+
+     A game you play with the mouse should not blue-highlight its own prose
+     when a click-drag misses a card by four pixels, and it should not show a
+     text caret over the board. The web build already covers buttons and card
+     surfaces above -- it has to, because a drag-select there eats the tap that
+     follows -- but on the site the rest of the page is a page, and selectable
+     prose is correct there. In an installed application it is not.
+
+     `section` is the exception, and it is the privacy policy: that route still
+     exists in the desktop build, it is a document rather than a screen, and
+     quoting from a privacy policy is a thing people legitimately do. */
+  html.desktop {
+    -webkit-user-select: none;
+    user-select: none;
+    cursor: default;
+  }
+
+  html.desktop section {
+    -webkit-user-select: text;
+    user-select: text;
+    cursor: auto;
   }
 
   /* Embedded builds (itch.io). main.jsx sets this class for the standalone

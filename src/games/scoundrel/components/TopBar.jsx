@@ -1,7 +1,7 @@
 import { useEffect, useRef, useState } from 'react'
 import { audio, useMuted } from '../audio'
 import { isDevToolsEnabled } from '../flags'
-import { IS_STANDALONE } from '../../../buildTarget.js'
+import { IS_OFFLINE_BUILD } from '../../../buildTarget.js'
 
 export function TopBar({ game, user, onOpenRules, onRetire, onOpenCredits, onOpenDev, onReplayTutorial, onOpenLogin, onSignOut, onOpenCardLibrary, onOpenHistory, onOpenLeaderboard, onOpenHome, onOpenSettings, onOpenFeedback }) {
   const runActive = game.phase === 'sanctuary' || game.phase === 'descent'
@@ -219,7 +219,7 @@ function OverflowMenu({ runActive, user, onRetire, onOpenCredits, onOpenDev, onO
           {/* Accounts need /api/auth, and Google Sign-In does not render in a
               cross-origin iframe regardless. Nothing here can work standalone,
               so the menu does not pretend otherwise (see src/buildTarget.js). */}
-          {IS_STANDALONE ? null : user ? (
+          {IS_OFFLINE_BUILD ? null : user ? (
             <>
               <div className="px-3 py-2 flex items-center gap-2 border-b border-stone-800">
                 {user.picture ? (
@@ -299,7 +299,7 @@ function OverflowMenu({ runActive, user, onRetire, onOpenCredits, onOpenDev, onO
           {/* Both post to /api. Standalone has no server to answer, and
               feedback silently going nowhere is worse than not offering it --
               the footer on the home menu points those players at the site. */}
-          {!IS_STANDALONE && (
+          {!IS_OFFLINE_BUILD && (
             <>
               <button
                 role="menuitem"

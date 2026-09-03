@@ -4,7 +4,7 @@ title: "Google Fonts loaded via render-blocking CSS @import"
 priority: P3
 area: performance
 effort: S
-status: open
+status: done
 ---
 
 ## Problem
@@ -35,6 +35,40 @@ CSS as-is.
   consent or interaction. This is the specific pattern that has drawn GDPR
   attention in the EU, and it interacts with issue 06 — if you publish a privacy
   policy, this has to be disclosed or removed.
+
+## Resolution (2026-09-02)
+
+**Done, and forced by the Steam port rather than by the performance argument.**
+
+`visual/steam-build.spec.js` asserts the desktop build makes no network
+requests at all, and it failed on its first run against exactly this: three
+requests to `fonts.googleapis.com` and `fonts.gstatic.com` on startup. That
+matters more in an installed application than it ever did on the web, because
+the Steam build is **offline** and Sigil is made of typography -- there are no
+illustrations in `src/` at all. A player with no network was getting the whole
+game in Georgia and system-ui.
+
+What shipped, and where it differs from the suggestion below:
+
+- `scripts/fetch-fonts.mjs` vendors the woff2 subsets and generates
+  `src/fonts.css`. Run by hand (`npm run fonts`), output committed -- a build
+  that reached out to Google would be the thing this removes.
+- The files live in **`src/fonts/`, not `public/fonts/`**. `public/` is
+  referenced by root-absolute path, and a root-absolute path is precisely what
+  breaks under itch's subdirectory and the Steam build's `file://` origin.
+  Under `src/` they go through Vite's asset pipeline and come out rebased
+  against each target's `base`.
+- **Inter 300 was dropped**: nothing in `src/` uses `font-light`. Inter 400 was
+  kept although no class requests it, because it is the default weight of every
+  unstyled run of body text.
+- 14 faces (Cinzel 500/600/700, Inter 400/500/600/700, latin + latin-ext),
+  639KB on disk. `unicode-range` means a browser fetches only the subset it
+  needs; the packaged app confirmed loading Cinzel 600 and Inter 400/500/600.
+- SIL OFL text vendored at `src/fonts/OFL.txt`.
+
+Not done: the `<link rel="preload">` for the above-the-fold faces. Worth a
+follow-up for the web build; it does nothing for Steam, where the fonts are
+already local.
 
 ## Suggested fix
 

@@ -2,7 +2,7 @@ import { useEffect, useState } from 'react'
 import { historyStore } from '../../../utils/historyStore'
 import { computeLifetimeStats } from '../history'
 import { RunSummary, EndingKitSection } from './RunSummary'
-import { IS_STANDALONE } from '../../../buildTarget.js'
+import { IS_OFFLINE_BUILD } from '../../../buildTarget.js'
 
 const OUTCOME_LABEL = { victory: 'Victory', death: 'Died', retired: 'Retired' }
 const OUTCOME_COLOR = {
@@ -123,8 +123,9 @@ export function HistoryModal({ open, onClose, user }) {
         <h2 className="font-display text-rune text-2xl mb-1">Run history</h2>
         <p className="text-[12px] text-slate-500 mb-4">
           {/* The "sign in" nudge is only true where there is something to sign
-              in to; standalone has no accounts at all (src/buildTarget.js). */}
-          {IS_STANDALONE
+              in to; the server-less builds have no accounts at all
+              (src/buildTarget.js). */}
+          {IS_OFFLINE_BUILD
             ? 'History is saved on this device.'
             : user
               ? `Signed in as ${user.name || user.email}.`

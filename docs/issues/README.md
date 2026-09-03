@@ -137,7 +137,8 @@ describes all five tables), **08** (moderation: a handle denylist enforced
 server-side, `/api/moderation` behind `ADMIN_TOKEN`, and block / delete controls
 on `/admin`), **25** (rules copy reviewed), **23** (`DESIGN.md` marked superseded
 and corrected; `REWORK.md` named as the design of record and its last open
-decision closed).
+decision closed), **18** (Google Fonts self-hosted — closed by the Steam port,
+which needed the game to render offline; see docs/STEAM.md).
 
 **All P0 blockers are closed.** Live at **https://sigildeck.com** since
 2026-08-06, with the privacy mailbox, auth and DNS all verified against the
@@ -381,7 +382,7 @@ shipped to users on `0.4` yet, so sharing is usually fine.
 | [15](15-unit-tests-game-logic.md) | No unit tests over ~100KB of game logic | testing | L | **done** |
 | [16](16-audio-payload.md) | ~31MB audio, ~17MB byte-identical duplicates | performance | S | **done** |
 | [17](17-prefers-reduced-motion.md) | No `prefers-reduced-motion`; 4 infinite animations | accessibility | S | open |
-| [18](18-google-fonts-blocking-import.md) | Render-blocking Google Fonts `@import` | performance | S | open |
+| [18](18-google-fonts-blocking-import.md) | Render-blocking Google Fonts `@import` | performance | S | done |
 | [19](19-robots-txt.md) | No `robots.txt` while `/admin` is live | hygiene | S | **done** |
 | [32](32-music-bed-payload.md) | Two music beds are 15MB of the 16MB audio payload | performance | M | open |
 | [33](33-untested-api-handlers.md) | Five API handlers untested, including the one that can lose a save | testing | L | open |
@@ -402,7 +403,7 @@ shipped to users on `0.4` yet, so sharing is usually fine.
 
 ## Pick order
 
-Eleven issues are open. This section is the ordering rule — it beats any
+Fourteen issues are open. This section is the ordering rule — it beats any
 largest-effort-first default, including an unattended run's.
 
 **Do these before strangers arrive, in this order:**
@@ -416,8 +417,9 @@ largest-effort-first default, including an unattended run's.
    protects. In that order: 31 is the test that keeps 30 fixed.
 
 **Then, in any order:** 33 (handler tests), 37 (the balance simulator), 34
-(analytics funnel), 32 (audio payload), 17 (reduced motion), 18 (fonts), 35
-(service worker — after 18 and 32), 24 (CI duplicate), 36 (doc drift).
+(analytics funnel), 32 (audio payload), 17 (reduced motion), 35 (service
+worker — after 32; the fonts half of its dependency is done), 24 (CI
+duplicate), 36 (doc drift).
 
 ### Needs a person, not an agent
 
@@ -432,6 +434,12 @@ rather than approximate them:
   its own pre-post checklist) and `docs/itch/PAGE.md` (the itch.io page). Both
   need his accounts on outside services. They are not backlog issues and are not
   meant to become any.
+
+`docs/STEAM.md` is a **separate milestone** with its own `S01`–`S21` task list:
+shipping an Electron build to Steam. Most of it needs Joey's Steamworks account
+and art that does not exist yet; the file names which tasks an agent may work.
+Do not pull its tasks into this backlog, and do not pick from it unless asked —
+this backlog comes first, because the web game shipping is its prerequisite.
 
 ### The standing pick for a long unattended window
 
@@ -466,7 +474,7 @@ Issue 15 held this slot until it closed on 2026-08-30. Do not pick it again.
 
 31 (shape guard) ──> 30 (name sync: the guard is what keeps it fixed)
 30 (name sync) ────> 13 (adds a cross-device check to the prod pass)
-18 (local fonts) ──> 35 (nothing to precache while the fonts are third-party)
+18 (local fonts, DONE) ──> 35 (nothing to precache while the fonts are third-party)
 32 (audio size) ───> 35 (decides what a service worker must not precache)
 35 (service worker) ──> 13 (a stale-shell bug cannot be fixed by deploying)
 29 (forge cadence) ──> 34 (settle how many Forge visits a run has before
@@ -488,7 +496,7 @@ Issue 15 held this slot until it closed on 2026-08-30. Do not pick it again.
 
 03 (music) <───────> 16 (audio cleanup: mourning-song.ogg may become gameover)
 04 (manifest) ─────> 19 (indexing decision)
-06 (privacy) <─────> 18 (Google Fonts is a disclosure item)
+06 (privacy) <─────> 18 (Google Fonts was a disclosure item; removed in 18)
 ```
 
 ## Pushing these to GitHub

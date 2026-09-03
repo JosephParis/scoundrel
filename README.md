@@ -45,6 +45,11 @@ Vite server — which is why issue 13 exists as a production checklist.
 | `npm run preview` | Serve the built `dist/` on :4173 |
 | `npm run lint` | ESLint over the repo |
 | `npm run icons` | Regenerate favicons/PWA icons from the source mark |
+| `npm run fonts` | Re-vendor the self-hosted Cinzel/Inter subsets into `src/fonts/` |
+| `npm run build:steam` | The Electron desktop bundle, to `dist-steam/` |
+| `npm run steam:dev` | The desktop shell against the running dev server |
+| `npm run steam:pack` | Package a runnable Windows app (what SteamPipe uploads) |
+| `npm run steam:dist` | The same, as an installer for non-Steam distribution |
 | `npm test` | Everything: vitest, then Playwright |
 | `npm run test:unit` | Vitest only — sub-second, the gate to run constantly |
 | `npm run test:unit:watch` | Vitest in watch mode |
