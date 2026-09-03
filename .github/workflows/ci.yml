@@ -5,6 +5,10 @@ on:
     branches: [ main, master, develop ]
   pull_request:
     branches: [ main, master, develop ]
+  # So the expensive all-tests job can be run on demand rather than only after a
+  # merge. Without this, a change to that job -- or to a spec only it runs --
+  # cannot be verified until it is already on main.
+  workflow_dispatch:
 
 jobs:
   lint-and-build:
@@ -90,8 +94,13 @@ jobs:
     runs-on: ubuntu-latest
     timeout-minutes: 20
     needs: lint-and-build
-    # Only run on main branch to save CI minutes
-    if: github.ref == 'refs/heads/main' || github.ref == 'refs/heads/master'
+    # Only run on main branch to save CI minutes, or on demand.
+    # TEMPORARY: steam/desktop-shell is listed so the xvfb change below can be
+    # verified before it reaches main. Remove that clause before merging.
+    if: >-
+      github.ref == 'refs/heads/main' || github.ref == 'refs/heads/master'
+      || github.event_name == 'workflow_dispatch'
+      || github.ref == 'refs/heads/steam/desktop-shell'
 
     steps:
       - name: Checkout code
