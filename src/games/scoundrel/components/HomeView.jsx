@@ -2,7 +2,7 @@
 // the top bar. It's an overlay rather than a game phase, so the live run is
 // untouched underneath: "Resume" just closes it. Menu entries hand off to the
 // same modals the top bar opens.
-import { IS_STANDALONE, HOME_URL } from '../../../buildTarget.js'
+import { IS_OFFLINE_BUILD, IS_STEAM, HOME_URL } from '../../../buildTarget.js'
 
 // onOpenCardLibrary is still wired from index.jsx for the parked Card library
 // entry below, so it reads as unused until that entry comes back.
@@ -21,7 +21,7 @@ export function HomeView({ open, onResume, onOpenRules, onOpenHistory, onOpenLea
     // reach (see src/buildTarget.js). An entry that always opens an empty modal
     // reads as a broken feature, so it is not offered; the footer below says
     // where it lives instead.
-    ...(IS_STANDALONE ? [] : [{ label: 'Leaderboard', hint: 'Fastest victories', onClick: onOpenLeaderboard }]),
+    ...(IS_OFFLINE_BUILD ? [] : [{ label: 'Leaderboard', hint: 'Fastest victories', onClick: onOpenLeaderboard }]),
     // { label: 'Card library', hint: 'Every card in the deck', onClick: onOpenCardLibrary },
     { label: 'Tutorial', hint: 'A guided walkthrough', onClick: onReplayTutorial },
     // Settings and feedback were reachable only from the top bar, whose corner
@@ -30,7 +30,7 @@ export function HomeView({ open, onResume, onOpenRules, onOpenHistory, onOpenLea
     { label: 'Settings', hint: 'Layout, sound, discard a run', onClick: onOpenSettings },
     // Feedback posts to /api, which the standalone build cannot reach, so it is
     // offered on the same condition the top bar uses.
-    ...(IS_STANDALONE ? [] : [{ label: 'Send feedback', hint: 'Tell us what broke', onClick: onOpenFeedback }]),
+    ...(IS_OFFLINE_BUILD ? [] : [{ label: 'Send feedback', hint: 'Tell us what broke', onClick: onOpenFeedback }]),
     { label: 'Credits', hint: 'Who built this', onClick: onOpenCredits },
   ]
 
@@ -63,9 +63,14 @@ export function HomeView({ open, onResume, onOpenRules, onOpenHistory, onOpenLea
             </button>
           ))}
         </nav>
-        {IS_STANDALONE && (
+        {IS_OFFLINE_BUILD && (
           <p className="mt-8 text-[11px] leading-relaxed text-slate-500">
-            This copy plays entirely in your browser and saves to this device.
+            {/* Both server-less builds save locally and have no leaderboard, but
+                only one of them is a browser. Getting this wrong would put "in
+                your browser" in front of someone running a desktop app. */}
+            {IS_STEAM
+              ? 'This copy plays entirely offline and saves to this computer.'
+              : 'This copy plays entirely in your browser and saves to this device.'}
             <br />
             For the leaderboard and saves that follow you across devices, play at{' '}
             <a

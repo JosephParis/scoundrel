@@ -54,22 +54,36 @@ function htmlSiteUrl() {
   }
 }
 
-// The standalone target (itch.io and any other portal that hosts the bundle as
-// static files inside an iframe). See src/buildTarget.js for what it changes and
+// The two server-less targets. See src/buildTarget.js for what they change and
 // why. Everything below is a no-op unless VITE_BUILD_TARGET says otherwise, so
 // the sigildeck.com build is untouched.
-const isStandalone = process.env.VITE_BUILD_TARGET === 'standalone'
+//
+//   standalone  itch.io and any other portal that hosts the bundle as static
+//               files inside an iframe, under /html/<id>/.
+//   steam       the Electron desktop shell, which loads the bundle from disk
+//               over file://.
+//
+// They want the same three things from the build -- a relative base, no web-app
+// manifest, and their own output directory -- for two different reasons. A
+// root-absolute path escapes to the portal's origin in one and to the
+// filesystem root in the other, and both are equally silent.
+const target = process.env.VITE_BUILD_TARGET || ''
+const isStandalone = target === 'standalone'
+const isSteam = target === 'steam'
+const isOffline = isStandalone || isSteam
 
-// Drops the web-app manifest from the standalone HTML.
+// Drops the web-app manifest from the server-less HTML.
 //
 // manifest.webmanifest hardcodes "start_url": "/" and absolute icon paths, all
 // of which point at the portal's root rather than the game's directory. Rather
-// than ship a second manifest whose every path is wrong, the standalone build
-// has none: it is an embedded iframe, so it was never installable anyway.
-function htmlStandalone() {
+// than ship a second manifest whose every path is wrong, these builds have
+// none: the standalone bundle is an embedded iframe and was never installable,
+// and the Steam build is already an installed application -- there, the link
+// would simply 404 against the filesystem root.
+function htmlNoManifest() {
   return {
-    name: 'sigil-html-standalone',
-    apply: () => isStandalone,
+    name: 'sigil-html-no-manifest',
+    apply: () => isOffline,
     transformIndexHtml(html) {
       return html.replace(/^\s*<link rel="manifest"[^>]*>\s*$/m, '')
     },
@@ -122,9 +136,10 @@ function deviceLab() {
 export default defineConfig({
   // './' so the bundle works from any directory depth. itch serves it from
   // /html/<project-id>/, and an absolute base would send every asset request to
-  // the portal's root.
-  base: isStandalone ? './' : '/',
-  plugins: [react(), tailwindcss(), htmlSiteUrl(), htmlStandalone(), deviceLab()],
+  // the portal's root; Electron serves it from wherever Steam installed the
+  // game, where an absolute base resolves against the filesystem root instead.
+  base: isOffline ? './' : '/',
+  plugins: [react(), tailwindcss(), htmlSiteUrl(), htmlNoManifest(), deviceLab()],
   define: {
     // Override entries on import.meta.env so client code reads them with no
     // extra globals and ESLint stays happy. Values are inlined at build time.
@@ -137,10 +152,11 @@ export default defineConfig({
     'import.meta.env.VITE_BUILD_TARGET': JSON.stringify(process.env.VITE_BUILD_TARGET || ''),
   },
   build: {
-    // A separate directory so an itch build can never be mistaken for the one
-    // that deploys, and so `vite preview` and the prod test project keep
-    // pointing at the real thing.
-    outDir: isStandalone ? 'dist-itch' : 'dist',
+    // A separate directory per target, so no build can be mistaken for another
+    // -- and so `vite preview` and the prod test project keep pointing at the
+    // real thing. electron-builder packages dist-steam/ specifically, which
+    // means a stale dist/ can never be shipped to Steam by accident.
+    outDir: isSteam ? 'dist-steam' : isStandalone ? 'dist-itch' : 'dist',
     rollupOptions: {
       output: {
         manualChunks(id) {

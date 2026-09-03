@@ -1,0 +1,44 @@
+# Packaging for the desktop shell (docs/STEAM.md, S03).
+#
+# The target that matters here is `dir` -- an unpacked application directory.
+# Steam does not want an installer: SteamPipe uploads a directory as a depot and
+# the Steam client is what installs, patches and launches it. An NSIS installer
+# would be a second, redundant install step wrapped inside Steam's own, and it
+# is the usual way a first Steam build ends up shipping something that asks the
+# player to install a game they already installed.
+#
+# `npm run steam:dist` still builds an installer, for handing someone a build
+# outside Steam (a tester, a fallback download). Steam gets `npm run steam:pack`.
+
+appId: com.sigildeck.sigil
+productName: Sigil
+copyright: Copyright © Joseph Paris
+
+directories:
+  output: dist-electron
+
+# Only the shell and the bundle it loads. Without this the whole repo -- src/,
+# test/, docs/, node_modules -- is a candidate for packaging, and the app ships
+# with its own source and every dev dependency inside it.
+files:
+  - electron/**/*
+  - dist-steam/**/*
+  - package.json
+
+# The bundle is already minified and compressed by Vite; asar keeps it as one
+# file so a curious player does not find a loose, editable copy of the game's
+# logic next to the executable. It is not a security boundary and is not
+# pretending to be one.
+asar: true
+
+win:
+  target:
+    - dir
+  icon: public/icon-512.png
+
+# Only built by `npm run steam:dist`, and only for handing a build to someone
+# outside Steam.
+nsis:
+  oneClick: false
+  allowToChangeInstallationDirectory: true
+  artifactName: Sigil-Setup-${version}.${ext}

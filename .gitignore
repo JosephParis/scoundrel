@@ -17,6 +17,13 @@ dist-ssr
 dist-itch
 dist-itch.zip
 
+# Steam build output. dist-steam is the web bundle the Electron shell loads
+# (`npm run build:steam`); dist-electron is the packaged application
+# electron-builder produces from it and SteamPipe uploads. Same rule: both are
+# builds, and the shell's source lives in electron/.
+dist-steam
+dist-electron
+
 # Editor directories and files
 .vscode/*
 !.vscode/extensions.json
