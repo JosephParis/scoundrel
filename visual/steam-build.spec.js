@@ -23,6 +23,11 @@ import { join } from 'node:path'
  *
  * So this spec builds the real bundle and launches the real main process. It is
  * the only arrangement in the suite where those bugs exist at all.
+ *
+ * It needs a display. Electron requires one even to create a window it never
+ * shows, so on a headless CI runner this must be run under xvfb -- see the
+ * all-tests job in .github/workflows/ci.yml. Locally on Windows or macOS there
+ * is nothing to do.
  */
 
 const root = fileURLToPath(new URL('..', import.meta.url))
