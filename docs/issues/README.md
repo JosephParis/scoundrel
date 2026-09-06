@@ -35,6 +35,8 @@ Baseline: `npm run lint` clean, `npm run build` clean. Test suite as it stands:
 | `test/leaderboard.test.js` | vitest | 5 pass |
 | `test/designDocs.test.js` | vitest | 10 pass |
 | `test/audioSession.test.js` | vitest | 4 pass |
+| `test/profileShape.test.js` | vitest | 16 pass |
+| `test/nameSync.test.js` | vitest | 15 pass |
 | `visual/copy-accuracy.spec.js` | dev | 16 pass |
 | `visual/leaderboard-name.spec.js` | dev | 12 pass |
 | `visual/itch-build.spec.js` | dev | 11 pass |
@@ -54,7 +56,11 @@ Baseline: `npm run lint` clean, `npm run build` clean. Test suite as it stands:
 | `visual/device-lab.spec.js` | dev | 4 pass |
 | `visual/mobile-touch.spec.js` | dev | 3 pass |
 
-**Full suite: 576 unit + 192 e2e passed, 1 skipped (`card-library`, issue 12).**
+**Full suite: 607 unit + 192 e2e passed, 1 skipped (`card-library`, issue 12).**
+The unit half went 576 → 607 on 2026-09-06 with issues 31 and 30 (the profile
+shape guard, and the leaderboard name joining the synced profile). **The e2e
+half was not re-run that day** — nothing in those two touches a rendered
+surface, but the 192 is carried over rather than measured.
 **Both halves re-measured 2026-08-31** on `main` at `1be2684` — 576 unit,
 192 e2e, one skip, with lint and build clean. The table above
 had drifted — five suites ran without being listed and three counts were wrong —
@@ -360,7 +366,7 @@ shipped to users on `0.4` yet, so sharing is usually fine.
 | [26](26-dead-mobile-responsive-spec.md) | **BUG** all 25 tests in `mobile-responsive.spec.js` were dead | testing | M | **done** |
 | [28](28-bare-hands-covers-weapon-preview.md) | **BUG** bare-hands button covers the weapon preview | bug | S | **done** |
 | [29](29-forge-stops-at-seven-sigils.md) | **BUG** the Forge stops opening at sigil 7; the run needs 10 | bug | S | open |
-| [30](30-leaderboard-name-not-synced.md) | **BUG** a signed-in player gets a different name on every device | bug | M | open |
+| [30](30-leaderboard-name-not-synced.md) | **BUG** a signed-in player gets a different name on every device | bug | M | **done** |
 | [31](31-profile-merge-drops-unknown-fields.md) | The profile merge silently drops fields it does not know | bug | S | **done** |
 
 ### P2 — product decisions
@@ -402,7 +408,7 @@ shipped to users on `0.4` yet, so sharing is usually fine.
 
 ## Pick order
 
-Eleven issues are open. This section is the ordering rule — it beats any
+Nine issues are open. This section is the ordering rule — it beats any
 largest-effort-first default, including an unattended run's.
 
 **Do these before strangers arrive, in this order:**
@@ -412,8 +418,9 @@ largest-effort-first default, including an unattended run's.
 2. **13** — the production verification pass. **Needs a person** (see below).
 3. **11** then **12** — the flag defaults and the reference UI they gate.
    **11 needs a person**; 12 follows from it.
-4. **31** then **30** — the profile-shape guard, then the name-sync bug it
-   protects. In that order: 31 is the test that keeps 30 fixed.
+4. ~~**31** then **30**~~ — both **done** (2026-09-06). The profile shape is
+   held in agreement by `test/profileShape.test.js`, and the leaderboard name
+   now rides the synced profile, so one account is one player on every device.
 
 **Then, in any order:** 33 (handler tests), 37 (the balance simulator), 34
 (analytics funnel), 32 (audio payload), 17 (reduced motion), 18 (fonts), 35
