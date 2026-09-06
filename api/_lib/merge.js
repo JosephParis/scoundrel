@@ -11,6 +11,14 @@
  *   - tutorialCompleted       : logical OR (once done, always done)
  *   - history                 : union keyed by run, newest kept, capped
  *
+ * The shape is a WHITELIST, deliberately: this blob is written to a jsonb
+ * column from a client, so passing unknown keys through would let a device
+ * store arbitrary data in the row. The cost is that a new profile field has to
+ * be added in four places -- here, and snapshotLocalState / foldWithLocal /
+ * applyCloudState in src/utils/cloudSync.js -- and missing one loses the field
+ * silently. test/profileShape.test.js holds all four in agreement and fails,
+ * naming the files, when they drift. Add the field there too.
+ *
  * The one field that cannot merge is the in-progress run save, since it is a
  * single evolving object. That is last-write-wins by savedAt (the wall-clock of
  * the last local write), matching the "newest device wins the active run"

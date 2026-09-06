@@ -361,7 +361,7 @@ shipped to users on `0.4` yet, so sharing is usually fine.
 | [28](28-bare-hands-covers-weapon-preview.md) | **BUG** bare-hands button covers the weapon preview | bug | S | **done** |
 | [29](29-forge-stops-at-seven-sigils.md) | **BUG** the Forge stops opening at sigil 7; the run needs 10 | bug | S | open |
 | [30](30-leaderboard-name-not-synced.md) | **BUG** a signed-in player gets a different name on every device | bug | M | open |
-| [31](31-profile-merge-drops-unknown-fields.md) | The profile merge silently drops fields it does not know | bug | S | open |
+| [31](31-profile-merge-drops-unknown-fields.md) | The profile merge silently drops fields it does not know | bug | S | **done** |
 
 ### P2 — product decisions
 

@@ -4,7 +4,8 @@ title: "The profile merge silently drops any field it does not already know abou
 priority: P1
 area: bug
 effort: S
-status: open
+status: done
+branch: dawn/2026-09-06
 ---
 
 ## Problem
@@ -67,7 +68,22 @@ arbitrary data in the row. Keep the whitelist; test it.
 
 ## Acceptance criteria
 
-- [ ] A test fails when a field is added to one of the four lists and not the others
-- [ ] Its failure message names the files that need editing
-- [ ] Device-local keys are an explicit allowlist with a stated reason
-- [ ] `merge.js`'s doc comment says the shape is enforced by that test
+- [x] A test fails when a field is added to one of the four lists and not the others
+- [x] Its failure message names the files that need editing
+- [x] Device-local keys are an explicit allowlist with a stated reason
+- [x] `merge.js`'s doc comment says the shape is enforced by that test
+
+## Resolution
+
+`test/profileShape.test.js` (13 tests). It asserts the shape at runtime rather
+than by reading source: the key sets of `snapshotLocalState`, `mergeProfiles`
+and the client re-fold must be equal, and a server profile carrying a
+non-default value for **every** field must survive `applyCloudState` into the
+next snapshot. That second half is what catches the asymmetric case -- a field
+present in all four key lists and still lost, because `applyCloudState` writes
+each one to storage by hand. Verified by mutation: deleting one write-back line
+fails the matching case and no other.
+
+`deviceId` is the one named exception, with issue 30's reason attached, and a
+rogue `deviceId` in a server payload is asserted never to reach
+`scoundrel:deviceId`.

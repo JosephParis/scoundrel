@@ -15,6 +15,10 @@
  * token (via /api/auth) that is stored and sent as a Bearer on every sync. Guest
  * / dev-login players have no token and never sync; their local play is intact.
  *
+ * The three profile-shaped functions below (snapshotLocalState, foldWithLocal,
+ * applyCloudState) restate the same key list as mergeProfiles on the server.
+ * All four move together; test/profileShape.test.js fails when they drift.
+ *
  * These storage keys mirror the ones owned by index.jsx, seenSpecials.js and
  * historyStore.js. They are re-declared (not imported) to keep this a leaf
  * module, exactly as historyStore re-declares its own prefix; keep them in step.
