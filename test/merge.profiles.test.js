@@ -110,9 +110,16 @@ describe('mergeProfiles', () => {
   })
 
   it('returns a whole profile even when both sides are empty or absent', () => {
+    // Exhaustive on purpose -- this is the one assertion that fails when a field
+    // is added to the merged profile, which is exactly what happened when issue
+    // 30 put the name on it (leaderboardName, anonymous, nameSetAt) on a branch
+    // that could not see this test. profileShape.test.js guards the four places
+    // a synced field is DECLARED; this is the fifth place it has to be listed,
+    // and keeping it exhaustive is what makes the omission loud.
     expect(mergeProfiles(null, undefined)).toEqual({
       library: [], ascensionUnlocked: 0, tutorialCompleted: false,
       seenSpecials: [], history: [], save: null,
+      leaderboardName: '', anonymous: false, nameSetAt: 0,
     })
   })
 
