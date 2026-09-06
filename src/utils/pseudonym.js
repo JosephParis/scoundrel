@@ -32,27 +32,44 @@ function hash32(input) {
 }
 
 // Deliberately in the game's register, so a PostHog session list reads like the
-// dungeon rather than a docker container. 32 x 32 x 100 = 102,400 combinations,
+// dungeon rather than a docker container. 44 x 44 x 100 = 193,600 combinations,
 // which is far more than this will ever need.
 //
 // Exported because the player-facing assigned name (assignedName.js) draws on
 // the same two lists. One vocabulary rather than two that drift apart -- but
-// note the two have different rules: this one may produce any length, while a
-// leaderboard handle has 16 characters to fit in, so that module filters these
-// down rather than reusing pseudonymFor directly.
+// note the two have different rules: this one may produce any length and joins
+// with spaces, while an assigned name is concatenated and has to fit
+// MAX_HANDLE_LENGTH, so that module composes these itself rather than reusing
+// pseudonymFor directly.
+//
+// Both lists grew by twelve on 2026-09-06, to widen the assigned-name space.
+// The new words are short on purpose: the assigned name spends its whole
+// character budget on the pair, so a long word costs more there than here.
+//
+// Growing either list RENAMES EVERY EXISTING PSEUDONYM -- the pick is a modulo
+// of the list length, so a different length moves every id to a different word.
+// That is accepted rather than overlooked: a pseudonym is a label beside the
+// distinct_id, never the identity itself (see the note at the top of this
+// file), so a PostHog profile keeps its history and its events and only reads
+// under a new name. An assigned name is a different matter and assignedName.js
+// says what happens there.
 export const ADJECTIVES = [
-  'Ashen', 'Bitter', 'Bleak', 'Brazen', 'Candlelit', 'Cold', 'Cracked', 'Dim',
-  'Dusty', 'Fading', 'Gilded', 'Grim', 'Hollow', 'Hushed', 'Iron', 'Lantern',
-  'Lost', 'Muted', 'Pale', 'Quiet', 'Ragged', 'Rusted', 'Salted', 'Silent',
-  'Sombre', 'Sunken', 'Tarnished', 'Thin', 'Veiled', 'Weary', 'Wan', 'Withered',
+  'Ashen', 'Bitter', 'Bleak', 'Blunt', 'Brazen', 'Candlelit', 'Charred', 'Cold',
+  'Cracked', 'Damp', 'Dim', 'Drowned', 'Dusty', 'Fading', 'Frayed', 'Gaunt',
+  'Gilded', 'Grim', 'Hollow', 'Hushed', 'Iron', 'Lantern', 'Leaden', 'Lost',
+  'Muted', 'Numb', 'Pale', 'Quiet', 'Ragged', 'Rusted', 'Salted', 'Scarred',
+  'Silent', 'Sodden', 'Sombre', 'Starved', 'Sunken', 'Tarnished', 'Thin',
+  'Veiled', 'Wan', 'Weary', 'Withered', 'Worn',
 ]
 
 export const NOUNS = [
-  'Almoner', 'Beggar', 'Bellringer', 'Cutpurse', 'Deacon', 'Digger', 'Drifter',
-  'Envoy', 'Fencer', 'Gravedigger', 'Herald', 'Hermit', 'Jester', 'Keeper',
-  'Lamplighter', 'Mason', 'Miner', 'Novice', 'Pilgrim', 'Poacher', 'Reeve',
-  'Sexton', 'Smith', 'Squire', 'Steward', 'Stranger', 'Tanner', 'Thief',
-  'Tinker', 'Vagrant', 'Warden', 'Wretch',
+  'Almoner', 'Baker', 'Beggar', 'Bellringer', 'Carter', 'Cooper', 'Curate',
+  'Cutpurse', 'Deacon', 'Digger', 'Drifter', 'Dyer', 'Envoy', 'Fencer',
+  'Fuller', 'Glazier', 'Gravedigger', 'Harper', 'Herald', 'Hermit', 'Jester',
+  'Keeper', 'Lamplighter', 'Mason', 'Miner', 'Monk', 'Novice', 'Pilgrim',
+  'Poacher', 'Potter', 'Reeve', 'Sawyer', 'Scribe', 'Sexton', 'Smith',
+  'Squire', 'Steward', 'Stranger', 'Tanner', 'Thief', 'Tinker', 'Vagrant',
+  'Warden', 'Wretch',
 ]
 
 /**

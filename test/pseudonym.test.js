@@ -1,5 +1,42 @@
 import { describe, it, expect } from 'vitest'
-import { pseudonymFor } from '../src/utils/pseudonym.js'
+import { pseudonymFor, ADJECTIVES, NOUNS } from '../src/utils/pseudonym.js'
+import { MAX_HANDLE_LENGTH } from '../src/games/scoundrel/handle.js'
+
+// These two lists are shared with assignedName.js, which spends its whole
+// character budget on them. Nothing in this module notices a word that is too
+// long -- a pseudonym may be any length -- so the constraint is asserted here,
+// beside the lists, rather than only downstream where the symptom is 1,936
+// pairs quietly becoming 1,900.
+describe('the shared vocabulary', () => {
+  it('has no duplicates within either list', () => {
+    expect(new Set(ADJECTIVES).size).toBe(ADJECTIVES.length)
+    expect(new Set(NOUNS).size).toBe(NOUNS.length)
+  })
+
+  it('is sorted, so a new word has one obvious home', () => {
+    expect([...ADJECTIVES].sort()).toEqual(ADJECTIVES)
+    expect([...NOUNS].sort()).toEqual(NOUNS)
+  })
+
+  it('every pair still fits an assigned name', () => {
+    // assignedName.js concatenates and appends four digits. A word pushing any
+    // pair over the cap would be dropped from PAIRS without a word of warning.
+    const DIGITS = 4
+    for (const adjective of ADJECTIVES) {
+      for (const noun of NOUNS) {
+        expect(`${adjective}${noun}`.length + DIGITS).toBeLessThanOrEqual(MAX_HANDLE_LENGTH)
+      }
+    }
+  })
+
+  it('is made of plain capitalised words', () => {
+    // Anything else -- a space, a hyphen, an accent -- survives here and is
+    // stripped by sanitizeHandle downstream, renaming the player on first sight.
+    for (const word of [...ADJECTIVES, ...NOUNS]) {
+      expect(word).toMatch(/^[A-Z][a-z]+$/)
+    }
+  })
+})
 
 // The pseudonym replaces the real name PostHog used to receive (issue 06). Two
 // properties matter: it must be stable, or a player fragments into many profiles

@@ -8,6 +8,7 @@
 import { describe, it, expect, vi, afterEach } from 'vitest'
 import { buildRunRecord, computeLifetimeStats } from '../src/games/scoundrel/history'
 import { GAME_VERSION, SIGIL_TARGET } from '../src/games/scoundrel/constants'
+import { MAX_HANDLE_LENGTH } from '../src/games/scoundrel/handle'
 
 afterEach(() => { vi.useRealTimers() })
 
@@ -179,14 +180,17 @@ describe('buildRunRecord playerName', () => {
     expect(buildRunRecord(finished(), null, 'Ashgrave').playerName).toBe('Ashgrave')
   })
 
-  it('trims, then clamps to 16 characters, then trims again', () => {
+  it('trims, then clamps to the handle limit, then trims again', () => {
     expect(buildRunRecord(finished(), null, '  Ashgrave  ').playerName).toBe('Ashgrave')
-    // 20 characters in, 16 out.
-    expect(buildRunRecord(finished(), null, 'abcdefghijklmnopqrst').playerName)
-      .toBe('abcdefghijklmnop')
+    // Built from the cap rather than spelled out: at a literal 16 this silently
+    // stopped exercising the clamp when the cap moved to 24.
+    const over = 'a'.repeat(MAX_HANDLE_LENGTH + 4)
+    expect(buildRunRecord(finished(), null, over).playerName)
+      .toBe('a'.repeat(MAX_HANDLE_LENGTH))
     // The clamp must not leave trailing whitespace behind.
-    expect(buildRunRecord(finished(), null, 'abcdefghijklmno pqrst').playerName)
-      .toBe('abcdefghijklmno')
+    const spaced = `${'a'.repeat(MAX_HANDLE_LENGTH - 1)} bcde`
+    expect(buildRunRecord(finished(), null, spaced).playerName)
+      .toBe('a'.repeat(MAX_HANDLE_LENGTH - 1))
   })
 
   it('survives a non-string handle', () => {

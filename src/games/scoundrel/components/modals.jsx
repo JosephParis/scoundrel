@@ -30,7 +30,7 @@ const CARD_LAYOUT_OPTIONS = [
 
 // Where a player changes the name the board credits them with.
 //
-// Every player already has one: assignedName.js hands out "Ashen Vagrant 47" on
+// Every player already has one: assignedName.js hands out "AshenVagrant4718" on
 // first launch, so this field is an edit rather than a blank page, and a player
 // who never opens it still lands on the board under something readable instead
 // of collapsing into the shared "Anonymous" bucket with every other unnamed

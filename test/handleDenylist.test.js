@@ -125,7 +125,9 @@ describe('interaction with sanitizeHandle', () => {
   })
 
   it('still screens a handle clipped to the length cap', () => {
-    const long = sanitizeHandle('aaaaaaaaaaaaaaaaaanazi')
+    // Padded from the cap so the slur is always just past the end, whatever the
+    // cap is. Spelled out, this stopped testing the clip the moment it moved.
+    const long = sanitizeHandle(`${'a'.repeat(MAX_HANDLE_LENGTH + 2)}nazi`)
     expect(long.length).toBe(MAX_HANDLE_LENGTH)
     // The slur fell off the end, so this one is genuinely fine -- asserting the
     // order matters: screening before clipping would reject a handle whose

@@ -1,4 +1,5 @@
 import { describe, it, expect, vi, beforeEach } from 'vitest'
+import { MAX_HANDLE_LENGTH } from '../src/games/scoundrel/handle'
 
 // Exercises /api/claim, the one endpoint that can change a run already stored.
 // /api/runs is `on conflict do nothing` precisely so a replayed backlog cannot
@@ -196,7 +197,7 @@ describe('/api/claim — what it writes', () => {
 
   it('clamps an over-long name to the handle limit', async () => {
     const res = await call({ body: { runKey: `guest:${NOW}:${SEED}`, playerName: 'a'.repeat(40) } })
-    expect(res.body.playerName).toHaveLength(16)
+    expect(res.body.playerName).toHaveLength(MAX_HANDLE_LENGTH)
   })
 
   it('accepts an empty name as "list this run without one"', async () => {

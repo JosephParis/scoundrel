@@ -42,9 +42,13 @@ describe('candidatesFor', () => {
   })
 
   it('stops counting up when the next number would overflow', () => {
-    // "Ashen Almoner 99" is exactly 16; 100 would make it 17.
-    const out = candidatesFor('Ashen Almoner 99')
-    expect(out).not.toContain('Ashen Almoner 100')
+    // Built from the cap rather than spelled out, so raising MAX_HANDLE_LENGTH
+    // does not turn a real assertion into a test of nothing: the name here is
+    // exactly the cap, and one more digit would exceed it.
+    const name = `${'x'.repeat(MAX_HANDLE_LENGTH - 3)} 99`
+    expect(name).toHaveLength(MAX_HANDLE_LENGTH)
+    const out = candidatesFor(name)
+    expect(out).not.toContain(`${'x'.repeat(MAX_HANDLE_LENGTH - 3)} 100`)
     expect(out.every(c => c.length <= MAX_HANDLE_LENGTH)).toBe(true)
   })
 
