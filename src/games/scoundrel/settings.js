@@ -83,7 +83,7 @@ class Settings {
     return this.leaderboardHandle
   }
 
-  /** The random name this device was given, e.g. 'Ashen Vagrant 47'. */
+  /** The random name this device was given, e.g. 'AshenVagrant4718'. */
   get assignedName() {
     if (!this.assigned) this.assigned = assignedNameFor(deviceSeed())
     return this.assigned

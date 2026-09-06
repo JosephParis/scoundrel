@@ -1,5 +1,6 @@
 import { test, expect } from '@playwright/test'
 import { assignedNameFor } from '../src/games/scoundrel/assignedName.js'
+import { MAX_HANDLE_LENGTH } from '../src/games/scoundrel/handle.js'
 
 // The two places a player can change the name the board credits them with.
 //
@@ -78,8 +79,8 @@ test.describe('Settings — choosing a name', () => {
     await openSettings(page)
     await page.getByRole('button', { name: 'Surprise me' }).click()
     const value = await page.getByLabel('Leaderboard name').inputValue()
-    expect(value).toMatch(/^[A-Z][a-z]+ [A-Z][a-z]+ \d{1,2}$/)
-    expect(value.length).toBeLessThanOrEqual(16)
+    expect(value).toMatch(/^[A-Z][a-z]+[A-Z][a-z]+\d{4}$/)
+    expect(value.length).toBeLessThanOrEqual(MAX_HANDLE_LENGTH)
     // And it is a real choice, not just decoration in the input.
     expect(await stored(page)).toBe(value)
   })
@@ -137,7 +138,7 @@ test.describe('Victory screen — claiming a name', () => {
     await seed(page, { handle: '', outcome: 'victory' })
     await page.goto('/')
     await page.getByRole('button', { name: /Make it yours/i }).click()
-    const suggestion = page.locator('button', { hasText: /^[A-Z][a-z]+ [A-Z][a-z]+ \d{1,2}$/ }).first()
+    const suggestion = page.locator('button', { hasText: /^[A-Z][a-z]+[A-Z][a-z]+\d{4}$/ }).first()
     const name = (await suggestion.textContent()).trim()
     await suggestion.click()
     await expect(page.getByText(name, { exact: false }).first()).toBeVisible()
