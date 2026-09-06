@@ -11,6 +11,12 @@
  *   - tutorialCompleted       : logical OR (once done, always done)
  *   - history                 : union keyed by run, newest kept, capped
  *
+ * The player's leaderboard name is the exception that is not earned progress:
+ * it is a single evolving choice, so it is newest-wins by nameSetAt (see
+ * newerName). Syncing it is what stops one account being a different person on
+ * every device. The device id it is stored beside is deliberately NOT synced --
+ * api/leaderboard.js partitions guests by it.
+ *
  * The shape is a WHITELIST, deliberately: this blob is written to a jsonb
  * column from a client, so passing unknown keys through would let a device
  * store arbitrary data in the row. The cost is that a new profile field has to
@@ -69,6 +75,50 @@ function newerSave(a, b) {
   return (b.savedAt || 0) > (a.savedAt || 0) ? b : a
 }
 
+/**
+ * The leaderboard name, the opt-out and their timestamp move as ONE value.
+ *
+ * Splitting them would let a device's `anonymous: true` land beside another
+ * device's name and publish a player who asked not to be named. So the three
+ * are picked together, newest stamp wins, exactly as `save` is picked whole.
+ *
+ * `nameSetAt` is 0 for a name nobody chose -- the one this device was assigned
+ * on first launch. An assigned name is still promoted to the account when the
+ * account has nothing (which is what gives a player who never opens Settings
+ * one name across their devices), but it always loses to a name someone
+ * actually typed, whenever that was.
+ *
+ * Ties keep `base`, the value already stored. That is what makes this
+ * convergent rather than merely deterministic: a device re-posting an
+ * equal-stamped value never displaces the incumbent, so two devices syncing in
+ * either order settle on the same name instead of flapping.
+ *
+ * Kept in step with foldWithLocal in src/utils/cloudSync.js --
+ * test/nameSync.test.js asserts both halves agree.
+ */
+export function newerName(base, incoming) {
+  const a = nameChoice(base)
+  const b = nameChoice(incoming)
+  if (!chose(a)) return chose(b) ? b : a
+  if (!chose(b)) return a
+  return b.nameSetAt > a.nameSetAt ? b : a
+}
+
+function nameChoice(p) {
+  const raw = p?.leaderboardName
+  return {
+    leaderboardName: typeof raw === 'string' ? raw.slice(0, 64) : '',
+    anonymous: !!p?.anonymous,
+    nameSetAt: Number(p?.nameSetAt) || 0,
+  }
+}
+
+// An explicit "don't list a name" is a choice even though it carries no name,
+// and must beat a device that has never been told anything.
+function chose(c) {
+  return c.leaderboardName !== '' || c.anonymous
+}
+
 export function mergeProfiles(base, incoming) {
   const a = base || {}
   const b = incoming || {}
@@ -79,5 +129,6 @@ export function mergeProfiles(base, incoming) {
     seenSpecials: union(a.seenSpecials, b.seenSpecials),
     history: mergeHistory(a.history, b.history),
     save: newerSave(a.save, b.save),
+    ...newerName(a, b),
   }
 }

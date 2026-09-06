@@ -44,6 +44,9 @@ const FIELDS = {
   seenSpecials: ['special.hollow-king'],
   history: [{ accountId: ACCOUNT, startedAt: 1755300000000, runSeed: 'seed-a', sigils: 3 }],
   save: { version: 4, savedAt: 1755300111000, state: { room: 7 } },
+  leaderboardName: 'Rookwarden',
+  anonymous: false,
+  nameSetAt: 1755300222000,
 }
 
 /**
@@ -120,13 +123,15 @@ describe('device-local keys stay on the device', () => {
     })
   }
 
-  it('a rogue deviceId in the server payload is not written to storage', () => {
+  it('a rogue deviceId in the server payload cannot overwrite the local one', () => {
     // The merge whitelist is what stops this, and the whitelist is only load
     // bearing if something asserts it. `scoundrel:deviceId` is the key
-    // assignedName.js mints into.
-    const store = installLocalStorage()
+    // assignedName.js mints into; the snapshot mints one as a side effect of
+    // resolving the assigned name, so the check is that the server's value is
+    // not what ends up there -- not that nothing does.
+    const store = installLocalStorage({ 'scoundrel:deviceId': 'mine' })
     applyCloudState(ACCOUNT, mergeProfiles({}, { ...FIELDS, deviceId: 'other-device' }))
-    expect(store.getItem('scoundrel:deviceId'), DEVICE_LOCAL.deviceId + WHERE).toBeNull()
+    expect(store.getItem('scoundrel:deviceId'), DEVICE_LOCAL.deviceId + WHERE).toBe('mine')
   })
 })
 
