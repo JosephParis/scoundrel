@@ -62,12 +62,15 @@ Baseline: `npm run lint` clean, `npm run build` clean. Test suite as it stands:
 | `visual/device-lab.spec.js` | dev | 4 pass |
 | `visual/mobile-touch.spec.js` | dev | 3 pass |
 
-**Full suite: 687 unit + 192 e2e passed, 1 skipped (`card-library`, issue 12).**
-The unit half went 576 → 656 with issues 29, 33, 36 and 24, then → 687 with 31
-and 30 (the profile shape guard, and the leaderboard name joining the synced
-profile). Both branches were written against `main` at `4032013` and counted
-only their own additions; this is the total after they were merged together on
-2026-09-06, measured rather than added up.
+**Full suite: 697 unit + 192 e2e passed, 1 skipped (`card-library`, issue 12).**
+**Both halves re-measured 2026-09-06** on this merge, with lint and build clean.
+The unit half went 576 → 656 with issues 29, 33, 36 and 24, → 687 with 31 and 30,
+then → 697 with the assigned-name widening. Three branches were cut from
+`4032013` and each counted only its own additions, so this total is measured on
+the merge rather than added up — and it had to be: the two dawn branches were
+individually green and produced one failure when combined, because issue 30 put
+three fields on the merged profile that issue 33's exhaustive shape assertion
+did not know about.
 **Both halves re-measured 2026-08-31** on `main` at `1be2684` — 576 unit,
 192 e2e, one skip, with lint and build clean. The table above
 had drifted — five suites ran without being listed and three counts were wrong —
