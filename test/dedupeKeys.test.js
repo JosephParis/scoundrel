@@ -177,6 +177,11 @@ describe('mergeProfiles non-history fields', () => {
       seenSpecials: [],
       history: [],
       save: null,
+      // An account nobody has named yet. The name rides the profile as of
+      // issue 30; test/nameSync.test.js owns the rules.
+      leaderboardName: '',
+      anonymous: false,
+      nameSetAt: 0,
     })
   })
 })

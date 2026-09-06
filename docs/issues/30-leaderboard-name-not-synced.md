@@ -4,7 +4,8 @@ title: "BUG a signed-in player gets a different leaderboard name on every device
 priority: P1
 area: bug
 effort: M
-status: open
+status: done
+branch: dawn/2026-09-06
 ---
 
 ## Problem
@@ -86,10 +87,47 @@ past run keeps the name it was posted under by design.
 
 ## Acceptance criteria
 
-- [ ] A custom name set on one device is the name the second device posts under
-- [ ] The anonymous opt-out crosses devices
-- [ ] A device with only an assigned name adopts the account's name on first sync
-- [ ] Two devices syncing in either order converge on one name (no flapping)
-- [ ] `deviceId` is still per-device, and a test says why
-- [ ] vitest over the merge rules, both halves (client fold and server merge)
-- [ ] Anything only provable against the real database goes on issue 13
+- [x] A custom name set on one device is the name the second device posts under
+- [x] The anonymous opt-out crosses devices
+- [x] A device with only an assigned name adopts the account's name on first sync
+- [x] Two devices syncing in either order converge on one name (no flapping)
+- [x] `deviceId` is still per-device, and a test says why
+- [x] vitest over the merge rules, both halves (client fold and server merge)
+- [x] Anything only provable against the real database goes on issue 13
+
+## Resolution
+
+`leaderboardName`, `anonymous` and `nameSetAt` are now part of the synced
+profile and are picked **as one value**, newest stamp wins — the same treatment
+`save` gets. Picking them apart would let one device's opt-out land beside
+another device's name and publish a player who asked not to be named.
+
+Three decisions worth knowing:
+
+- **An equal stamp keeps the incumbent**, on both sides of the sync. That is
+  what makes this converge rather than merely be deterministic: a device
+  re-posting a value it already holds never displaces the account's name.
+- **Adopting a name copies the server's stamp verbatim.** Re-stamping with the
+  local clock would let the adopting device win the next round, and the two
+  would trade the name forever.
+- **A name nobody typed carries `nameSetAt: 0`.** It is still promoted when the
+  account has no name — which is what gives a player who never opens Settings
+  one name across their devices — and always loses to a name actually chosen.
+
+`cardLayout` was left **device-local**, deliberately. The `classic` layout shows
+rules on hover only, and there is no hover on a phone, so syncing a desktop
+choice onto a handset would actively degrade it. It is a rendering preference
+tied to the screen, not an identity. Reverse this if that reasoning is wrong.
+
+The live `settings` singleton re-reads on a `sigil:profile-synced` event. Without
+it a device that adopted the account's name would keep *posting runs* under the
+name it read at startup until the next reload — the same bug, quieter.
+
+`test/nameSync.test.js` (15 tests) drives both halves through the real round
+trip: two devices with their own `localStorage` against one server profile.
+`test/profileShape.test.js` (issue 31) is what keeps the four declarations of
+the shape in step now that three fields were added to it.
+
+**For issue 13:** confirm against the real database that a signed-in player's
+name survives a sync — none of this has run against `/api/save` in production,
+since there is no `/api` in `vite dev`.

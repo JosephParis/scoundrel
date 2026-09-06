@@ -13,6 +13,14 @@ import { assignedNameFor, deviceSeed } from './assignedName'
 const CARD_LAYOUT_KEY = 'scoundrel:cardLayout'
 const HANDLE_KEY = 'scoundrel:leaderboardHandle'
 const ANONYMOUS_KEY = 'scoundrel:leaderboardAnonymous'
+// When the player last chose a name or the opt-out, as wall-clock ms. 0 means
+// they never did and are still on the name this device assigned them. The
+// cross-device merge is newest-wins on this stamp, so it is what decides which
+// of a player's devices names the account -- see api/_lib/merge.js newerName.
+const NAME_SET_AT_KEY = 'scoundrel:leaderboardNameSetAt'
+// Dispatched by src/utils/cloudSync.js after a sync writes the name back.
+// Re-declared rather than imported to keep the dependency pointing one way.
+const PROFILE_SYNCED_EVENT = 'sigil:profile-synced'
 
 // 'modern' prints rules text on the face of bosses/inscribed/trait cards;
 // 'classic' is the original art-centered face with rules on hover only.
@@ -35,6 +43,11 @@ export { MAX_HANDLE_LENGTH, sanitizeHandle }
  *   simply carries no name, exactly as an unnamed run did before.
  *
  * `effectiveName` collapses the three into the single string a record carries.
+ *
+ * The choice is **account state, not device state**: it rides the synced profile
+ * so a signed-in player is one person on the board rather than a different one
+ * per device (issue 30). `nameSetAt` is what orders two devices' choices. The
+ * assigned name's *seed* stays device-local -- see assignedName.js.
  */
 
 function loadCardLayout() {
@@ -54,6 +67,14 @@ function loadAnonymous() {
   }
 }
 
+function loadNameSetAt() {
+  try {
+    return Number.parseInt(localStorage.getItem(NAME_SET_AT_KEY) || '0', 10) || 0
+  } catch {
+    return 0
+  }
+}
+
 function loadHandle() {
   try {
     return sanitizeHandle(localStorage.getItem(HANDLE_KEY))
@@ -67,11 +88,52 @@ class Settings {
     this.cardLayout = loadCardLayout()
     this.leaderboardHandle = loadHandle()
     this.leaderboardAnonymous = loadAnonymous()
+    this.nameSetAt = loadNameSetAt()
     // Minted on first read and cached for the session. Deliberately lazy: a
     // module-level call would touch localStorage at import time, before the
     // error boundary is mounted.
     this.assigned = ''
     this.listeners = new Set()
+    // A sync can hand this device the account's name while the app is running.
+    // Without this the singleton would keep serving -- and posting runs under --
+    // the name it read at startup, until a reload.
+    try {
+      if (typeof window !== 'undefined' && window.addEventListener) {
+        window.addEventListener(PROFILE_SYNCED_EVENT, () => this.reloadFromStorage())
+      }
+    } catch {
+      // no window (SSR/prerender); nothing syncs there anyway
+    }
+  }
+
+  /**
+   * Re-read the name choice from storage, after something outside this module
+   * wrote it. The assigned name is cleared only when a name replaced it, so a
+   * player still on their assigned name does not get a different one.
+   */
+  reloadFromStorage() {
+    const handle = loadHandle()
+    const anonymous = loadAnonymous()
+    const nameSetAt = loadNameSetAt()
+    if (
+      handle === this.leaderboardHandle
+      && anonymous === this.leaderboardAnonymous
+      && nameSetAt === this.nameSetAt
+    ) return
+    this.leaderboardHandle = handle
+    this.leaderboardAnonymous = anonymous
+    this.nameSetAt = nameSetAt
+    this.listeners.forEach(fn => fn())
+  }
+
+  /** Stamp a deliberate choice, so it outranks other devices' on the next sync. */
+  markNameSet() {
+    this.nameSetAt = Date.now()
+    try {
+      localStorage.setItem(NAME_SET_AT_KEY, String(this.nameSetAt))
+    } catch {
+      // storage disabled; the choice still holds for the session
+    }
   }
 
   get layout() {
@@ -108,6 +170,7 @@ class Settings {
     const value = Boolean(next)
     if (value === this.leaderboardAnonymous) return
     this.leaderboardAnonymous = value
+    this.markNameSet()
     try {
       if (value) localStorage.setItem(ANONYMOUS_KEY, '1')
       else localStorage.removeItem(ANONYMOUS_KEY)
@@ -125,6 +188,7 @@ class Settings {
     if (next.trim()) this.setAnonymous(false)
     if (next === this.leaderboardHandle) return
     this.leaderboardHandle = next
+    this.markNameSet()
     try {
       if (next) localStorage.setItem(HANDLE_KEY, next)
       else localStorage.removeItem(HANDLE_KEY)

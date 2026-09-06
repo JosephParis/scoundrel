@@ -15,10 +15,21 @@
  * token (via /api/auth) that is stored and sent as a Bearer on every sync. Guest
  * / dev-login players have no token and never sync; their local play is intact.
  *
+ * The three profile-shaped functions below (snapshotLocalState, foldWithLocal,
+ * applyCloudState) restate the same key list as mergeProfiles on the server.
+ * All four move together; test/profileShape.test.js fails when they drift.
+ *
+ * Still a leaf as far as state goes: it imports assignedName/handle for the
+ * two pure helpers that resolve a name, and never settings.js, which owns the
+ * live singleton and would make this depend on React.
+ *
  * These storage keys mirror the ones owned by index.jsx, seenSpecials.js and
  * historyStore.js. They are re-declared (not imported) to keep this a leaf
  * module, exactly as historyStore re-declares its own prefix; keep them in step.
  */
+
+import { assignedNameFor, deviceSeed } from '../games/scoundrel/assignedName'
+import { sanitizeHandle } from '../games/scoundrel/handle'
 
 const TOKEN_KEY = 'scoundrel:session'
 const SAVE_KEY = 'scoundrel:save'
@@ -27,6 +38,15 @@ const ASCENSION_KEY = 'scoundrel:ascensionUnlocked'
 const TUTORIAL_KEY = 'scoundrel:tutorialCompleted'
 const SEEN_SPECIALS_KEY = 'scoundrel:seenSpecials'
 const HISTORY_PREFIX = 'scoundrel:history:'
+const HANDLE_KEY = 'scoundrel:leaderboardHandle'
+const ANONYMOUS_KEY = 'scoundrel:leaderboardAnonymous'
+const NAME_SET_AT_KEY = 'scoundrel:leaderboardNameSetAt'
+
+// Fired at window after a sync writes the name back, so the live settings
+// singleton re-reads instead of serving the value it loaded at startup. Without
+// it a device that adopted the account's name would keep POSTING its old one
+// until the next reload -- the bug, still there, just quieter.
+export const PROFILE_SYNCED_EVENT = 'sigil:profile-synced'
 
 const AUTH_API = '/api/auth'
 const SAVE_API = '/api/save'
@@ -80,7 +100,63 @@ export function snapshotLocalState(accountId) {
     history: readJson(HISTORY_PREFIX + accountId, []),
     // Verbatim wrapper { version, state, savedAt }; savedAt drives newest-wins.
     save: readJson(SAVE_KEY, null),
+    ...localNameChoice(),
   }
+}
+
+/**
+ * The name this device would publish under, as the three values that travel
+ * together.
+ *
+ * The assigned name is resolved here rather than sent as a blank, so a player
+ * who never opens Settings still gets ONE name across their devices: the first
+ * device to sync promotes what it is already posting under, and the rest adopt
+ * it. It carries `nameSetAt: 0`, which is what keeps it losing to any name
+ * somebody actually typed.
+ *
+ * `scoundrel:deviceId` is read (through deviceSeed) and never sent. It is a
+ * device id, not a player id: api/leaderboard.js partitions guests by it, so
+ * two devices sharing one would collapse into a single ranked row and the
+ * slower run would vanish from the board. test/profileShape.test.js asserts it
+ * stays out of the payload.
+ */
+function localNameChoice() {
+  let typed = ''
+  let anonymous = false
+  let nameSetAt = 0
+  try {
+    typed = sanitizeHandle(localStorage.getItem(HANDLE_KEY)).trim()
+    anonymous = localStorage.getItem(ANONYMOUS_KEY) === '1'
+    nameSetAt = Number.parseInt(localStorage.getItem(NAME_SET_AT_KEY) || '0', 10) || 0
+  } catch { /* storage off: send the assigned name with no claim to it */ }
+  return {
+    leaderboardName: typed || assignedNameFor(deviceSeed()),
+    anonymous,
+    nameSetAt,
+  }
+}
+
+/**
+ * Client twin of newerName in api/_lib/merge.js -- same rule, restated because
+ * the client cannot import from `api/`. Name, opt-out and stamp move as one
+ * value; newest stamp wins; an equal stamp keeps `base`, so a device re-posting
+ * what it already holds never displaces the account's name.
+ * test/nameSync.test.js holds the two in agreement.
+ */
+function foldName(local, server) {
+  const chose = c => (c.leaderboardName || '') !== '' || !!c.anonymous
+  const norm = p => ({
+    leaderboardName: typeof p?.leaderboardName === 'string' ? p.leaderboardName : '',
+    anonymous: !!p?.anonymous,
+    nameSetAt: Number(p?.nameSetAt) || 0,
+  })
+  const a = norm(server)
+  const b = norm(local)
+  // The server's value is the incumbent on this side too, so the tie-break
+  // agrees with the server's and the pair converges.
+  if (!chose(a)) return chose(b) ? b : a
+  if (!chose(b)) return a
+  return b.nameSetAt > a.nameSetAt ? b : a
 }
 
 // Merge key: accountId + startedAt, plus the stable per-run seed when present
@@ -121,6 +197,7 @@ function foldWithLocal(accountId, server) {
     seenSpecials: union(local.seenSpecials, server.seenSpecials),
     history,
     save: save || null,
+    ...foldName(local, server),
   }
 }
 
@@ -143,7 +220,30 @@ export function applyCloudState(accountId, data) {
   writeJson(HISTORY_PREFIX + accountId, final.history)
   // Only ever write a save that exists; a null must not wipe a local run.
   if (final.save && typeof final.save === 'object') writeJson(SAVE_KEY, final.save)
+  writeNameChoice(final)
   return final
+}
+
+/**
+ * Persist the account's name choice over this device's own.
+ *
+ * The server's stamp is copied verbatim -- adopting a name is not choosing one,
+ * and re-stamping it with the local clock would let the adopting device win the
+ * next round and the two would flap.
+ */
+function writeNameChoice(final) {
+  try {
+    if (final.leaderboardName) localStorage.setItem(HANDLE_KEY, final.leaderboardName)
+    else localStorage.removeItem(HANDLE_KEY)
+    if (final.anonymous) localStorage.setItem(ANONYMOUS_KEY, '1')
+    else localStorage.removeItem(ANONYMOUS_KEY)
+    localStorage.setItem(NAME_SET_AT_KEY, String(final.nameSetAt || 0))
+  } catch { /* ignore */ }
+  try {
+    if (typeof window !== 'undefined' && window.dispatchEvent) {
+      window.dispatchEvent(new CustomEvent(PROFILE_SYNCED_EVENT))
+    }
+  } catch { /* ignore */ }
 }
 
 // -- network ----------------------------------------------------------------
